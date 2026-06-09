@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Todo</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="app">
+    <header>
+      <div class="brand">
+        <div class="brand-icon">✓</div>
+        <span>Todo</span>
+      </div>
+      <span id="task-count" class="task-count"></span>
+    </header>
+
+    <div class="lists-row" id="lists-row">
+      <button id="add-list-btn" class="add-list-btn">+ New list</button>
+    </div>
+
+    <div class="search-wrap">
+      <svg class="search-icon" viewBox="0 0 20 20" fill="none">
+        <circle cx="8.5" cy="8.5" r="5.5" stroke="currentColor" stroke-width="1.5"/>
+        <path d="M13 13l3.5 3.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+      </svg>
+      <input id="search" type="text" placeholder="Search tasks…" autocomplete="off" />
+    </div>
+
+    <div class="compose">
+      <input id="new-todo" type="text" placeholder="What needs to be done?" autocomplete="off" />
+      <div class="compose-row">
+        <div class="prio-group" id="prio-group">
+          <button class="prio-btn active" data-prio="" title="No priority">–</button>
+          <button class="prio-btn" data-prio="low" title="Low priority">↓</button>
+          <button class="prio-btn" data-prio="medium" title="Medium priority">!</button>
+          <button class="prio-btn" data-prio="high" title="High priority">!!</button>
+        </div>
+        <input id="due-input" type="date" title="Due date" />
+        <button id="add-btn">Add</button>
+      </div>
+    </div>
+
+    <div class="toolbar">
+      <div class="filters">
+        <button class="filter active" data-filter="all">All</button>
+        <button class="filter" data-filter="active">Active</button>
+        <button class="filter" data-filter="done">Done</button>
+      </div>
+      <button id="clear-done">Clear done</button>
+    </div>
+
+    <ul id="todo-list"></ul>
+  </div>
+
+  <script src="renderer.js"></script>
+</body>
+</html>
