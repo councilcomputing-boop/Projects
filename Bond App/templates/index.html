@@ -251,7 +251,13 @@
                 <div class="page-title">Bond Portfolio</div>
                 <div class="page-sub">Manage and track all surety bonds</div>
             </div>
-            <button class="btn btn-primary" onclick="openAdd()">+ New Bond</button>
+            <div style="display:flex;gap:8px;">
+                <label class="btn btn-secondary" id="uploadLabel" style="cursor:pointer;margin:0;">
+                    &#128196; Upload PDF
+                    <input type="file" accept=".pdf" style="display:none;" onchange="handlePDFUpload(this)">
+                </label>
+                <button class="btn btn-primary" onclick="openAdd()">+ New Bond</button>
+            </div>
         </div>
 
         <div class="stats">
@@ -739,6 +745,35 @@ function fmtDate(d) {
 }
 function esc(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function open_(id){ document.getElementById(id).classList.add('open'); }
+
+async function handlePDFUpload(input) {
+    const file = input.files[0];
+    if (!file) return;
+    const lbl = document.getElementById('uploadLabel');
+    lbl.textContent = '⏳ Reading PDF...';
+    try {
+        const fd = new FormData();
+        fd.append('file', file);
+        const resp = await fetch('/api/bonds/extract', { method:'POST', body:fd });
+        const data = await resp.json();
+        if (!resp.ok) throw new Error(data.error || 'Extraction failed');
+
+        openAdd();
+        if (data.bond_number)   document.getElementById('fNum').value      = data.bond_number;
+        if (data.bond_type)     document.getElementById('fType').value     = data.bond_type;
+        if (data.principal)     document.getElementById('fPrincipal').value = data.principal;
+        if (data.obligee)       document.getElementById('fObligee').value  = data.obligee;
+        if (data.surety)        document.getElementById('fSurety').value   = data.surety;
+        if (data.bond_amount)   document.getElementById('fAmt').value      = data.bond_amount;
+        if (data.bid_date)      document.getElementById('fBidDate').value  = data.bid_date;
+        if (data.decision_date) document.getElementById('fDecDate').value  = data.decision_date;
+        toast('Form filled from PDF — review and save');
+    } catch(e) {
+        toast(e.message, 'err');
+    }
+    lbl.innerHTML = '&#128196; Upload PDF<input type="file" accept=".pdf" style="display:none;" onchange="handlePDFUpload(this)">';
+    input.value = '';
+}
 
 function openReport() {
     document.getElementById('rStatus').value = '';

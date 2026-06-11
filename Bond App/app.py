@@ -466,6 +466,57 @@ def generate_report():
     return resp
 
 
+@app.route('/api/bonds/extract', methods=['POST'])
+@login_required
+def extract_bond_pdf():
+    import pdfplumber
+    import anthropic as _anthropic
+
+    if 'file' not in request.files:
+        return jsonify({'error': 'No file uploaded.'}), 400
+    file = request.files['file']
+    if not file.filename.lower().endswith('.pdf'):
+        return jsonify({'error': 'File must be a PDF.'}), 400
+
+    try:
+        with pdfplumber.open(file) as pdf:
+            text = '\n'.join(page.extract_text() or '' for page in pdf.pages)
+    except Exception as e:
+        return jsonify({'error': f'Could not read PDF: {e}'}), 400
+
+    if not text.strip():
+        return jsonify({'error': 'No text found in this PDF — it may be a scanned image.'}), 400
+
+    api_key = os.environ.get('ANTHROPIC_API_KEY', '')
+    if not api_key:
+        return jsonify({'error': 'ANTHROPIC_API_KEY not set in Railway variables.'}), 500
+
+    client = _anthropic.Anthropic(api_key=api_key)
+    message = client.messages.create(
+        model='claude-haiku-4-5-20251001',
+        max_tokens=512,
+        messages=[{
+            'role': 'user',
+            'content': (
+                'Extract bond information from this document. '
+                'Return ONLY a JSON object with these exact keys:\n'
+                '  bond_number, bond_type (one of: Bid Bond / Final Bond / License Bond / Maintenance Bond / Other),\n'
+                '  principal, obligee, surety, bond_amount (number only, no $ or commas, or null),\n'
+                '  bid_date (YYYY-MM-DD or null), decision_date (YYYY-MM-DD or null)\n'
+                'Return only the JSON, no extra text.\n\n'
+                f'Document:\n{text[:4000]}'
+            )
+        }]
+    )
+
+    try:
+        extracted = json.loads(message.content[0].text)
+    except Exception:
+        return jsonify({'error': 'Could not parse AI response. Try again.'}), 500
+
+    return jsonify(extracted)
+
+
 @app.route('/api/me/password', methods=['PUT'])
 @login_required
 def change_password():
