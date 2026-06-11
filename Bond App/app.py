@@ -392,7 +392,7 @@ def generate_report():
 
     pdf.set_font('Helvetica', '', 9)
     pdf.set_text_color(95, 99, 104)
-    pdf.cell(0, 5, f'Generated {datetime.utcnow().strftime("%m/%d/%Y %I:%M %p")} UTC   •   {len(bonds)} bond(s)', align='C')
+    pdf.cell(0, 5, f'Generated {datetime.utcnow().strftime("%m/%d/%Y %I:%M %p")} UTC  |  {len(bonds)} bond(s)', align='C')
     pdf.ln(8)
 
     # ── Table header ────────────────────────────────────────
@@ -425,7 +425,11 @@ def generate_report():
         amt = f'${bond.bond_amount:,.0f}' if bond.bond_amount else '-'
         bid = bond.bid_date or '-'
 
+        def safe(s):
+            return ''.join(c if ord(c) < 256 else '?' for c in (s or ''))
+
         def trunc(s, n):
+            s = safe(s)
             return s[:n-1] + '...' if len(s) > n else s
 
         row_vals = [
