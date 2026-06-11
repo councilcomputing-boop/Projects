@@ -235,6 +235,15 @@
                     <span class="di-ico">&#128274;</span> Change Password
                 </button>
                 <div class="drop-divider"></div>
+                <div style="padding:10px 16px 6px;">
+                    <div style="font-size:11px;color:var(--gray-600);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">Support</div>
+                    <div style="font-size:12px;color:var(--gray-700);margin-bottom:6px;">For troubleshooting, bug fixes, or questions:</div>
+                    <div style="display:flex;align-items:center;gap:6px;">
+                        <span style="font-size:12px;font-weight:600;color:var(--navy);">councilcomputing@gmail.com</span>
+                        <button onclick="copySupport()" style="border:1px solid var(--gray-300);background:white;border-radius:4px;padding:2px 8px;font-size:11px;cursor:pointer;color:var(--gray-700);" title="Copy email">Copy</button>
+                    </div>
+                </div>
+                <div class="drop-divider"></div>
                 <a href="/logout" class="drop-item signout">
                     <span class="di-ico">&#10132;</span> Sign Out
                 </a>
@@ -844,6 +853,9 @@ function toggleSettings(){
 function closeSettings(){
     document.getElementById('settingsBtn').classList.remove('open');
     document.getElementById('settingsDrop').classList.remove('open');
+}
+function copySupport(){
+    navigator.clipboard.writeText('councilcomputing@gmail.com').then(()=>toast('Email copied!'));
 }
 
 loadBonds();
