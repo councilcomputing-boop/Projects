@@ -79,7 +79,7 @@ def send_bond_notification(action, bond, changed_by, old_status=None):
     recipients = [e.strip() for e in NOTIFY_TO.split(',') if e.strip()]
 
     try:
-        with smtplib.SMTP(SMTP_HOST, SMTP_PORT) as server:
+        with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=15) as server:
             server.ehlo()
             server.starttls()
             server.login(SMTP_USER, SMTP_PASS)
@@ -128,7 +128,7 @@ def send_invite_email(to_email, username, invite_link):
     msg.attach(MIMEText(html, 'html'))
 
     try:
-        with smtplib.SMTP(SMTP_HOST, SMTP_PORT) as server:
+        with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=15) as server:
             server.ehlo()
             server.starttls()
             server.login(SMTP_USER, SMTP_PASS)

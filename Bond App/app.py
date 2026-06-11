@@ -6,6 +6,7 @@ from datetime import datetime, timedelta
 import os
 import json
 import secrets
+import threading
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -280,10 +281,7 @@ def invite_user():
     db.session.commit()
 
     invite_link = url_for('accept_invite', token=token, _external=True)
-    try:
-        send_invite_email(user.email, user.username, invite_link)
-    except Exception as e:
-        print(f'[invite] Email failed but user created: {e}')
+    threading.Thread(target=send_invite_email, args=(user.email, user.username, invite_link), daemon=True).start()
 
     return jsonify({'ok': True, 'invite_link': invite_link}), 201
 
@@ -335,10 +333,7 @@ def resend_invite(user_id):
     db.session.commit()
 
     invite_link = url_for('accept_invite', token=token, _external=True)
-    try:
-        send_invite_email(user.email, user.username, invite_link)
-    except Exception as e:
-        return jsonify({'error': f'User updated but email failed: {e}'}), 500
+    threading.Thread(target=send_invite_email, args=(user.email, user.username, invite_link), daemon=True).start()
 
     return jsonify({'ok': True})
 
@@ -390,7 +385,7 @@ def generate_report():
 
     pdf.set_font('Helvetica', 'B', 12)
     pdf.set_text_color(13, 27, 42)
-    pdf.cell(0, 8, f'Bond Report  —  {", ".join(filter_parts)}', align='C')
+    pdf.cell(0, 8, f'Bond Report  -  {", ".join(filter_parts)}', align='C')
     pdf.ln(8)
 
     pdf.set_font('Helvetica', '', 9)
