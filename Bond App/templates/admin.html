@@ -321,14 +321,8 @@ async function sendInvite(e) {
             email:    document.getElementById('aEmail').value.trim(),
             role:     document.getElementById('aRole').value,
         });
-        document.getElementById('addForm').style.display='none';
-        document.getElementById('inviteFtr').style.display='none';
-        document.getElementById('inviteSuccess').style.display='';
-        document.getElementById('inviteDoneFtr').style.display='';
-        if (data.invite_link) {
-            document.getElementById('inviteLinkBox').style.display='';
-            document.getElementById('inviteLinkVal').value = data.invite_link;
-        }
+        closeModal('addModal');
+        location.reload();
         toast('Invite sent');
     } catch(ex){ err.textContent=ex.message; err.style.display=''; }
 }
