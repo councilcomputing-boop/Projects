@@ -176,7 +176,9 @@
         .toast { background: var(--navy); color: white; padding: 11px 16px; border-radius: var(--r); font-size: 14px; box-shadow: var(--shadow-md); animation: tin 0.2s ease; }
         .toast.ok  { border-left: 4px solid #4caf50; }
         .toast.err { border-left: 4px solid #ef5350; }
-        @keyframes tin { from { opacity:0; transform:translateX(14px); } to { opacity:1; transform:translateX(0); } }
+        @keyframes tin  { from { opacity:0; transform:translateX(14px); } to { opacity:1; transform:translateX(0); } }
+        @keyframes spin { to { transform:rotate(360deg); } }
+        .spinner { display:inline-block; width:13px; height:13px; border:2px solid rgba(255,255,255,0.4); border-top-color:white; border-radius:50%; animation:spin 0.7s linear infinite; vertical-align:middle; margin-right:6px; }
 
         @media (max-width: 960px) { .stats { grid-template-columns: repeat(2,1fr); } }
         @media (max-width: 680px) { .main { padding: 14px; } .hdr { padding: 0 14px; } .fg { grid-template-columns: 1fr; } .page-hdr { flex-direction: column; gap: 10px; } .hdr-nav { display: none; } }
@@ -378,7 +380,7 @@
         </div>
         <div class="modal-ftr">
             <button class="btn btn-secondary" onclick="closeModal('bondModal')">Cancel</button>
-            <button class="btn btn-primary"   onclick="document.getElementById('bondForm').requestSubmit()">Save Bond</button>
+            <button class="btn btn-primary" id="saveBondBtn" onclick="document.getElementById('bondForm').requestSubmit()">Save Bond</button>
         </div>
     </div>
 </div>
@@ -643,6 +645,9 @@ function openEdit(id) {
 
 async function saveBond(e) {
     e.preventDefault();
+    const btn = document.getElementById('saveBondBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span>Saving...';
     const body = {
         bond_number:   document.getElementById('fNum').value.trim(),
         bond_type:     document.getElementById('fType').value,
@@ -665,6 +670,9 @@ async function saveBond(e) {
         el.textContent='Error: ' + err.message;
         el.style.display='';
         el.scrollIntoView({behavior:'smooth', block:'nearest'});
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = 'Save Bond';
     }
 }
 
