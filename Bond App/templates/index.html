@@ -51,7 +51,7 @@
         .settings-btn:hover { background:rgba(255,255,255,0.1); }
         .settings-btn .chevron { font-size:10px; opacity:0.7; transition:transform 0.2s; }
         .settings-btn.open .chevron { transform:rotate(180deg); }
-        .settings-drop { display:none; position:absolute; top:calc(100% + 8px); right:0; background:white; border-radius:var(--r); box-shadow:0 8px 24px rgba(0,0,0,0.18); min-width:200px; z-index:500; overflow:hidden; }
+        .settings-drop { display:none; position:absolute; top:calc(100% + 8px); right:0; background:white; border-radius:var(--r); box-shadow:0 8px 24px rgba(0,0,0,0.18); min-width:220px; max-height:calc(100vh - 80px); overflow-y:auto; z-index:500; }
         .settings-drop.open { display:block; }
         .drop-header { padding:12px 16px; background:var(--gray-50); border-bottom:1px solid var(--gray-200); }
         .drop-header .dh-name { font-size:14px; font-weight:600; color:var(--navy); }
