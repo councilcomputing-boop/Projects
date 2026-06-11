@@ -429,7 +429,7 @@ def generate_report():
             return s[:n-1] + '…' if len(s) > n else s
 
         row_vals = [
-            (trunc(bond.bond_number, 16), cols[0][1], 'L'),
+            (trunc(bond.bond_number or 'N/A', 16), cols[0][1], 'L'),
             (trunc(bond.bond_type,   15), cols[1][1], 'L'),
             (trunc(bond.principal,   28), cols[2][1], 'L'),
             (trunc(bond.obligee,     25), cols[3][1], 'L'),
@@ -547,6 +547,15 @@ def change_password():
 
 with app.app_context():
     db.create_all()
+    # Allow bond_number to be nullable (migration for existing databases)
+    try:
+        from sqlalchemy import text
+        with db.engine.connect() as conn:
+            if 'postgresql' in str(db.engine.url):
+                conn.execute(text('ALTER TABLE bonds ALTER COLUMN bond_number DROP NOT NULL'))
+                conn.commit()
+    except Exception:
+        pass  # Already nullable or table doesn't exist yet
     if not User.query.first():
         _admin = User(username='admin', email='admin@company.com', role='admin', active=True)
         _admin.set_password('changeme123')
