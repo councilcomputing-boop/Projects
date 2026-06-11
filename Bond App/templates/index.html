@@ -411,7 +411,7 @@
         </div>
         <div class="modal-ftr">
             <button class="btn btn-secondary" onclick="closeModal('delModal')">Cancel</button>
-            <button class="btn btn-danger"    onclick="doDelete()">Yes, Delete</button>
+            <button class="btn btn-danger" id="delBtn" onclick="doDelete()">Yes, Delete</button>
         </div>
     </div>
 </div>
@@ -684,12 +684,19 @@ function openDel(id) {
     open_('delModal');
 }
 async function doDelete() {
+    const btn = document.getElementById('delBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span>Deleting...';
     try {
         await api(`/api/bonds/${delId}`,'DELETE');
         closeModal('delModal');
         await loadBonds();
         toast('Bond deleted');
-    } catch(err) { toast(err.message,'err'); }
+    } catch(err) {
+        toast(err.message,'err');
+        btn.disabled = false;
+        btn.innerHTML = 'Yes, Delete';
+    }
 }
 
 // ── Activity log ────────────────────────────────────────────────────────
