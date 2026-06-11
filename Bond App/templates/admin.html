@@ -135,7 +135,10 @@
             <div class="page-title">User Management</div>
             <div class="page-sub">Add and manage staff accounts — Admin only</div>
         </div>
-        <button class="btn btn-primary" onclick="openInvite()">+ Invite User</button>
+        <div style="display:flex;gap:8px;">
+            <button class="btn btn-secondary" onclick="openInvite('admin')">+ Invite Admin</button>
+            <button class="btn btn-primary"   onclick="openInvite('user')">+ Invite User</button>
+        </div>
     </div>
 
     <div class="tcard">
@@ -169,7 +172,8 @@
                             <div class="row-acts">
                                 <button class="btn btn-secondary btn-sm" onclick="openEdit({{ u.id }},'{{ u.username }}','{{ u.email }}','{{ u.role }}',{{ 'true' if u.active else 'false' }})">Edit</button>
                                 {% if u.invite_pending %}
-                                <button class="btn btn-warn btn-sm" onclick="resendInvite({{ u.id }},'{{ u.username }}')">Resend Invite</button>
+                                <button class="btn btn-warn btn-sm" onclick="copyInviteLink('{{ app_url }}/invite/{{ u.invite_token }}')">Copy Link</button>
+                                <button class="btn btn-warn btn-sm" onclick="resendInvite({{ u.id }},'{{ u.username }}')">Resend</button>
                                 {% else %}
                                 <button class="btn btn-secondary btn-sm" onclick="openResetPw({{ u.id }},'{{ u.username }}')">Reset PW</button>
                                 {% endif %}
@@ -193,10 +197,13 @@
         <div class="modal-body">
             <div id="addErr" style="display:none;background:var(--red-bg);color:var(--red);border-radius:var(--r-sm);padding:10px 13px;font-size:13px;margin-bottom:14px;"></div>
             <div id="inviteSuccess" style="display:none;">
-                <div style="background:var(--green-bg);color:var(--green);border-radius:var(--r-sm);padding:12px 14px;font-size:13px;margin-bottom:12px;font-weight:600;">&#10003; Invite sent!</div>
-                <div class="info-box" id="inviteLinkBox" style="display:none;">
-                    <strong>Email not configured</strong> — copy this link and send it manually:<br>
-                    <input type="text" class="fc" id="inviteLinkVal" readonly onclick="this.select()" style="margin-top:8px;font-size:12px;color:var(--blue);">
+                <div style="background:var(--green-bg);color:var(--green);border-radius:var(--r-sm);padding:12px 14px;font-size:13px;margin-bottom:12px;font-weight:600;">&#10003; User created!</div>
+                <div class="info-box">
+                    Copy this link and send it to them via text, email, or however you like — they click it to set their password:<br>
+                    <div style="display:flex;gap:6px;margin-top:8px;">
+                        <input type="text" class="fc" id="inviteLinkVal" readonly onclick="this.select()" style="font-size:12px;color:var(--blue);">
+                        <button class="btn btn-secondary btn-sm" onclick="copyInviteLink(document.getElementById('inviteLinkVal').value)" style="white-space:nowrap;">Copy</button>
+                    </div>
                 </div>
             </div>
             <form id="addForm" onsubmit="sendInvite(event)">
@@ -302,15 +309,21 @@ async function api(path, method='GET', body=null) {
 }
 
 // Invite user
-function openInvite() {
+function openInvite(role) {
     document.getElementById('addForm').reset();
     document.getElementById('addErr').style.display='none';
     document.getElementById('inviteSuccess').style.display='none';
-    document.getElementById('inviteLinkBox').style.display='none';
     document.getElementById('addForm').style.display='';
     document.getElementById('inviteFtr').style.display='';
     document.getElementById('inviteDoneFtr').style.display='none';
+    document.getElementById('aRole').value = role || 'user';
+    document.querySelector('#addModal .modal-ttl').textContent =
+        role === 'admin' ? 'Invite New Admin' : 'Invite New User';
     open_('addModal');
+}
+
+function copyInviteLink(link) {
+    navigator.clipboard.writeText(link).then(() => toast('Link copied to clipboard'));
 }
 async function sendInvite(e) {
     e.preventDefault();
@@ -321,9 +334,12 @@ async function sendInvite(e) {
             email:    document.getElementById('aEmail').value.trim(),
             role:     document.getElementById('aRole').value,
         });
-        closeModal('addModal');
-        location.reload();
-        toast('Invite sent');
+        document.getElementById('addForm').style.display = 'none';
+        document.getElementById('inviteSuccess').style.display = '';
+        document.getElementById('inviteLinkVal').value = data.invite_link || '';
+        document.getElementById('inviteFtr').style.display = 'none';
+        document.getElementById('inviteDoneFtr').style.display = '';
+        toast('User created');
     } catch(ex){ err.textContent=ex.message; err.style.display=''; }
 }
 

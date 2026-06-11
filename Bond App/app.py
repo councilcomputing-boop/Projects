@@ -92,8 +92,9 @@ def index():
 def admin():
     if current_user.role != 'admin':
         return redirect(url_for('index'))
-    users = User.query.order_by(User.created_at).all()
-    return render_template('admin.html', user=current_user, users=users)
+    users   = User.query.order_by(User.created_at).all()
+    app_url = os.environ.get('APP_URL', request.host_url.rstrip('/'))
+    return render_template('admin.html', user=current_user, users=users, app_url=app_url)
 
 
 # ── Bond API ───────────────────────────────────────────────────────────
