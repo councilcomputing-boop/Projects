@@ -343,6 +343,133 @@ def resend_invite(user_id):
     return jsonify({'ok': True})
 
 
+@app.route('/reports/pdf')
+@login_required
+def generate_report():
+    from fpdf import FPDF
+    from flask import make_response
+
+    status_filter = request.args.get('status', '')
+    from_date     = request.args.get('from_date', '')
+    to_date       = request.args.get('to_date', '')
+
+    query = Bond.query
+    if status_filter:
+        query = query.filter(Bond.status == status_filter)
+    if from_date:
+        query = query.filter(Bond.bid_date >= from_date)
+    if to_date:
+        query = query.filter(Bond.bid_date <= to_date)
+
+    bonds = query.order_by(Bond.bid_date.asc(), Bond.bond_number.asc()).all()
+
+    pdf = FPDF(orientation='L', unit='mm', format='A4')
+    pdf.set_auto_page_break(auto=True, margin=15)
+    pdf.set_margins(15, 15, 15)
+    pdf.add_page()
+
+    # ── Header ──────────────────────────────────────────────
+    pdf.set_font('Helvetica', 'B', 18)
+    pdf.set_text_color(13, 27, 42)
+    pdf.cell(0, 10, 'IAMA BondDesk', align='C')
+    pdf.ln(10)
+
+    pdf.set_font('Helvetica', '', 10)
+    pdf.set_text_color(95, 99, 104)
+    pdf.cell(0, 6, 'Insurance Agency of Mid America', align='C')
+    pdf.ln(6)
+
+    pdf.ln(2)
+
+    filter_parts = [status_filter if status_filter else 'All Statuses']
+    if from_date or to_date:
+        d = ''
+        if from_date: d += f'From {from_date}'
+        if to_date:   d += f'  To {to_date}'
+        filter_parts.append(d.strip())
+
+    pdf.set_font('Helvetica', 'B', 12)
+    pdf.set_text_color(13, 27, 42)
+    pdf.cell(0, 8, f'Bond Report  —  {", ".join(filter_parts)}', align='C')
+    pdf.ln(8)
+
+    pdf.set_font('Helvetica', '', 9)
+    pdf.set_text_color(95, 99, 104)
+    pdf.cell(0, 5, f'Generated {datetime.utcnow().strftime("%m/%d/%Y %I:%M %p")} UTC   •   {len(bonds)} bond(s)', align='C')
+    pdf.ln(8)
+
+    # ── Table header ────────────────────────────────────────
+    cols = [
+        ('Bond #',    30), ('Type',      27), ('Principal', 50),
+        ('Obligee',   45), ('Surety',    40), ('Amount',    25),
+        ('Bid Date',  24), ('Status',    26),
+    ]
+
+    pdf.set_fill_color(13, 27, 42)
+    pdf.set_text_color(255, 255, 255)
+    pdf.set_font('Helvetica', 'B', 8)
+    for label, w in cols:
+        pdf.cell(w, 8, label, fill=True, align='C')
+    pdf.ln(8)
+
+    # ── Rows ────────────────────────────────────────────────
+    status_colors = {
+        'Approved':     (46, 125, 50),
+        'Not Approved': (198, 40, 40),
+        'Pending':      (230, 81, 0),
+    }
+    pdf.set_font('Helvetica', '', 8)
+
+    for i, bond in enumerate(bonds):
+        fill = i % 2 == 0
+        if fill:
+            pdf.set_fill_color(248, 249, 250)
+
+        amt = f'${bond.bond_amount:,.0f}' if bond.bond_amount else '-'
+        bid = bond.bid_date or '-'
+
+        def trunc(s, n):
+            return s[:n-1] + '…' if len(s) > n else s
+
+        row_vals = [
+            (trunc(bond.bond_number, 16), cols[0][1], 'L'),
+            (trunc(bond.bond_type,   15), cols[1][1], 'L'),
+            (trunc(bond.principal,   28), cols[2][1], 'L'),
+            (trunc(bond.obligee,     25), cols[3][1], 'L'),
+            (trunc(bond.surety,      22), cols[4][1], 'L'),
+            (amt,                         cols[5][1], 'R'),
+            (bid,                         cols[6][1], 'C'),
+        ]
+
+        pdf.set_text_color(60, 64, 67)
+        for text, w, align in row_vals:
+            pdf.cell(w, 7, text, border='B', fill=fill, align=align)
+
+        sc = status_colors.get(bond.status, (60, 64, 67))
+        pdf.set_text_color(*sc)
+        pdf.cell(cols[7][1], 7, bond.status, border='B', fill=fill, align='C')
+        pdf.set_text_color(60, 64, 67)
+        pdf.ln(7)
+
+    # ── Summary ─────────────────────────────────────────────
+    pdf.ln(4)
+    pdf.set_font('Helvetica', '', 9)
+    pdf.set_text_color(95, 99, 104)
+    approved = sum(1 for b in bonds if b.status == 'Approved')
+    not_appr = sum(1 for b in bonds if b.status == 'Not Approved')
+    pending  = sum(1 for b in bonds if b.status == 'Pending')
+    pdf.cell(0, 6,
+        f'Total: {len(bonds)}   |   Approved: {approved}   |   Not Approved: {not_appr}   |   Pending: {pending}',
+        align='C')
+
+    pdf_bytes = pdf.output()
+    fname = f'IAMA-BondReport-{datetime.utcnow().strftime("%Y%m%d")}.pdf'
+    resp = make_response(pdf_bytes)
+    resp.headers['Content-Type'] = 'application/pdf'
+    resp.headers['Content-Disposition'] = f'attachment; filename={fname}'
+    return resp
+
+
 @app.route('/api/me/password', methods=['PUT'])
 @login_required
 def change_password():

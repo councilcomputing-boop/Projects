@@ -252,6 +252,7 @@
                 <option>Maintenance Bond</option>
                 <option>Other</option>
             </select>
+            <button class="btn btn-secondary" onclick="openReport()" style="white-space:nowrap;">&#128196; Report</button>
         </div>
 
         <div class="tcard">
@@ -375,6 +376,37 @@
         <div class="modal-ftr">
             <button class="btn btn-secondary" onclick="closeModal('delModal')">Cancel</button>
             <button class="btn btn-danger"    onclick="doDelete()">Yes, Delete</button>
+        </div>
+    </div>
+</div>
+
+<!-- ── Report Modal ─────────────────────────────────────── -->
+<div class="overlay" id="reportModal">
+    <div class="modal modal-sm">
+        <div class="modal-hdr"><div class="modal-ttl">&#128196; Generate Bond Report</div><button class="modal-cls" onclick="closeModal('reportModal')">&times;</button></div>
+        <div class="modal-body">
+            <div style="font-size:13px;color:var(--gray-600);margin-bottom:16px;">Choose filters then click Download. Leave fields blank to include everything.</div>
+            <div class="fgrp">
+                <label class="flbl">Status</label>
+                <select class="fc" id="rStatus">
+                    <option value="">All Statuses</option>
+                    <option value="Pending">Pending</option>
+                    <option value="Approved">Approved</option>
+                    <option value="Not Approved">Not Approved</option>
+                </select>
+            </div>
+            <div class="fgrp">
+                <label class="flbl">Bid Date — From</label>
+                <input type="date" class="fc" id="rFrom">
+            </div>
+            <div class="fgrp">
+                <label class="flbl">Bid Date — To</label>
+                <input type="date" class="fc" id="rTo">
+            </div>
+        </div>
+        <div class="modal-ftr">
+            <button class="btn btn-secondary" onclick="closeModal('reportModal')">Cancel</button>
+            <button class="btn btn-primary" onclick="downloadReport()">&#8595; Download PDF</button>
         </div>
     </div>
 </div>
@@ -679,6 +711,24 @@ function fmtDate(d) {
 }
 function esc(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function open_(id){ document.getElementById(id).classList.add('open'); }
+
+function openReport() {
+    document.getElementById('rStatus').value = '';
+    document.getElementById('rFrom').value   = '';
+    document.getElementById('rTo').value     = '';
+    open_('reportModal');
+}
+function downloadReport() {
+    const status = document.getElementById('rStatus').value;
+    const from   = document.getElementById('rFrom').value;
+    const to     = document.getElementById('rTo').value;
+    const params = new URLSearchParams();
+    if (status) params.append('status',    status);
+    if (from)   params.append('from_date', from);
+    if (to)     params.append('to_date',   to);
+    window.location.href = '/reports/pdf?' + params.toString();
+    closeModal('reportModal');
+}
 function closeModal(id){ document.getElementById(id).classList.remove('open'); }
 function toast(msg,type='ok'){
     const t=document.createElement('div');
