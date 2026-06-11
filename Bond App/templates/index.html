@@ -613,6 +613,7 @@ function openAdd() {
     editId=null;
     document.getElementById('modalTitle').textContent='New Bond';
     document.getElementById('bondForm').reset();
+    document.getElementById('fStatus').value='Pending';
     document.getElementById('formError').style.display='none';
     open_('bondModal');
 }
@@ -652,12 +653,14 @@ async function saveBond(e) {
     };
     try {
         if (editId) { await api(`/api/bonds/${editId}`,'PUT',body); toast('Bond updated'); }
-        else        { await api('/api/bonds','POST',body); toast('Bond added'); }
+        else        { await api('/api/bonds','POST',body); toast('Bond saved'); }
         closeModal('bondModal');
         await loadBonds();
     } catch(err) {
         const el=document.getElementById('formError');
-        el.textContent=err.message; el.style.display='';
+        el.textContent='Error: ' + err.message;
+        el.style.display='';
+        el.scrollIntoView({behavior:'smooth', block:'nearest'});
     }
 }
 
