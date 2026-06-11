@@ -511,13 +511,20 @@ def extract_bond_pdf():
 
     try:
         raw = message.content[0].text.strip()
+        print(f'[extract] Raw AI response: {raw[:500]}')
         # Strip markdown code fences if present
-        if raw.startswith('```'):
+        if '```' in raw:
             raw = raw.split('```')[1]
             if raw.startswith('json'):
                 raw = raw[4:]
+        # Find JSON object within the text
+        start = raw.find('{')
+        end   = raw.rfind('}')
+        if start != -1 and end != -1:
+            raw = raw[start:end+1]
         extracted = json.loads(raw.strip())
-    except Exception:
+    except Exception as e:
+        print(f'[extract] Parse error: {e} | raw: {message.content[0].text[:300]}')
         return jsonify({'error': 'Could not parse AI response. Try again.'}), 500
 
     return jsonify(extracted)
