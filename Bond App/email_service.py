@@ -42,7 +42,7 @@ def send_bond_notification(action, bond, changed_by, old_status=None):
     html = f"""
 <div style="font-family:'Segoe UI',Arial,sans-serif;max-width:600px;margin:0 auto;background:#f8f9fa;padding:24px;">
   <div style="background:#0d1b2a;padding:18px 24px;border-radius:8px 8px 0 0;">
-    <div style="color:white;font-size:17px;font-weight:600;">Bond Tracker</div>
+    <div style="color:white;font-size:17px;font-weight:600;">IAMA BondDesk</div>
     <div style="color:rgba(255,255,255,0.55);font-size:11px;margin-top:2px;">Insurance Agency of Mid America</div>
   </div>
   <div style="background:white;padding:24px;border:1px solid #e8eaed;border-top:none;border-radius:0 0 8px 8px;">
