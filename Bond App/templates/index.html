@@ -665,6 +665,7 @@ async function saveBond(e) {
         else        { await api('/api/bonds','POST',body); toast('Bond saved'); }
         closeModal('bondModal');
         await loadBonds();
+        loadActivity();
     } catch(err) {
         const el=document.getElementById('formError');
         el.textContent='Error: ' + err.message;
@@ -691,6 +692,7 @@ async function doDelete() {
         await api(`/api/bonds/${delId}`,'DELETE');
         closeModal('delModal');
         await loadBonds();
+        loadActivity();
         toast('Bond deleted');
     } catch(err) {
         toast(err.message,'err');
