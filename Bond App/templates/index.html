@@ -41,8 +41,21 @@
         }
         .nav-btn:hover  { background: rgba(255,255,255,0.1); }
         .nav-btn.active { background: rgba(255,255,255,0.18); border-color: rgba(255,255,255,0.5); }
-        .btn-logout { padding: 6px 14px; border-radius: var(--r-sm); font-size: 13px; font-weight: 500; background: transparent; border: 1px solid rgba(255,255,255,0.25); color: white; cursor: pointer; text-decoration: none; }
-        .btn-logout:hover { background: rgba(255,255,255,0.1); }
+        .settings-wrap { position: relative; }
+        .settings-btn { display:flex; align-items:center; gap:7px; padding:6px 12px; border-radius:var(--r-sm); font-size:13px; font-weight:500; background:transparent; border:1px solid rgba(255,255,255,0.25); color:white; cursor:pointer; font-family:inherit; }
+        .settings-btn:hover { background:rgba(255,255,255,0.1); }
+        .settings-btn .chevron { font-size:10px; opacity:0.7; transition:transform 0.2s; }
+        .settings-btn.open .chevron { transform:rotate(180deg); }
+        .settings-drop { display:none; position:absolute; top:calc(100% + 8px); right:0; background:white; border-radius:var(--r); box-shadow:0 8px 24px rgba(0,0,0,0.18); min-width:200px; z-index:500; overflow:hidden; }
+        .settings-drop.open { display:block; }
+        .drop-header { padding:12px 16px; background:var(--gray-50); border-bottom:1px solid var(--gray-200); }
+        .drop-header .dh-name { font-size:14px; font-weight:600; color:var(--navy); }
+        .drop-header .dh-role { font-size:11px; color:var(--gray-600); text-transform:uppercase; letter-spacing:0.5px; margin-top:2px; }
+        .drop-item { display:flex; align-items:center; gap:10px; padding:11px 16px; font-size:13px; color:var(--gray-800); cursor:pointer; border:none; background:none; width:100%; text-align:left; font-family:inherit; text-decoration:none; }
+        .drop-item:hover { background:var(--gray-50); }
+        .drop-item .di-ico { font-size:15px; width:18px; text-align:center; }
+        .drop-divider { height:1px; background:var(--gray-200); margin:4px 0; }
+        .drop-item.signout { color:var(--red); }
 
         /* Main */
         .main { padding: 24px 28px; max-width: 1440px; margin: 0 auto; }
@@ -207,9 +220,24 @@
             <a href="/admin" class="nav-btn">User Management</a>
             {% endif %}
         </div>
-        <span class="hdr-user">{{ user.username }}</span>
-        <button class="btn-logout" onclick="openPwModal()">&#128274; Password</button>
-        <a href="/logout" class="btn-logout">Sign Out</a>
+        <div class="settings-wrap" id="settingsWrap">
+            <button class="settings-btn" id="settingsBtn" onclick="toggleSettings()">
+                &#128100; {{ user.username }} <span class="chevron">&#9660;</span>
+            </button>
+            <div class="settings-drop" id="settingsDrop">
+                <div class="drop-header">
+                    <div class="dh-name">{{ user.username }}</div>
+                    <div class="dh-role">{{ user.role }}</div>
+                </div>
+                <button class="drop-item" onclick="openPwModal();toggleSettings()">
+                    <span class="di-ico">&#128274;</span> Change Password
+                </button>
+                <div class="drop-divider"></div>
+                <a href="/logout" class="drop-item signout">
+                    <span class="di-ico">&#10132;</span> Sign Out
+                </a>
+            </div>
+        </div>
     </div>
 </header>
 
@@ -742,8 +770,22 @@ document.querySelectorAll('.overlay').forEach(el=>{
     el.addEventListener('click',e=>{if(e.target===el){el.classList.remove('open');delId=null;}});
 });
 document.addEventListener('keydown',e=>{
-    if(e.key==='Escape'){document.querySelectorAll('.overlay').forEach(el=>el.classList.remove('open'));delId=null;}
+    if(e.key==='Escape'){document.querySelectorAll('.overlay').forEach(el=>el.classList.remove('open'));delId=null;closeSettings();}
 });
+document.addEventListener('click',e=>{
+    if(!document.getElementById('settingsWrap').contains(e.target)) closeSettings();
+});
+
+function toggleSettings(){
+    const btn=document.getElementById('settingsBtn');
+    const drop=document.getElementById('settingsDrop');
+    btn.classList.toggle('open');
+    drop.classList.toggle('open');
+}
+function closeSettings(){
+    document.getElementById('settingsBtn').classList.remove('open');
+    document.getElementById('settingsDrop').classList.remove('open');
+}
 
 loadBonds();
 </script>
