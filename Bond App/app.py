@@ -426,7 +426,7 @@ def generate_report():
         bid = bond.bid_date or '-'
 
         def trunc(s, n):
-            return s[:n-1] + '…' if len(s) > n else s
+            return s[:n-1] + '...' if len(s) > n else s
 
         row_vals = [
             (trunc(bond.bond_number or 'N/A', 16), cols[0][1], 'L'),
