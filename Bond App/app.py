@@ -111,7 +111,8 @@ def get_bonds():
 def create_bond():
     data = request.get_json()
 
-    if Bond.query.filter_by(bond_number=data.get('bond_number', '').strip()).first():
+    bond_num = data.get('bond_number', '').strip()
+    if bond_num and Bond.query.filter_by(bond_number=bond_num).first():
         return jsonify({'error': 'Bond number already exists.'}), 400
 
     bond = Bond(
