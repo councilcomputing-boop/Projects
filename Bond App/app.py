@@ -1,10 +1,11 @@
 from flask import Flask, render_template, request, jsonify, redirect, url_for
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from database import db, User, Bond, AuditLog
-from email_service import send_bond_notification
-from datetime import datetime
+from email_service import send_bond_notification, send_invite_email
+from datetime import datetime, timedelta
 import os
 import json
+import secrets
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -254,6 +255,94 @@ def delete_user(user_id):
     return jsonify({'ok': True})
 
 
+@app.route('/api/users/invite', methods=['POST'])
+@login_required
+def invite_user():
+    if current_user.role != 'admin':
+        return jsonify({'error': 'Unauthorized'}), 403
+    data = request.get_json()
+
+    if User.query.filter_by(username=data.get('username', '').strip()).first():
+        return jsonify({'error': 'Username already exists.'}), 400
+    if User.query.filter_by(email=data.get('email', '').strip()).first():
+        return jsonify({'error': 'Email already exists.'}), 400
+
+    token = secrets.token_urlsafe(32)
+    user  = User(
+        username       = data['username'].strip(),
+        email          = data['email'].strip(),
+        role           = data.get('role', 'user'),
+        active         = False,
+        invite_token   = token,
+        invite_expires = datetime.utcnow() + timedelta(hours=72),
+    )
+    db.session.add(user)
+    db.session.commit()
+
+    invite_link = url_for('accept_invite', token=token, _external=True)
+    try:
+        send_invite_email(user.email, user.username, invite_link)
+    except Exception as e:
+        print(f'[invite] Email failed but user created: {e}')
+
+    return jsonify({'ok': True, 'invite_link': invite_link}), 201
+
+
+@app.route('/invite/<token>', methods=['GET', 'POST'])
+def accept_invite(token):
+    user = User.query.filter_by(invite_token=token).first()
+
+    if not user:
+        return render_template('accept_invite.html', error='This invite link is invalid.')
+    if user.invite_expires and datetime.utcnow() > user.invite_expires:
+        return render_template('accept_invite.html', error='This invite link has expired. Ask your administrator to resend the invite.')
+    if user.password_hash:
+        return render_template('accept_invite.html', error='This invite has already been used. Please log in.')
+
+    if request.method == 'POST':
+        password = request.form.get('password', '')
+        confirm  = request.form.get('confirm', '')
+        if len(password) < 8:
+            return render_template('accept_invite.html', token=token, username=user.username,
+                                   error='Password must be at least 8 characters.')
+        if password != confirm:
+            return render_template('accept_invite.html', token=token, username=user.username,
+                                   error='Passwords do not match.')
+
+        user.set_password(password)
+        user.active         = True
+        user.invite_token   = None
+        user.invite_expires = None
+        db.session.commit()
+        login_user(user)
+        return redirect(url_for('index'))
+
+    return render_template('accept_invite.html', token=token, username=user.username)
+
+
+@app.route('/api/users/<int:user_id>/resend-invite', methods=['POST'])
+@login_required
+def resend_invite(user_id):
+    if current_user.role != 'admin':
+        return jsonify({'error': 'Unauthorized'}), 403
+    user = User.query.get_or_404(user_id)
+    if user.password_hash:
+        return jsonify({'error': 'User has already accepted their invite.'}), 400
+
+    token = secrets.token_urlsafe(32)
+    user.invite_token   = token
+    user.invite_expires = datetime.utcnow() + timedelta(hours=72)
+    db.session.commit()
+
+    invite_link = url_for('accept_invite', token=token, _external=True)
+    try:
+        send_invite_email(user.email, user.username, invite_link)
+    except Exception as e:
+        return jsonify({'error': f'User updated but email failed: {e}'}), 500
+
+    return jsonify({'ok': True})
+
+
 @app.route('/api/me/password', methods=['PUT'])
 @login_required
 def change_password():
@@ -267,18 +356,16 @@ def change_password():
 
 # ── Startup ────────────────────────────────────────────────────────────
 
-def init_db():
+with app.app_context():
     db.create_all()
     if not User.query.first():
-        admin = User(username='admin', email='admin@company.com', role='admin')
-        admin.set_password('changeme123')
-        db.session.add(admin)
+        _admin = User(username='admin', email='admin@company.com', role='admin', active=True)
+        _admin.set_password('changeme123')
+        db.session.add(_admin)
         db.session.commit()
         print('Default admin created — username: admin  password: changeme123')
         print('IMPORTANT: Change this password immediately after first login.')
 
 
 if __name__ == '__main__':
-    with app.app_context():
-        init_db()
     app.run(debug=True, port=5000)

@@ -7,7 +7,7 @@
     <style>
         :root {
             --navy:#0d1b2a; --navy-lt:#1b2d42; --blue:#1565c0; --blue-lt:#1976d2; --accent:#0288d1;
-            --green:#2e7d32; --green-bg:#e8f5e9; --red:#c62828; --red-bg:#ffebee; --amber:#e65100;
+            --green:#2e7d32; --green-bg:#e8f5e9; --red:#c62828; --red-bg:#ffebee; --amber:#e65100; --amber-bg:#fff3e0;
             --gray-50:#f8f9fa; --gray-100:#f1f3f4; --gray-200:#e8eaed; --gray-300:#dadce0;
             --gray-600:#5f6368; --gray-800:#3c4043;
             --shadow-sm:0 1px 3px rgba(0,0,0,0.12); --shadow-md:0 4px 12px rgba(0,0,0,0.15); --shadow-lg:0 8px 24px rgba(0,0,0,0.20);
@@ -135,7 +135,7 @@
             <div class="page-title">User Management</div>
             <div class="page-sub">Add and manage staff accounts — Admin only</div>
         </div>
-        <button class="btn btn-primary" onclick="openAdd()">+ Add User</button>
+        <button class="btn btn-primary" onclick="openInvite()">+ Invite User</button>
     </div>
 
     <div class="tcard">
@@ -156,7 +156,9 @@
                         <td>{{ u.email }}</td>
                         <td><span class="role-badge role-{{ u.role }}">{{ u.role }}</span></td>
                         <td>
-                            {% if u.active %}
+                            {% if u.invite_pending %}
+                            <span style="color:var(--amber);font-weight:600;font-size:13px;">&#9993; Invited — Pending</span>
+                            {% elif u.active %}
                             <span class="status-active">&#10003; Active</span>
                             {% else %}
                             <span class="status-inactive">&#10005; Inactive</span>
@@ -166,7 +168,11 @@
                         <td>
                             <div class="row-acts">
                                 <button class="btn btn-secondary btn-sm" onclick="openEdit({{ u.id }},'{{ u.username }}','{{ u.email }}','{{ u.role }}',{{ 'true' if u.active else 'false' }})">Edit</button>
+                                {% if u.invite_pending %}
+                                <button class="btn btn-warn btn-sm" onclick="resendInvite({{ u.id }},'{{ u.username }}')">Resend Invite</button>
+                                {% else %}
                                 <button class="btn btn-secondary btn-sm" onclick="openResetPw({{ u.id }},'{{ u.username }}')">Reset PW</button>
+                                {% endif %}
                                 {% if u.id != user.id %}
                                 <button class="btn btn-danger btn-sm" onclick="openDel({{ u.id }},'{{ u.username }}')">Delete</button>
                                 {% endif %}
@@ -180,13 +186,21 @@
     </div>
 </main>
 
-<!-- Add User Modal -->
+<!-- Invite User Modal -->
 <div class="overlay" id="addModal">
     <div class="modal">
-        <div class="modal-hdr"><div class="modal-ttl">Add New User</div><button class="modal-cls" onclick="closeModal('addModal')">&times;</button></div>
+        <div class="modal-hdr"><div class="modal-ttl">Invite New User</div><button class="modal-cls" onclick="closeModal('addModal')">&times;</button></div>
         <div class="modal-body">
             <div id="addErr" style="display:none;background:var(--red-bg);color:var(--red);border-radius:var(--r-sm);padding:10px 13px;font-size:13px;margin-bottom:14px;"></div>
-            <form id="addForm" onsubmit="createUser(event)">
+            <div id="inviteSuccess" style="display:none;">
+                <div style="background:var(--green-bg);color:var(--green);border-radius:var(--r-sm);padding:12px 14px;font-size:13px;margin-bottom:12px;font-weight:600;">&#10003; Invite sent!</div>
+                <div class="info-box" id="inviteLinkBox" style="display:none;">
+                    <strong>Email not configured</strong> — copy this link and send it manually:<br>
+                    <input type="text" class="fc" id="inviteLinkVal" readonly onclick="this.select()" style="margin-top:8px;font-size:12px;color:var(--blue);">
+                </div>
+            </div>
+            <form id="addForm" onsubmit="sendInvite(event)">
+                <div class="info-box">An invitation email will be sent with a secure link to set their password. The link expires in 72 hours.</div>
                 <div class="fgrp"><label class="flbl">Username <span class="req">*</span></label><input type="text" class="fc" id="aUsername" required autocomplete="off"></div>
                 <div class="fgrp"><label class="flbl">Email Address <span class="req">*</span></label><input type="email" class="fc" id="aEmail" required autocomplete="off"></div>
                 <div class="fgrp"><label class="flbl">Role <span class="req">*</span></label>
@@ -195,14 +209,14 @@
                         <option value="admin">Admin — Can also manage users</option>
                     </select>
                 </div>
-                <div class="fgrp"><label class="flbl">Password <span class="req">*</span></label><input type="password" class="fc" id="aPassword" required minlength="8" autocomplete="new-password">
-                    <div class="hint">Minimum 8 characters. Share this with the employee securely.</div>
-                </div>
             </form>
         </div>
-        <div class="modal-ftr">
+        <div class="modal-ftr" id="inviteFtr">
             <button class="btn btn-secondary" onclick="closeModal('addModal')">Cancel</button>
-            <button class="btn btn-primary"   onclick="document.getElementById('addForm').requestSubmit()">Create User</button>
+            <button class="btn btn-primary"   onclick="document.getElementById('addForm').requestSubmit()">Send Invite</button>
+        </div>
+        <div class="modal-ftr" id="inviteDoneFtr" style="display:none;">
+            <button class="btn btn-primary" onclick="closeModal('addModal');location.reload()">Done</button>
         </div>
     </div>
 </div>
@@ -287,25 +301,44 @@ async function api(path, method='GET', body=null) {
     return data;
 }
 
-// Add user
-function openAdd() {
+// Invite user
+function openInvite() {
     document.getElementById('addForm').reset();
     document.getElementById('addErr').style.display='none';
+    document.getElementById('inviteSuccess').style.display='none';
+    document.getElementById('inviteLinkBox').style.display='none';
+    document.getElementById('addForm').style.display='';
+    document.getElementById('inviteFtr').style.display='';
+    document.getElementById('inviteDoneFtr').style.display='none';
     open_('addModal');
 }
-async function createUser(e) {
+async function sendInvite(e) {
     e.preventDefault();
     const err = document.getElementById('addErr');
     try {
-        await api('/api/users','POST',{
+        const data = await api('/api/users/invite','POST',{
             username: document.getElementById('aUsername').value.trim(),
             email:    document.getElementById('aEmail').value.trim(),
             role:     document.getElementById('aRole').value,
-            password: document.getElementById('aPassword').value,
         });
-        toast('User created'); closeModal('addModal');
-        location.reload();
+        document.getElementById('addForm').style.display='none';
+        document.getElementById('inviteFtr').style.display='none';
+        document.getElementById('inviteSuccess').style.display='';
+        document.getElementById('inviteDoneFtr').style.display='';
+        if (data.invite_link) {
+            document.getElementById('inviteLinkBox').style.display='';
+            document.getElementById('inviteLinkVal').value = data.invite_link;
+        }
+        toast('Invite sent');
     } catch(ex){ err.textContent=ex.message; err.style.display=''; }
+}
+
+async function resendInvite(id, username) {
+    if (!confirm(`Resend invite to ${username}?`)) return;
+    try {
+        await api(`/api/users/${id}/resend-invite`,'POST');
+        toast('Invite resent to ' + username);
+    } catch(ex){ toast(ex.message,'err'); }
 }
 
 // Edit user
