@@ -463,7 +463,7 @@ def generate_report():
         f'Total: {len(bonds)}   |   Approved: {approved}   |   Not Approved: {not_appr}   |   Pending: {pending}',
         align='C')
 
-    pdf_bytes = pdf.output()
+    pdf_bytes = bytes(pdf.output())
     fname = f'IAMA-BondReport-{datetime.utcnow().strftime("%Y%m%d")}.pdf'
     resp = make_response(pdf_bytes)
     resp.headers['Content-Type'] = 'application/pdf'
