@@ -244,6 +244,27 @@
                     </div>
                 </div>
                 <div class="drop-divider"></div>
+                <button class="drop-item" onclick="toggleHomeScreen()" style="justify-content:space-between;">
+                    <span><span class="di-ico">&#128247;</span> Add to Home Screen</span>
+                    <span id="hsChevron" style="font-size:10px;opacity:0.6;">&#9660;</span>
+                </button>
+                <div id="hsPanel" style="display:none;padding:0 16px 12px;">
+                    <div style="font-size:11px;color:var(--gray-600);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">iPhone / iPad</div>
+                    <div style="font-size:12px;color:var(--gray-700);line-height:1.8;">
+                        1. Open this site in <strong>Safari</strong><br>
+                        2. Tap the <strong>Share</strong> button &#9633;&#8599; at the bottom<br>
+                        3. Scroll down &amp; tap <strong>"Add to Home Screen"</strong><br>
+                        4. Tap <strong>Add</strong> in the top right
+                    </div>
+                    <div style="font-size:11px;color:var(--gray-600);text-transform:uppercase;letter-spacing:0.5px;margin:10px 0 8px;">Android</div>
+                    <div style="font-size:12px;color:var(--gray-700);line-height:1.8;">
+                        1. Open this site in <strong>Chrome</strong><br>
+                        2. Tap the <strong>3-dot menu</strong> &#8942; in the top right<br>
+                        3. Tap <strong>"Add to Home Screen"</strong><br>
+                        4. Tap <strong>Add</strong>
+                    </div>
+                </div>
+                <div class="drop-divider"></div>
                 <a href="/logout" class="drop-item signout">
                     <span class="di-ico">&#10132;</span> Sign Out
                 </a>
@@ -856,6 +877,13 @@ function closeSettings(){
 }
 function copySupport(){
     navigator.clipboard.writeText('councilcomputing@gmail.com').then(()=>toast('Email copied!'));
+}
+function toggleHomeScreen(){
+    const panel = document.getElementById('hsPanel');
+    const chev  = document.getElementById('hsChevron');
+    const open  = panel.style.display === 'none';
+    panel.style.display = open ? 'block' : 'none';
+    chev.style.transform = open ? 'rotate(180deg)' : '';
 }
 
 loadBonds();
