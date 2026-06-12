@@ -87,6 +87,62 @@ class Bond(db.Model):
         }
 
 
+class Reconciliation(db.Model):
+    __tablename__ = 'reconciliations'
+    id         = db.Column(db.Integer, primary_key=True)
+    carrier    = db.Column(db.String(200), nullable=False)
+    period     = db.Column(db.String(7))   # YYYY-MM
+    status     = db.Column(db.String(20), default='In Progress')
+    notes      = db.Column(db.Text)
+    created_by = db.Column(db.String(50))
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    items      = db.relationship('ReconciliationItem', backref='recon', lazy=True, cascade='all, delete-orphan')
+
+    def to_dict(self, include_items=False):
+        items = [i.to_dict() for i in self.items] if include_items else []
+        matched    = sum(1 for i in self.items if i.status == 'Matched')
+        discrepant = sum(1 for i in self.items if i.status == 'Discrepancy')
+        missing    = sum(1 for i in self.items if i.status == 'Missing')
+        return {
+            'id':         self.id,
+            'carrier':    self.carrier,
+            'period':     self.period or '',
+            'status':     self.status,
+            'notes':      self.notes or '',
+            'created_by': self.created_by or '',
+            'created_at': self.created_at.strftime('%m/%d/%Y') if self.created_at else '',
+            'item_count': len(self.items),
+            'matched':    matched,
+            'discrepant': discrepant,
+            'missing':    missing,
+            'items':      items,
+        }
+
+
+class ReconciliationItem(db.Model):
+    __tablename__ = 'recon_items'
+    id             = db.Column(db.Integer, primary_key=True)
+    recon_id       = db.Column(db.Integer, db.ForeignKey('reconciliations.id'), nullable=False)
+    bond_number    = db.Column(db.String(50))
+    principal      = db.Column(db.String(200))
+    carrier_amount = db.Column(db.Float)
+    our_amount     = db.Column(db.Float)
+    status         = db.Column(db.String(20), default='Pending')  # Matched | Discrepancy | Missing
+    notes          = db.Column(db.Text)
+
+    def to_dict(self):
+        return {
+            'id':             self.id,
+            'recon_id':       self.recon_id,
+            'bond_number':    self.bond_number or '',
+            'principal':      self.principal or '',
+            'carrier_amount': self.carrier_amount,
+            'our_amount':     self.our_amount,
+            'status':         self.status,
+            'notes':          self.notes or '',
+        }
+
+
 class AuditLog(db.Model):
     __tablename__ = 'audit_log'
     id          = db.Column(db.Integer, primary_key=True)

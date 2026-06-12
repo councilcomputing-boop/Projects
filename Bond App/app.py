@@ -1,6 +1,6 @@
 from flask import Flask, render_template, request, jsonify, redirect, url_for
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
-from database import db, User, Bond, AuditLog
+from database import db, User, Bond, AuditLog, Reconciliation, ReconciliationItem
 from email_service import send_bond_notification, send_invite_email
 from datetime import datetime, timedelta
 import os
@@ -203,6 +203,118 @@ def delete_bond(bond_id):
 def get_audit():
     logs = AuditLog.query.order_by(AuditLog.changed_at.desc()).limit(500).all()
     return jsonify([l.to_dict() for l in logs])
+
+
+# ── Reconciliation API ─────────────────────────────────────────────────
+
+@app.route('/api/reconciliations', methods=['GET'])
+@login_required
+def get_reconciliations():
+    recs = Reconciliation.query.order_by(Reconciliation.created_at.desc()).all()
+    return jsonify([r.to_dict() for r in recs])
+
+
+@app.route('/api/reconciliations', methods=['POST'])
+@login_required
+def create_reconciliation():
+    data = request.get_json()
+    rec = Reconciliation(
+        carrier    = data.get('carrier', '').strip(),
+        period     = data.get('period', ''),
+        status     = data.get('status', 'In Progress'),
+        notes      = data.get('notes', '').strip(),
+        created_by = current_user.username,
+    )
+    db.session.add(rec)
+    db.session.commit()
+    return jsonify(rec.to_dict(include_items=True)), 201
+
+
+@app.route('/api/reconciliations/<int:rec_id>', methods=['GET'])
+@login_required
+def get_reconciliation(rec_id):
+    rec = Reconciliation.query.get_or_404(rec_id)
+    return jsonify(rec.to_dict(include_items=True))
+
+
+@app.route('/api/reconciliations/<int:rec_id>', methods=['PUT'])
+@login_required
+def update_reconciliation(rec_id):
+    rec = Reconciliation.query.get_or_404(rec_id)
+    data = request.get_json()
+    rec.carrier = data.get('carrier', rec.carrier).strip()
+    rec.period  = data.get('period',  rec.period)
+    rec.status  = data.get('status',  rec.status)
+    rec.notes   = data.get('notes',   rec.notes or '').strip()
+    db.session.commit()
+    return jsonify(rec.to_dict(include_items=True))
+
+
+@app.route('/api/reconciliations/<int:rec_id>', methods=['DELETE'])
+@login_required
+def delete_reconciliation(rec_id):
+    rec = Reconciliation.query.get_or_404(rec_id)
+    db.session.delete(rec)
+    db.session.commit()
+    return jsonify({'ok': True})
+
+
+@app.route('/api/reconciliations/<int:rec_id>/items', methods=['POST'])
+@login_required
+def add_recon_item(rec_id):
+    Reconciliation.query.get_or_404(rec_id)
+    data = request.get_json()
+    ca = data.get('carrier_amount') or None
+    oa = data.get('our_amount') or None
+    if ca is not None: ca = float(ca)
+    if oa is not None: oa = float(oa)
+    auto_status = 'Pending'
+    if ca is not None and oa is not None:
+        auto_status = 'Matched' if abs(ca - oa) < 0.01 else 'Discrepancy'
+    elif data.get('status') == 'Missing':
+        auto_status = 'Missing'
+    item = ReconciliationItem(
+        recon_id       = rec_id,
+        bond_number    = data.get('bond_number', '').strip(),
+        principal      = data.get('principal', '').strip(),
+        carrier_amount = ca,
+        our_amount     = oa,
+        status         = data.get('status') or auto_status,
+        notes          = data.get('notes', '').strip(),
+    )
+    db.session.add(item)
+    db.session.commit()
+    return jsonify(item.to_dict()), 201
+
+
+@app.route('/api/reconciliations/<int:rec_id>/items/<int:item_id>', methods=['PUT'])
+@login_required
+def update_recon_item(rec_id, item_id):
+    item = ReconciliationItem.query.filter_by(id=item_id, recon_id=rec_id).first_or_404()
+    data = request.get_json()
+    ca = data.get('carrier_amount') or None
+    oa = data.get('our_amount') or None
+    if ca is not None: ca = float(ca)
+    if oa is not None: oa = float(oa)
+    item.bond_number    = data.get('bond_number', item.bond_number or '').strip()
+    item.principal      = data.get('principal',   item.principal or '').strip()
+    item.carrier_amount = ca if ca is not None else item.carrier_amount
+    item.our_amount     = oa if oa is not None else item.our_amount
+    if ca is not None and oa is not None:
+        item.status = 'Matched' if abs(ca - oa) < 0.01 else 'Discrepancy'
+    item.status = data.get('status') or item.status
+    item.notes  = data.get('notes', item.notes or '').strip()
+    db.session.commit()
+    return jsonify(item.to_dict())
+
+
+@app.route('/api/reconciliations/<int:rec_id>/items/<int:item_id>', methods=['DELETE'])
+@login_required
+def delete_recon_item(rec_id, item_id):
+    item = ReconciliationItem.query.filter_by(id=item_id, recon_id=rec_id).first_or_404()
+    db.session.delete(item)
+    db.session.commit()
+    return jsonify({'ok': True})
 
 
 # ── User API (admin only) ──────────────────────────────────────────────
