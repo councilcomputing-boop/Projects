@@ -50,14 +50,15 @@ class User(UserMixin, db.Model):
 class Bond(db.Model):
     __tablename__ = 'bonds'
     id            = db.Column(db.Integer, primary_key=True)
-    bond_number   = db.Column(db.String(50), unique=True, nullable=False)
+    bond_number   = db.Column(db.String(50), unique=True, nullable=True)
     bond_type     = db.Column(db.String(50), nullable=False)
     principal     = db.Column(db.String(200), nullable=False)
     obligee       = db.Column(db.String(200), nullable=False)
     surety        = db.Column(db.String(200), nullable=False)
     bond_amount   = db.Column(db.Float)
-    bid_date      = db.Column(db.String(10))
-    decision_date = db.Column(db.String(10))
+    bid_date        = db.Column(db.String(10))
+    expiration_date = db.Column(db.String(10))
+    decision_date   = db.Column(db.String(10))
     status        = db.Column(db.String(20), default='Pending')
     notes         = db.Column(db.Text)
     created_by    = db.Column(db.String(50))
@@ -74,8 +75,9 @@ class Bond(db.Model):
             'obligee':       self.obligee,
             'surety':        self.surety,
             'bond_amount':   self.bond_amount,
-            'bid_date':      self.bid_date or '',
-            'decision_date': self.decision_date or '',
+            'bid_date':        self.bid_date or '',
+            'expiration_date': self.expiration_date or '',
+            'decision_date':   self.decision_date or '',
             'status':        self.status,
             'notes':         self.notes or '',
             'created_by':    self.created_by or '',

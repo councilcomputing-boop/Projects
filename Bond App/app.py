@@ -121,9 +121,10 @@ def create_bond():
         principal     = data['principal'].strip(),
         obligee       = data['obligee'].strip(),
         surety        = data['surety'].strip(),
-        bond_amount   = data.get('bond_amount') or None,
-        bid_date      = data.get('bid_date') or None,
-        decision_date = data.get('decision_date') or None,
+        bond_amount     = data.get('bond_amount') or None,
+        bid_date        = data.get('bid_date') or None,
+        expiration_date = data.get('expiration_date') or None,
+        decision_date   = data.get('decision_date') or None,
         status        = data.get('status', 'Pending'),
         notes         = data.get('notes', '').strip(),
         created_by    = current_user.username,
@@ -155,9 +156,10 @@ def update_bond(bond_id):
     bond.principal     = data.get('principal',     bond.principal).strip()
     bond.obligee       = data.get('obligee',       bond.obligee).strip()
     bond.surety        = data.get('surety',        bond.surety).strip()
-    bond.bond_amount   = data.get('bond_amount')   or bond.bond_amount
-    bond.bid_date      = data.get('bid_date')      or bond.bid_date
-    bond.decision_date = data.get('decision_date') or bond.decision_date
+    bond.bond_amount     = data.get('bond_amount')     or bond.bond_amount
+    bond.bid_date        = data.get('bid_date')        or bond.bid_date
+    bond.expiration_date = data.get('expiration_date') or None
+    bond.decision_date   = data.get('decision_date')   or bond.decision_date
     bond.status        = data.get('status',        bond.status)
     bond.notes         = data.get('notes',         bond.notes or '').strip()
     bond.updated_by    = current_user.username
@@ -397,9 +399,9 @@ def generate_report():
 
     # ── Table header ────────────────────────────────────────
     cols = [
-        ('Bond #',    30), ('Type',      27), ('Principal', 50),
-        ('Obligee',   45), ('Surety',    40), ('Amount',    25),
-        ('Bid Date',  24), ('Status',    26),
+        ('Bond #',    28), ('Type',      25), ('Principal', 44),
+        ('Obligee',   38), ('Surety',    33), ('Amount',    24),
+        ('Bid Date',  22), ('Expires',   22), ('Status',    31),
     ]
 
     pdf.set_fill_color(13, 27, 42)
@@ -424,6 +426,7 @@ def generate_report():
 
         amt = f'${bond.bond_amount:,.0f}' if bond.bond_amount else '-'
         bid = bond.bid_date or '-'
+        exp = bond.expiration_date or '-'
 
         def safe(s):
             return ''.join(c if ord(c) < 256 else '?' for c in (s or ''))
@@ -433,13 +436,14 @@ def generate_report():
             return s[:n-1] + '...' if len(s) > n else s
 
         row_vals = [
-            (trunc(bond.bond_number or 'N/A', 16), cols[0][1], 'L'),
-            (trunc(bond.bond_type,   15), cols[1][1], 'L'),
-            (trunc(bond.principal,   28), cols[2][1], 'L'),
-            (trunc(bond.obligee,     25), cols[3][1], 'L'),
-            (trunc(bond.surety,      22), cols[4][1], 'L'),
+            (trunc(bond.bond_number or 'N/A', 14), cols[0][1], 'L'),
+            (trunc(bond.bond_type,   13), cols[1][1], 'L'),
+            (trunc(bond.principal,   24), cols[2][1], 'L'),
+            (trunc(bond.obligee,     21), cols[3][1], 'L'),
+            (trunc(bond.surety,      18), cols[4][1], 'L'),
             (amt,                         cols[5][1], 'R'),
             (bid,                         cols[6][1], 'C'),
+            (exp,                         cols[7][1], 'C'),
         ]
 
         pdf.set_text_color(60, 64, 67)
@@ -448,7 +452,7 @@ def generate_report():
 
         sc = status_colors.get(bond.status, (60, 64, 67))
         pdf.set_text_color(*sc)
-        pdf.cell(cols[7][1], 7, bond.status, border='B', fill=fill, align='C')
+        pdf.cell(cols[8][1], 7, bond.status, border='B', fill=fill, align='C')
         pdf.set_text_color(60, 64, 67)
         pdf.ln(7)
 
@@ -467,6 +471,75 @@ def generate_report():
     fname = f'IAMA-BondReport-{datetime.utcnow().strftime("%Y%m%d")}.pdf'
     resp = make_response(pdf_bytes)
     resp.headers['Content-Type'] = 'application/pdf'
+    resp.headers['Content-Disposition'] = f'attachment; filename={fname}'
+    return resp
+
+
+@app.route('/reports/excel')
+@login_required
+def generate_excel():
+    from openpyxl import Workbook
+    from openpyxl.styles import Font, PatternFill, Alignment
+    from flask import make_response
+    import io
+
+    status_filter = request.args.get('status', '')
+    from_date     = request.args.get('from_date', '')
+    to_date       = request.args.get('to_date', '')
+
+    query = Bond.query
+    if status_filter:
+        query = query.filter(Bond.status == status_filter)
+    if from_date:
+        query = query.filter(Bond.bid_date >= from_date)
+    if to_date:
+        query = query.filter(Bond.bid_date <= to_date)
+    bonds = query.order_by(Bond.bid_date.asc(), Bond.bond_number.asc()).all()
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = 'Bond Report'
+
+    headers = ['Bond #', 'Bond Type', 'Principal', 'Obligee', 'Surety',
+               'Amount', 'Bid Date', 'Expiration Date', 'Decision Date', 'Status', 'Notes']
+
+    hdr_fill = PatternFill(start_color='0D1B2A', end_color='0D1B2A', fill_type='solid')
+    hdr_font = Font(color='FFFFFF', bold=True, size=10)
+    for col, h in enumerate(headers, 1):
+        cell = ws.cell(row=1, column=col, value=h)
+        cell.fill = hdr_fill
+        cell.font = hdr_font
+        cell.alignment = Alignment(horizontal='center')
+
+    status_fills = {
+        'Approved':     PatternFill(start_color='E8F5E9', end_color='E8F5E9', fill_type='solid'),
+        'Not Approved': PatternFill(start_color='FFEBEE', end_color='FFEBEE', fill_type='solid'),
+        'Pending':      PatternFill(start_color='FFF3E0', end_color='FFF3E0', fill_type='solid'),
+    }
+
+    for ri, bond in enumerate(bonds, 2):
+        row_data = [
+            bond.bond_number or 'N/A', bond.bond_type, bond.principal,
+            bond.obligee, bond.surety,
+            bond.bond_amount, bond.bid_date, bond.expiration_date,
+            bond.decision_date, bond.status, bond.notes,
+        ]
+        fill = status_fills.get(bond.status)
+        for ci, val in enumerate(row_data, 1):
+            cell = ws.cell(row=ri, column=ci, value=val)
+            if fill:
+                cell.fill = fill
+
+    for col in ws.columns:
+        max_len = max((len(str(c.value)) for c in col if c.value), default=8)
+        ws.column_dimensions[col[0].column_letter].width = min(max_len + 4, 45)
+
+    buf = io.BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+    fname = f'IAMA-BondReport-{datetime.utcnow().strftime("%Y%m%d")}.xlsx'
+    resp = make_response(buf.getvalue())
+    resp.headers['Content-Type'] = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
     resp.headers['Content-Disposition'] = f'attachment; filename={fname}'
     return resp
 
@@ -557,9 +630,10 @@ with app.app_context():
         with db.engine.connect() as conn:
             if 'postgresql' in str(db.engine.url):
                 conn.execute(text('ALTER TABLE bonds ALTER COLUMN bond_number DROP NOT NULL'))
+                conn.execute(text('ALTER TABLE bonds ADD COLUMN IF NOT EXISTS expiration_date VARCHAR(10)'))
                 conn.commit()
     except Exception:
-        pass  # Already nullable or table doesn't exist yet
+        pass
     if not User.query.first():
         _admin = User(username='admin', email='admin@company.com', role='admin', active=True)
         _admin.set_password('changeme123')
