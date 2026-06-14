@@ -596,6 +596,8 @@ async function verifyPayment(sessionId){
       body:JSON.stringify({sessionId,uid:S.user?.uid})
     })
     if(resp.ok){
+      // Stripe confirmed payment — write isPaid to user's own Firestore doc
+      await fdb.collection('users').doc(S.user.uid).set({isPaid:true},{merge:true})
       S.user.isPaid=true
       history.replaceState({},'','/')
       toast('Welcome to Wager Pro! 🏆','success')
