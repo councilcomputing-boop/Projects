@@ -588,7 +588,7 @@ function ren(){
 
 function nav_bar(){
   if(['auth','join'].includes(S.sc))return''
-  const tabs=[{id:'home',i:'⛳',l:'Home'},{id:'history',i:'📋',l:'History'},{id:'ledger',i:'💰',l:'Ledger'},{id:'players',i:'👤',l:'Players'}]
+  const tabs=[{id:'home',i:'⛳',l:'Home'},{id:'history',i:'📋',l:'History'},{id:'ledger',i:'💰',l:'Ledger'},{id:'players',i:'⚙️',l:'Settings'}]
   const main=['home','history','ledger','players']
   const act=main.includes(S.sc)?S.sc:'home'
   return tabs.map(t=>`<button class="nav-btn ${act===t.id?'active':''}" data-nav="${t.id}"><span class="ni">${t.i}</span>${t.l}</button>`).join('')
@@ -600,7 +600,7 @@ function hdr(){
     const round=S.round,holes=round?.holes||18,h=Math.min(S.hole||0,holes-1)
     return`<div class="hdr"><button class="hdr-back" data-back="home">&#8249;</button><span class="hdr-title">Hole ${h+1} / ${holes}</span><button class="hdr-action" style="margin-right:4px" data-open-hole-menu>&#9776; Holes</button><button class="hdr-action" data-finish>Finish</button></div>`
   }
-  const titles={join:'Join Round',home:'Wager',players:'👤 Players',setup:'🏌️ New Round',results:'🏆 Results',history:'📋 History',ledger:'💰 Ledger','round-detail':'📋 Round Detail',wolf:'🐺 Wolf'}
+  const titles={join:'Join Round',home:'Wager',players:'⚙️ Settings',setup:'🏌️ New Round',results:'🏆 Results',history:'📋 History',ledger:'💰 Ledger','round-detail':'📋 Round Detail',wolf:'🐺 Wolf'}
   const back_map={join:'home',setup:'home',results:'home','round-detail':'history',wolf:'scorecard'}
   const has_back=['join','setup','results','round-detail','wolf'].includes(S.sc)
   return`<div class="hdr">${has_back?`<button class="hdr-back" data-back="${back_map[S.sc]||'home'}">&#8249;</button>`:''}<span class="hdr-title">${titles[S.sc]||'Wager'}</span></div>`
@@ -722,7 +722,9 @@ function pg_players(){
     <button class="btn btn-secondary" data-newg>+ New Group</button>
   </div>`
 
-  return`<div class="card"><div class="card-title">Player Roster</div>
+  return`
+  <div style="font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.08em;padding:10px 4px 6px;text-transform:uppercase">Players</div>
+  <div class="card"><div class="card-title">Roster</div>
     ${!D.players.length?`<div class="empty"><div class="ei">👤</div><p>No players yet</p></div>`:''}
     ${D.players.map(p=>`<div class="list-item"><div><div class="li-main">${p.name}</div><div class="li-sub">HCP ${p.handicap||0}</div></div><button class="btn-xs btn-danger" data-delp="${p.id}">Remove</button></div>`).join('')}
   </div>
@@ -733,55 +735,59 @@ function pg_players(){
   </div>
   ${groupEditor}
   ${!eg?groupsList:''}
-  <div class="card"><div class="card-title">⚙️ Settings</div>
+
+  <div style="font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.08em;padding:18px 4px 6px;text-transform:uppercase">Settings</div>
+  <div class="card">
+    <div class="card-title">API Key</div>
     <div class="fg"><label class="flabel">Anthropic API Key <span style="font-weight:400;color:var(--muted)">(for AI course fill)</span></label>
       <div class="irow">
         <input class="finput" id="ak" type="password" placeholder="sk-ant-..." value="${key}" autocomplete="off">
         <button class="btn-sm btn-secondary" data-savekey>Save</button>
       </div>
-      <div style="font-size:11px;color:var(--muted);margin-top:5px">Stored locally on device only. Get a key at console.anthropic.com</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:5px">Stored locally on this device. Get a key at console.anthropic.com</div>
     </div>
     ${key?`<div style="font-size:13px;color:var(--green);font-weight:600">✓ API key saved</div>`:''}
   </div>
 
   <div class="card"><div class="card-title">📲 Add to Home Screen</div>
     <div style="margin-bottom:14px">
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
         <span style="font-size:22px">🍎</span>
         <div>
-          <div style="font-size:14px;font-weight:700;margin-bottom:2px">iPhone (Safari only)</div>
-          <div style="font-size:12px;color:var(--muted);line-height:1.6">
+          <div style="font-size:14px;font-weight:700;margin-bottom:4px">iPhone (Safari only)</div>
+          <div style="font-size:12px;color:var(--muted);line-height:1.7">
             1. Open Wager in <strong>Safari</strong> — not Chrome<br>
             2. Tap the <strong>Share</strong> button (box with arrow ↑)<br>
-            3. Scroll down → tap <strong>"Add to Home Screen"</strong><br>
-            4. Tap <strong>Add</strong> — Wager appears on your home screen
+            3. Scroll down and tap <strong>"Add to Home Screen"</strong><br>
+            4. Tap <strong>Add</strong>
           </div>
         </div>
       </div>
       <div style="border-top:1px solid var(--border);padding-top:12px;display:flex;align-items:center;gap:10px">
         <span style="font-size:22px">🤖</span>
         <div>
-          <div style="font-size:14px;font-weight:700;margin-bottom:2px">Android (Chrome)</div>
-          <div style="font-size:12px;color:var(--muted);line-height:1.6">
+          <div style="font-size:14px;font-weight:700;margin-bottom:4px">Android (Chrome)</div>
+          <div style="font-size:12px;color:var(--muted);line-height:1.7">
             1. Open Wager in <strong>Chrome</strong><br>
             2. Tap the <strong>3-dot menu</strong> (⋮) top right<br>
             3. Tap <strong>"Add to Home screen"</strong><br>
-            4. Tap <strong>Add</strong> — Wager appears on your home screen
+            4. Tap <strong>Add</strong>
           </div>
         </div>
       </div>
     </div>
     <div style="font-size:12px;color:var(--muted);background:var(--green-pale);border-radius:8px;padding:10px">
-      ⚡ Once added, Wager opens full screen like a real app — no browser bar
+      ⚡ Once added, Wager opens full screen like a native app
     </div>
   </div>
 
-  <div class="card" style="text-align:center;padding:18px 16px">
-    <div style="font-size:20px;margin-bottom:6px">⛳</div>
+  <div class="card" style="text-align:center;padding:20px 16px">
+    <div style="font-size:22px;margin-bottom:6px">⛳</div>
     <div style="font-size:15px;font-weight:800;margin-bottom:2px">Wager</div>
-    <div style="font-size:12px;color:var(--muted);margin-bottom:10px">Golf betting with your group</div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:12px">Golf betting with your group</div>
+    <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Support</div>
     <a href="mailto:councilcomputing@gmail.com" style="font-size:13px;color:var(--green);font-weight:600;text-decoration:none">councilcomputing@gmail.com</a>
-    <div style="font-size:11px;color:var(--muted);margin-top:4px">Questions or feedback? Reach out anytime</div>
+    <div style="font-size:11px;color:var(--muted);margin-top:4px">Questions or feedback? Reach out anytime.</div>
   </div>`
 }
 
@@ -824,7 +830,7 @@ function pg_setup(){
         ${hasKey?`<button class="btn btn-secondary" data-aifill ${S.aiLoading?'disabled':''} style="flex:1">${S.aiLoading?'⏳ Looking up…':'✨ AI Fill Pars'}</button>`:''}
         <button class="btn btn-outline" data-savec style="flex:1">💾 Save Course</button>
       </div>
-      ${!hasKey?`<div style="font-size:12px;color:var(--muted);margin-bottom:8px">Add an API key in Players → Settings to enable AI lookup.</div>`:''}
+      ${!hasKey?`<div style="font-size:12px;color:var(--muted);margin-bottom:8px">Add an API key in the Settings tab to enable AI lookup.</div>`:''}
     </div>
     <div class="card"><div class="card-title" style="display:flex;align-items:center;justify-content:space-between">Par per Hole <span style="font-weight:800;color:var(--text)">Total: ${totalPar}</span></div>
       <div style="display:grid;grid-template-columns:repeat(9,1fr);gap:4px">${parGrid}</div>
