@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IAMA BondDesk — Insurance Agency of Mid America</title>
+    <style>
+        :root {
+            --navy:#0d1b2a; --navy-lt:#1b2d42; --blue:#1565c0; --blue-lt:#1976d2; --accent:#0288d1;
+            --green:#2e7d32; --green-bg:#e8f5e9; --red:#c62828; --red-bg:#ffebee; --amber:#e65100; --amber-bg:#fff3e0;
+            --gray-50:#f8f9fa; --gray-100:#f1f3f4; --gray-200:#e8eaed; --gray-300:#dadce0;
+            --gray-600:#5f6368; --gray-800:#3c4043;
+            --shadow-sm:0 1px 3px rgba(0,0,0,0.12); --shadow-md:0 4px 12px rgba(0,0,0,0.15); --shadow-lg:0 8px 24px rgba(0,0,0,0.20);
+            --r:8px; --r-sm:4px;
+        }
+        * { box-sizing:border-box; margin:0; padding:0; }
+        body { font-family:'Segoe UI',system-ui,sans-serif; background:var(--gray-50); color:var(--gray-800); min-height:100vh; }
+
+        .hdr { background:var(--navy); color:white; padding:0 28px; height:60px; display:flex; align-items:center; justify-content:space-between; box-shadow:var(--shadow-md); position:sticky; top:0; z-index:100; }
+        .hdr-brand { display:flex; align-items:center; gap:10px; }
+        .hdr-logo { display:flex; align-items:center; flex-shrink:0; }
+        .hdr-title { font-size:17px; font-weight:600; }
+        .hdr-sub   { font-size:11px; opacity:0.6; margin-top:1px; }
+        .hdr-right { display:flex; align-items:center; gap:10px; font-size:13px; }
+        .nav-btn { padding:6px 14px; border-radius:var(--r-sm); font-size:13px; font-weight:500; background:transparent; border:1px solid rgba(255,255,255,0.25); color:white; cursor:pointer; text-decoration:none; }
+        .nav-btn:hover { background:rgba(255,255,255,0.1); }
+        .nav-btn.active { background:rgba(255,255,255,0.18); border-color:rgba(255,255,255,0.5); }
+
+        .main { padding:24px 28px; max-width:1100px; margin:0 auto; }
+        .page-hdr { display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:20px; }
+        .page-title { font-size:21px; font-weight:700; color:var(--navy); }
+        .page-sub   { font-size:13px; color:var(--gray-600); margin-top:2px; }
+
+        .tcard { background:white; border-radius:var(--r); box-shadow:var(--shadow-sm); overflow:hidden; }
+        .twrap { overflow-x:auto; }
+        table { width:100%; border-collapse:collapse; font-size:13.5px; }
+        thead tr { background:var(--navy); color:white; }
+        thead th { padding:12px 16px; text-align:left; font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:0.7px; white-space:nowrap; }
+        tbody tr { border-bottom:1px solid var(--gray-200); transition:background 0.1s; }
+        tbody tr:last-child { border-bottom:none; }
+        tbody tr:hover { background:#f5f7ff; }
+        tbody td { padding:12px 16px; vertical-align:middle; }
+        .uname { font-weight:600; }
+        .row-acts { display:flex; gap:6px; }
+
+        .role-badge { display:inline-flex; align-items:center; padding:3px 9px; border-radius:20px; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.4px; }
+        .role-admin { background:#e8eaf6; color:#3949ab; }
+        .role-user  { background:var(--gray-100); color:var(--gray-600); }
+        .status-active   { color:var(--green); font-weight:600; font-size:13px; }
+        .status-inactive { color:var(--red);   font-weight:600; font-size:13px; }
+
+        .btn { padding:8px 18px; border-radius:var(--r-sm); font-size:14px; font-weight:500; cursor:pointer; border:none; transition:all 0.15s; white-space:nowrap; font-family:inherit; }
+        .btn-primary   { background:var(--blue); color:white; }
+        .btn-primary:hover { background:var(--blue-lt); }
+        .btn-secondary { background:white; color:var(--gray-800); border:1px solid var(--gray-300); }
+        .btn-secondary:hover { background:var(--gray-100); }
+        .btn-danger    { background:white; color:var(--red); border:1px solid #ef9a9a; }
+        .btn-danger:hover  { background:var(--red-bg); }
+        .btn-sm { padding:4px 11px; font-size:12px; }
+        .btn-warn { background:white; color:var(--amber); border:1px solid #ffcc80; }
+        .btn-warn:hover { background:var(--amber-bg); }
+
+        /* Modals */
+        .overlay { position:fixed; inset:0; background:rgba(0,0,0,0.48); display:flex; align-items:center; justify-content:center; z-index:1000; padding:20px; opacity:0; pointer-events:none; transition:opacity 0.2s; }
+        .overlay.open { opacity:1; pointer-events:all; }
+        .modal { background:white; border-radius:var(--r); box-shadow:var(--shadow-lg); width:100%; max-width:480px; max-height:92vh; overflow-y:auto; transform:translateY(18px); transition:transform 0.2s; }
+        .overlay.open .modal { transform:translateY(0); }
+        .modal-hdr { padding:17px 22px; display:flex; align-items:center; justify-content:space-between; background:var(--navy); color:white; border-radius:var(--r) var(--r) 0 0; }
+        .modal-ttl { font-size:15px; font-weight:600; }
+        .modal-cls { background:none; border:none; font-size:22px; cursor:pointer; color:rgba(255,255,255,0.65); line-height:1; padding:2px 5px; }
+        .modal-cls:hover { color:white; }
+        .modal-body { padding:22px; }
+        .modal-ftr  { padding:14px 22px 18px; border-top:1px solid var(--gray-200); display:flex; justify-content:flex-end; gap:10px; }
+        .modal-sm { max-width:420px; }
+
+        .fgrp { display:flex; flex-direction:column; margin-bottom:14px; }
+        .flbl { font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:0.7px; color:var(--gray-600); margin-bottom:5px; }
+        .req  { color:var(--red); margin-left:2px; }
+        .fc   { padding:9px 11px; border:1px solid var(--gray-300); border-radius:var(--r-sm); font-size:14px; color:var(--gray-800); outline:none; transition:border-color 0.2s,box-shadow 0.2s; width:100%; font-family:inherit; background:white; }
+        .fc:focus { border-color:var(--blue-lt); box-shadow:0 0 0 3px rgba(21,101,192,0.1); }
+        .hint { font-size:12px; color:var(--gray-600); margin-top:4px; }
+
+        .confirm-body { padding:26px 22px; text-align:center; }
+        .confirm-ico  { font-size:42px; margin-bottom:11px; }
+        .confirm-msg  { font-size:15px; font-weight:600; color:var(--gray-800); }
+        .confirm-sub  { font-size:13px; color:var(--gray-600); margin-top:5px; }
+
+        .info-box { background:var(--gray-50); border:1px solid var(--gray-200); border-radius:var(--r-sm); padding:14px 16px; margin-bottom:18px; font-size:13px; color:var(--gray-600); line-height:1.6; }
+        .info-box strong { color:var(--gray-800); }
+
+        .toasts { position:fixed; bottom:22px; right:22px; z-index:2000; display:flex; flex-direction:column; gap:8px; }
+        .toast { background:var(--navy); color:white; padding:11px 16px; border-radius:var(--r); font-size:14px; box-shadow:var(--shadow-md); animation:tin 0.2s ease; }
+        .toast.ok  { border-left:4px solid #4caf50; }
+        .toast.err { border-left:4px solid #ef5350; }
+        @keyframes tin { from{opacity:0;transform:translateX(14px);}to{opacity:1;transform:translateX(0);} }
+    </style>
+</head>
+<body>
+
+<header class="hdr">
+    <div class="hdr-brand">
+        <div class="hdr-logo">
+            <svg width="36" height="40" viewBox="0 0 36 40" xmlns="http://www.w3.org/2000/svg">
+              <defs><clipPath id="sc"><path d="M18 1.5 L33.5 7 L33.5 23 Q33.5 33 18 38.5 Q2.5 33 2.5 23 L2.5 7 Z"/></clipPath></defs>
+              <path d="M18 1.5 L33.5 7 L33.5 23 Q33.5 33 18 38.5 Q2.5 33 2.5 23 L2.5 7 Z" fill="#1565c0"/>
+              <rect x="0" y="26" width="36" height="14" clip-path="url(#sc)" fill="#071524"/>
+              <rect x="3" y="19" width="5" height="8" clip-path="url(#sc)" fill="#071524"/>
+              <rect x="9" y="14" width="5" height="13" clip-path="url(#sc)" fill="#071524"/>
+              <rect x="15" y="17" width="4" height="10" clip-path="url(#sc)" fill="#071524"/>
+              <rect x="23" y="19" width="6" height="8" clip-path="url(#sc)" fill="#071524"/>
+              <rect x="20" y="10" width="2" height="17" clip-path="url(#sc)" fill="#071524"/>
+              <rect x="14.5" y="10" width="12" height="1.5" clip-path="url(#sc)" fill="#071524"/>
+              <line x1="26" y1="11.5" x2="26" y2="16" clip-path="url(#sc)" stroke="#071524" stroke-width="1"/>
+              <rect x="4.5" y="21" width="1.5" height="1.5" clip-path="url(#sc)" fill="#ffd54f" opacity="0.85"/>
+              <rect x="6.5" y="21" width="1.5" height="1.5" clip-path="url(#sc)" fill="#ffd54f" opacity="0.6"/>
+              <rect x="10" y="16" width="1.5" height="1.5" clip-path="url(#sc)" fill="#ffd54f" opacity="0.85"/>
+              <rect x="12" y="19" width="1.5" height="1.5" clip-path="url(#sc)" fill="#ffd54f" opacity="0.6"/>
+              <line x1="2.5" y1="26" x2="33.5" y2="26" clip-path="url(#sc)" stroke="#90caf9" stroke-width="0.8"/>
+              <path d="M18 1.5 L33.5 7 L33.5 23 Q33.5 33 18 38.5 Q2.5 33 2.5 23 L2.5 7 Z" fill="none" stroke="#4fc3f7" stroke-width="1.5"/>
+            </svg>
+        </div>
+        <div><div class="hdr-title">IAMA BondDesk</div><div class="hdr-sub">Insurance Agency of Mid America</div></div>
+    </div>
+    <div class="hdr-right">
+        <a href="/" class="nav-btn">Bond Portfolio</a>
+        <a href="/" class="nav-btn">Activity Log</a>
+        <a href="/admin" class="nav-btn active">User Management</a>
+        <a href="/logout" class="nav-btn">Sign Out</a>
+    </div>
+</header>
+
+<main class="main">
+    <div class="page-hdr">
+        <div>
+            <div class="page-title">User Management</div>
+            <div class="page-sub">Add and manage staff accounts — Admin only</div>
+        </div>
+        <div style="display:flex;gap:8px;">
+            <button class="btn btn-secondary" onclick="openInvite('admin')">+ Invite Admin</button>
+            <button class="btn btn-primary"   onclick="openInvite('user')">+ Invite User</button>
+        </div>
+    </div>
+
+    <div class="tcard">
+        <div class="twrap">
+            <table>
+                <thead><tr>
+                    <th>Username</th>
+                    <th>Email</th>
+                    <th>Role</th>
+                    <th>Status</th>
+                    <th>Added</th>
+                    <th>Actions</th>
+                </tr></thead>
+                <tbody id="tbody">
+                    {% for u in users %}
+                    <tr id="row-{{ u.id }}">
+                        <td><span class="uname">{{ u.username }}</span>{% if u.id == user.id %} <span style="font-size:11px;color:var(--gray-600);">(you)</span>{% endif %}</td>
+                        <td>{{ u.email }}</td>
+                        <td><span class="role-badge role-{{ u.role }}">{{ u.role }}</span></td>
+                        <td>
+                            {% if u.invite_pending %}
+                            <span style="color:var(--amber);font-weight:600;font-size:13px;">&#9993; Invited — Pending</span>
+                            {% elif u.active %}
+                            <span class="status-active">&#10003; Active</span>
+                            {% else %}
+                            <span class="status-inactive">&#10005; Inactive</span>
+                            {% endif %}
+                        </td>
+                        <td style="font-size:13px;color:var(--gray-600);">{{ u.created_at.strftime('%m/%d/%Y') }}</td>
+                        <td>
+                            <div class="row-acts">
+                                <button class="btn btn-secondary btn-sm" onclick="openEdit({{ u.id }},'{{ u.username }}','{{ u.email }}','{{ u.role }}',{{ 'true' if u.active else 'false' }})">Edit</button>
+                                {% if u.invite_pending %}
+                                <button class="btn btn-warn btn-sm" onclick="copyInviteLink('{{ app_url }}/invite/{{ u.invite_token }}')">Copy Link</button>
+                                <button class="btn btn-warn btn-sm" onclick="resendInvite({{ u.id }},'{{ u.username }}')">Resend</button>
+                                {% else %}
+                                <button class="btn btn-secondary btn-sm" onclick="openResetPw({{ u.id }},'{{ u.username }}')">Reset PW</button>
+                                {% endif %}
+                                {% if u.id != user.id %}
+                                <button class="btn btn-danger btn-sm" onclick="openDel({{ u.id }},'{{ u.username }}')">Delete</button>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</main>
+
+<!-- Invite User Modal -->
+<div class="overlay" id="addModal">
+    <div class="modal">
+        <div class="modal-hdr"><div class="modal-ttl">Invite New User</div><button class="modal-cls" onclick="closeModal('addModal')">&times;</button></div>
+        <div class="modal-body">
+            <div id="addErr" style="display:none;background:var(--red-bg);color:var(--red);border-radius:var(--r-sm);padding:10px 13px;font-size:13px;margin-bottom:14px;"></div>
+            <div id="inviteSuccess" style="display:none;">
+                <div style="background:var(--green-bg);color:var(--green);border-radius:var(--r-sm);padding:12px 14px;font-size:13px;margin-bottom:12px;font-weight:600;">&#10003; User created!</div>
+                <div class="info-box">
+                    Copy this link and send it to them via text, email, or however you like — they click it to set their password:<br>
+                    <div style="display:flex;gap:6px;margin-top:8px;">
+                        <input type="text" class="fc" id="inviteLinkVal" readonly onclick="this.select()" style="font-size:12px;color:var(--blue);">
+                        <button class="btn btn-secondary btn-sm" onclick="copyInviteLink(document.getElementById('inviteLinkVal').value)" style="white-space:nowrap;">Copy</button>
+                    </div>
+                </div>
+            </div>
+            <form id="addForm" onsubmit="sendInvite(event)">
+                <div class="info-box">An invitation email will be sent with a secure link to set their password. The link expires in 72 hours.</div>
+                <div class="fgrp"><label class="flbl">Username <span class="req">*</span></label><input type="text" class="fc" id="aUsername" required autocomplete="off"></div>
+                <div class="fgrp"><label class="flbl">Email Address <span class="req">*</span></label><input type="email" class="fc" id="aEmail" required autocomplete="off"></div>
+                <div class="fgrp"><label class="flbl">Role <span class="req">*</span></label>
+                    <select class="fc" id="aRole" required>
+                        <option value="user">User — Can view and edit bonds</option>
+                        <option value="admin">Admin — Can also manage users</option>
+                    </select>
+                </div>
+            </form>
+        </div>
+        <div class="modal-ftr" id="inviteFtr">
+            <button class="btn btn-secondary" onclick="closeModal('addModal')">Cancel</button>
+            <button class="btn btn-primary"   onclick="document.getElementById('addForm').requestSubmit()">Send Invite</button>
+        </div>
+        <div class="modal-ftr" id="inviteDoneFtr" style="display:none;">
+            <button class="btn btn-primary" onclick="closeModal('addModal');location.reload()">Done</button>
+        </div>
+    </div>
+</div>
+
+<!-- Edit User Modal -->
+<div class="overlay" id="editModal">
+    <div class="modal">
+        <div class="modal-hdr"><div class="modal-ttl" id="editTitle">Edit User</div><button class="modal-cls" onclick="closeModal('editModal')">&times;</button></div>
+        <div class="modal-body">
+            <div id="editErr" style="display:none;background:var(--red-bg);color:var(--red);border-radius:var(--r-sm);padding:10px 13px;font-size:13px;margin-bottom:14px;"></div>
+            <form id="editForm" onsubmit="updateUser(event)">
+                <input type="hidden" id="eId">
+                <div class="fgrp"><label class="flbl">Email Address <span class="req">*</span></label><input type="email" class="fc" id="eEmail" required></div>
+                <div class="fgrp"><label class="flbl">Role</label>
+                    <select class="fc" id="eRole">
+                        <option value="user">User</option>
+                        <option value="admin">Admin</option>
+                    </select>
+                </div>
+                <div class="fgrp"><label class="flbl">Account Status</label>
+                    <select class="fc" id="eActive">
+                        <option value="true">Active</option>
+                        <option value="false">Inactive (cannot log in)</option>
+                    </select>
+                </div>
+            </form>
+        </div>
+        <div class="modal-ftr">
+            <button class="btn btn-secondary" onclick="closeModal('editModal')">Cancel</button>
+            <button class="btn btn-primary"   onclick="document.getElementById('editForm').requestSubmit()">Save Changes</button>
+        </div>
+    </div>
+</div>
+
+<!-- Reset Password Modal -->
+<div class="overlay" id="pwModal">
+    <div class="modal modal-sm">
+        <div class="modal-hdr"><div class="modal-ttl" id="pwTitle">Reset Password</div><button class="modal-cls" onclick="closeModal('pwModal')">&times;</button></div>
+        <div class="modal-body">
+            <div id="pwErr" style="display:none;background:var(--red-bg);color:var(--red);border-radius:var(--r-sm);padding:10px 13px;font-size:13px;margin-bottom:14px;"></div>
+            <div class="info-box">Set a new temporary password for this user. <strong>Share it with them securely</strong> — they should change it after logging in.</div>
+            <form id="pwForm" onsubmit="resetPw(event)">
+                <input type="hidden" id="pwId">
+                <div class="fgrp"><label class="flbl">New Password <span class="req">*</span></label><input type="password" class="fc" id="pwNew" required minlength="8" autocomplete="new-password"></div>
+                <div class="fgrp"><label class="flbl">Confirm Password <span class="req">*</span></label><input type="password" class="fc" id="pwConfirm" required minlength="8" autocomplete="new-password"></div>
+            </form>
+        </div>
+        <div class="modal-ftr">
+            <button class="btn btn-secondary" onclick="closeModal('pwModal')">Cancel</button>
+            <button class="btn btn-primary"   onclick="document.getElementById('pwForm').requestSubmit()">Set Password</button>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Confirm -->
+<div class="overlay" id="delModal">
+    <div class="modal modal-sm">
+        <div class="modal-hdr"><div class="modal-ttl">Confirm Delete</div><button class="modal-cls" onclick="closeModal('delModal')">&times;</button></div>
+        <div class="confirm-body">
+            <div class="confirm-ico">&#9888;&#65039;</div>
+            <div class="confirm-msg">Delete this user account?</div>
+            <div class="confirm-sub" id="delSub"></div>
+        </div>
+        <div class="modal-ftr">
+            <button class="btn btn-secondary" onclick="closeModal('delModal')">Cancel</button>
+            <button class="btn btn-danger"    onclick="doDelete()">Yes, Delete</button>
+        </div>
+    </div>
+</div>
+
+<div class="toasts" id="toasts"></div>
+
+<script>
+let delId = null, editingId = null;
+
+async function api(path, method='GET', body=null) {
+    const opts = { method, headers:{'Content-Type':'application/json'} };
+    if (body) opts.body = JSON.stringify(body);
+    const r = await fetch(path, opts);
+    const data = await r.json();
+    if (!r.ok) throw new Error(data.error || 'Request failed');
+    return data;
+}
+
+// Invite user
+function openInvite(role) {
+    document.getElementById('addForm').reset();
+    document.getElementById('addErr').style.display='none';
+    document.getElementById('inviteSuccess').style.display='none';
+    document.getElementById('addForm').style.display='';
+    document.getElementById('inviteFtr').style.display='';
+    document.getElementById('inviteDoneFtr').style.display='none';
+    document.getElementById('aRole').value = role || 'user';
+    document.querySelector('#addModal .modal-ttl').textContent =
+        role === 'admin' ? 'Invite New Admin' : 'Invite New User';
+    open_('addModal');
+}
+
+function copyInviteLink(link) {
+    navigator.clipboard.writeText(link).then(() => toast('Link copied to clipboard'));
+}
+async function sendInvite(e) {
+    e.preventDefault();
+    const err = document.getElementById('addErr');
+    try {
+        const data = await api('/api/users/invite','POST',{
+            username: document.getElementById('aUsername').value.trim(),
+            email:    document.getElementById('aEmail').value.trim(),
+            role:     document.getElementById('aRole').value,
+        });
+        document.getElementById('addForm').style.display = 'none';
+        document.getElementById('inviteSuccess').style.display = '';
+        document.getElementById('inviteLinkVal').value = data.invite_link || '';
+        document.getElementById('inviteFtr').style.display = 'none';
+        document.getElementById('inviteDoneFtr').style.display = '';
+        toast('User created');
+    } catch(ex){ err.textContent=ex.message; err.style.display=''; }
+}
+
+async function resendInvite(id, username) {
+    if (!confirm(`Resend invite to ${username}?`)) return;
+    try {
+        await api(`/api/users/${id}/resend-invite`,'POST');
+        toast('Invite resent to ' + username);
+    } catch(ex){ toast(ex.message,'err'); }
+}
+
+// Edit user
+function openEdit(id, username, email, role, active) {
+    editingId = id;
+    document.getElementById('editTitle').textContent = 'Edit — ' + username;
+    document.getElementById('editErr').style.display='none';
+    document.getElementById('eId').value    = id;
+    document.getElementById('eEmail').value = email;
+    document.getElementById('eRole').value  = role;
+    document.getElementById('eActive').value= String(active);
+    open_('editModal');
+}
+async function updateUser(e) {
+    e.preventDefault();
+    const err = document.getElementById('editErr');
+    try {
+        await api(`/api/users/${editingId}`,'PUT',{
+            email:  document.getElementById('eEmail').value.trim(),
+            role:   document.getElementById('eRole').value,
+            active: document.getElementById('eActive').value === 'true',
+        });
+        toast('User updated'); closeModal('editModal');
+        location.reload();
+    } catch(ex){ err.textContent=ex.message; err.style.display=''; }
+}
+
+// Reset password
+function openResetPw(id, username) {
+    document.getElementById('pwForm').reset();
+    document.getElementById('pwErr').style.display='none';
+    document.getElementById('pwTitle').textContent = 'Reset Password — ' + username;
+    document.getElementById('pwId').value = id;
+    open_('pwModal');
+}
+async function resetPw(e) {
+    e.preventDefault();
+    const np=document.getElementById('pwNew').value;
+    const nc=document.getElementById('pwConfirm').value;
+    const err=document.getElementById('pwErr');
+    if(np!==nc){ err.textContent='Passwords do not match.'; err.style.display=''; return; }
+    try {
+        await api(`/api/users/${document.getElementById('pwId').value}`,'PUT',{password:np});
+        toast('Password reset'); closeModal('pwModal');
+    } catch(ex){ err.textContent=ex.message; err.style.display=''; }
+}
+
+// Delete
+function openDel(id, username) {
+    delId=id;
+    document.getElementById('delSub').textContent=username;
+    open_('delModal');
+}
+async function doDelete() {
+    try {
+        await api(`/api/users/${delId}`,'DELETE');
+        closeModal('delModal'); toast('User deleted');
+        document.getElementById('row-'+delId)?.remove();
+    } catch(ex){ toast(ex.message,'err'); }
+}
+
+function open_(id){ document.getElementById(id).classList.add('open'); }
+function closeModal(id){ document.getElementById(id).classList.remove('open'); }
+function toast(msg,type='ok'){
+    const t=document.createElement('div');
+    t.className='toast '+type; t.textContent=msg;
+    document.getElementById('toasts').appendChild(t);
+    setTimeout(()=>t.remove(),3200);
+}
+
+document.querySelectorAll('.overlay').forEach(el=>{
+    el.addEventListener('click',e=>{if(e.target===el)el.classList.remove('open');});
+});
+document.addEventListener('keydown',e=>{
+    if(e.key==='Escape') document.querySelectorAll('.overlay').forEach(el=>el.classList.remove('open'));
+});
+</script>
+</body>
+</html>

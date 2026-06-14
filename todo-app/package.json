@@ -1,0 +1,14 @@
+{
+  "name": "todo-app",
+  "version": "1.0.0",
+  "main": "launcher.js",
+  "scripts": {
+    "build": "pkg launcher.js --target node18-win-x64 --output Todo.exe --icon icon.ico"
+  },
+  "pkg": {
+    "assets": ["index.html", "styles.css", "renderer.js"]
+  },
+  "devDependencies": {
+    "pkg": "5.8.1"
+  }
+}

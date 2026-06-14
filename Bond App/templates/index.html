@@ -1,0 +1,1253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IAMA BondDesk — Insurance Agency of Mid America</title>
+    <link rel="manifest" href="/static/manifest.json">
+    <meta name="theme-color" content="#0d1b2a">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="BondDesk">
+    <link rel="apple-touch-icon" href="/static/icon-192.png">
+    <style>
+        :root {
+            --navy:       #0d1b2a;
+            --navy-lt:    #1b2d42;
+            --blue:       #1565c0;
+            --blue-lt:    #1976d2;
+            --accent:     #0288d1;
+            --green:      #2e7d32; --green-bg: #e8f5e9;
+            --red:        #c62828; --red-bg:   #ffebee;
+            --amber:      #e65100; --amber-bg: #fff3e0;
+            --gray-50:    #f8f9fa; --gray-100: #f1f3f4;
+            --gray-200:   #e8eaed; --gray-300: #dadce0;
+            --gray-600:   #5f6368; --gray-800: #3c4043;
+            --shadow-sm:  0 1px 3px rgba(0,0,0,0.12);
+            --shadow-md:  0 4px 12px rgba(0,0,0,0.15);
+            --shadow-lg:  0 8px 24px rgba(0,0,0,0.20);
+            --r: 8px; --r-sm: 4px;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--gray-50); color: var(--gray-800); min-height: 100vh; }
+
+        /* Header */
+        .hdr { background: var(--navy); color: white; padding: 0 28px; height: 60px; display: flex; align-items: center; justify-content: space-between; box-shadow: var(--shadow-md); position: sticky; top: 0; z-index: 100; }
+        .hdr-brand { display: flex; align-items: center; gap: 10px; }
+        .hdr-logo { display: flex; align-items: center; flex-shrink: 0; }
+        .hdr-title { font-size: 17px; font-weight: 600; }
+        .hdr-sub   { font-size: 11px; opacity: 0.6; margin-top: 1px; }
+        .hdr-right { display: flex; align-items: center; gap: 10px; font-size: 13px; }
+        .hdr-user  { opacity: 0.8; }
+        .hdr-nav   { display: flex; gap: 4px; margin: 0 12px; }
+        .nav-btn {
+            padding: 6px 14px; border-radius: var(--r-sm); font-size: 13px; font-weight: 500;
+            background: transparent; border: 1px solid rgba(255,255,255,0.25); color: white;
+            cursor: pointer; transition: background 0.15s; font-family: inherit;
+        }
+        .nav-btn:hover  { background: rgba(255,255,255,0.1); }
+        .nav-btn.active { background: rgba(255,255,255,0.18); border-color: rgba(255,255,255,0.5); }
+        .settings-wrap { position: relative; }
+        .settings-btn { display:flex; align-items:center; gap:7px; padding:6px 12px; border-radius:var(--r-sm); font-size:13px; font-weight:500; background:transparent; border:1px solid rgba(255,255,255,0.25); color:white; cursor:pointer; font-family:inherit; }
+        .settings-btn:hover { background:rgba(255,255,255,0.1); }
+        .settings-btn .chevron { font-size:10px; opacity:0.7; transition:transform 0.2s; }
+        .settings-btn.open .chevron { transform:rotate(180deg); }
+        .settings-drop { display:none; position:absolute; top:calc(100% + 8px); right:0; background:white; border-radius:var(--r); box-shadow:0 8px 24px rgba(0,0,0,0.18); min-width:220px; max-height:calc(100vh - 80px); overflow-y:auto; z-index:500; }
+        .settings-drop.open { display:block; }
+        .drop-header { padding:12px 16px; background:var(--gray-50); border-bottom:1px solid var(--gray-200); }
+        .drop-header .dh-name { font-size:14px; font-weight:600; color:var(--navy); }
+        .drop-header .dh-role { font-size:11px; color:var(--gray-600); text-transform:uppercase; letter-spacing:0.5px; margin-top:2px; }
+        .drop-item { display:flex; align-items:center; gap:10px; padding:11px 16px; font-size:13px; color:var(--gray-800); cursor:pointer; border:none; background:none; width:100%; text-align:left; font-family:inherit; text-decoration:none; }
+        .drop-item:hover { background:var(--gray-50); }
+        .drop-item .di-ico { font-size:15px; width:18px; text-align:center; }
+        .drop-divider { height:1px; background:var(--gray-200); margin:4px 0; }
+        .drop-item.signout { color:var(--red); }
+
+        /* Main */
+        .main { padding: 24px 28px; max-width: 1440px; margin: 0 auto; }
+        .page-hdr { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 20px; }
+        .page-title { font-size: 21px; font-weight: 700; color: var(--navy); }
+        .page-sub   { font-size: 13px; color: var(--gray-600); margin-top: 2px; }
+
+        /* Tabs */
+        .tab-panel { display: none; }
+        .tab-panel.active { display: block; }
+
+        /* Stats */
+        .stats { display: grid; grid-template-columns: repeat(5,1fr); gap: 14px; margin-bottom: 22px; }
+        .stat  { background: white; border-radius: var(--r); padding: 18px 22px; box-shadow: var(--shadow-sm); border-left: 4px solid var(--blue); }
+        .stat.s-a { border-left-color: var(--green); }
+        .stat.s-n { border-left-color: var(--red); }
+        .stat.s-p { border-left-color: var(--amber); }
+        .stat.s-e { border-left-color: #e65100; }
+        .stat-lbl { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.8px; color: var(--gray-600); }
+        .stat-val { font-size: 32px; font-weight: 700; color: var(--navy); margin-top: 5px; line-height: 1; }
+        .stat-sub { font-size: 12px; color: var(--gray-600); margin-top: 3px; }
+
+        /* Toolbar */
+        .toolbar { background: white; border-radius: var(--r); padding: 10px 16px; box-shadow: var(--shadow-sm); display: flex; align-items: center; gap: 10px; margin-bottom: 14px; flex-wrap: wrap; }
+        .srch-wrap { flex: 1; min-width: 180px; position: relative; }
+        .srch-wrap input { width: 100%; padding: 8px 12px 8px 32px; border: 1px solid var(--gray-300); border-radius: var(--r-sm); font-size: 14px; outline: none; font-family: inherit; }
+        .srch-wrap input:focus { border-color: var(--blue-lt); }
+        .srch-ico { position: absolute; left: 9px; top: 50%; transform: translateY(-50%); color: var(--gray-600); font-size: 13px; pointer-events: none; }
+        .flt { padding: 8px 11px; border: 1px solid var(--gray-300); border-radius: var(--r-sm); font-size: 14px; background: white; cursor: pointer; outline: none; min-width: 140px; font-family: inherit; }
+        .flt:focus { border-color: var(--blue-lt); }
+
+        /* Buttons */
+        .btn { padding: 8px 18px; border-radius: var(--r-sm); font-size: 14px; font-weight: 500; cursor: pointer; border: none; transition: all 0.15s; white-space: nowrap; font-family: inherit; }
+        .btn-primary   { background: var(--blue); color: white; }
+        .btn-primary:hover { background: var(--blue-lt); }
+        .btn-secondary { background: white; color: var(--gray-800); border: 1px solid var(--gray-300); }
+        .btn-secondary:hover { background: var(--gray-100); }
+        .btn-danger    { background: white; color: var(--red); border: 1px solid #ef9a9a; }
+        .btn-danger:hover  { background: var(--red-bg); }
+        .btn-sm { padding: 4px 11px; font-size: 12px; }
+
+        /* Table */
+        .tcard { background: white; border-radius: var(--r); box-shadow: var(--shadow-sm); overflow: hidden; }
+        .twrap { overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+        thead tr { background: var(--navy); color: white; }
+        thead th { padding: 12px 15px; text-align: left; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.7px; white-space: nowrap; cursor: pointer; user-select: none; }
+        thead th:hover { background: var(--navy-lt); }
+        thead th.s-asc::after  { content: ' \2191'; }
+        thead th.s-desc::after { content: ' \2193'; }
+        tbody tr { border-bottom: 1px solid var(--gray-200); transition: background 0.1s; }
+        tbody tr:last-child { border-bottom: none; }
+        tbody tr:hover { background: #f5f7ff; }
+        tbody td { padding: 11px 15px; vertical-align: middle; }
+        .bond-num  { font-weight: 600; color: var(--blue); }
+        .principal { font-weight: 500; }
+        .meta      { font-size: 11px; color: var(--gray-600); margin-top: 2px; }
+        .row-acts  { display: flex; gap: 5px; }
+
+        /* Badges */
+        .badge { display: inline-flex; align-items: center; padding: 3px 9px; border-radius: 20px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; white-space: nowrap; }
+        .b-approved     { background: var(--green-bg); color: var(--green); }
+        .b-not-approved { background: var(--red-bg);   color: var(--red); }
+        .b-pending      { background: var(--amber-bg); color: var(--amber); }
+
+        /* Table footer */
+        .tfooter { padding: 10px 16px; border-top: 1px solid var(--gray-200); font-size: 12px; color: var(--gray-600); display: flex; justify-content: space-between; align-items: center; }
+
+        /* Empty state */
+        .empty { text-align: center; padding: 56px 20px; color: var(--gray-600); }
+        .empty-ico   { font-size: 48px; margin-bottom: 12px; opacity: 0.3; }
+        .empty-title { font-size: 15px; font-weight: 600; color: var(--gray-800); margin-bottom: 5px; }
+        .empty-sub   { font-size: 13px; }
+
+        /* Activity log */
+        .log-table { font-size: 13.5px; }
+        .log-action { display: inline-flex; align-items: center; padding: 2px 9px; border-radius: 20px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; }
+        .la-created { background: var(--green-bg); color: var(--green); }
+        .la-updated { background: #e3f2fd; color: var(--blue); }
+        .la-deleted { background: var(--red-bg); color: var(--red); }
+        .diff-list  { font-size: 12px; color: var(--gray-600); margin-top: 3px; line-height: 1.6; }
+        .diff-field { font-weight: 600; color: var(--gray-800); }
+
+        /* Modals */
+        .overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.48); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 20px; opacity: 0; pointer-events: none; transition: opacity 0.2s; }
+        .overlay.open { opacity: 1; pointer-events: all; }
+        .modal { background: white; border-radius: var(--r); box-shadow: var(--shadow-lg); width: 100%; max-width: 660px; max-height: 92vh; overflow-y: auto; transform: translateY(18px); transition: transform 0.2s; }
+        .overlay.open .modal { transform: translateY(0); }
+        .modal-hdr { padding: 17px 22px; display: flex; align-items: center; justify-content: space-between; background: var(--navy); color: white; border-radius: var(--r) var(--r) 0 0; }
+        .modal-ttl { font-size: 15px; font-weight: 600; }
+        .modal-cls { background: none; border: none; font-size: 22px; cursor: pointer; color: rgba(255,255,255,0.65); line-height: 1; padding: 2px 5px; }
+        .modal-cls:hover { color: white; }
+        .modal-body { padding: 22px; }
+        .modal-ftr  { padding: 14px 22px 18px; border-top: 1px solid var(--gray-200); display: flex; justify-content: flex-end; gap: 10px; }
+
+        /* Form */
+        .fg   { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+        .fg > .full { grid-column: 1 / -1; }
+        .fgrp { display: flex; flex-direction: column; }
+        .flbl { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.7px; color: var(--gray-600); margin-bottom: 5px; }
+        .req  { color: var(--red); margin-left: 2px; }
+        .fc   { padding: 9px 11px; border: 1px solid var(--gray-300); border-radius: var(--r-sm); font-size: 14px; color: var(--gray-800); outline: none; transition: border-color 0.2s, box-shadow 0.2s; width: 100%; font-family: inherit; background: white; }
+        .fc:focus { border-color: var(--blue-lt); box-shadow: 0 0 0 3px rgba(21,101,192,0.1); }
+        textarea.fc { resize: vertical; min-height: 72px; }
+        .fsect { grid-column: 1/-1; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.9px; color: var(--navy); border-bottom: 2px solid var(--navy); padding-bottom: 3px; margin-top: 4px; }
+
+        /* Confirm */
+        .modal-sm { max-width: 420px; }
+        .confirm-body { padding: 26px 22px; text-align: center; }
+        .confirm-ico  { font-size: 42px; margin-bottom: 11px; }
+        .confirm-msg  { font-size: 15px; font-weight: 600; color: var(--gray-800); }
+        .confirm-sub  { font-size: 13px; color: var(--gray-600); margin-top: 5px; }
+
+        /* Password modal */
+        .modal-pw { max-width: 400px; }
+
+        /* Toasts */
+        .toasts { position: fixed; bottom: 22px; right: 22px; z-index: 2000; display: flex; flex-direction: column; gap: 8px; }
+        .toast { background: var(--navy); color: white; padding: 11px 16px; border-radius: var(--r); font-size: 14px; box-shadow: var(--shadow-md); animation: tin 0.2s ease; }
+        .toast.ok  { border-left: 4px solid #4caf50; }
+        .toast.err { border-left: 4px solid #ef5350; }
+        @keyframes tin  { from { opacity:0; transform:translateX(14px); } to { opacity:1; transform:translateX(0); } }
+        @keyframes spin { to { transform:rotate(360deg); } }
+        .spinner { display:inline-block; width:13px; height:13px; border:2px solid rgba(255,255,255,0.4); border-top-color:white; border-radius:50%; animation:spin 0.7s linear infinite; vertical-align:middle; margin-right:6px; }
+
+        @media (max-width: 1100px) { .stats { grid-template-columns: repeat(3,1fr); } }
+        @media (max-width: 960px)  { .stats { grid-template-columns: repeat(2,1fr); } }
+        @media (max-width: 680px) { .main { padding: 14px; } .hdr { padding: 0 14px; } .fg { grid-template-columns: 1fr; } .page-hdr { flex-direction: column; gap: 10px; } .hdr-nav { display: none; } }
+    </style>
+</head>
+<body>
+
+<!-- Header -->
+<header class="hdr">
+    <div class="hdr-brand">
+        <div class="hdr-logo">
+            <svg width="36" height="40" viewBox="0 0 36 40" xmlns="http://www.w3.org/2000/svg">
+              <defs><clipPath id="sc"><path d="M18 1.5 L33.5 7 L33.5 23 Q33.5 33 18 38.5 Q2.5 33 2.5 23 L2.5 7 Z"/></clipPath></defs>
+              <path d="M18 1.5 L33.5 7 L33.5 23 Q33.5 33 18 38.5 Q2.5 33 2.5 23 L2.5 7 Z" fill="#1565c0"/>
+              <rect x="0" y="26" width="36" height="14" clip-path="url(#sc)" fill="#071524"/>
+              <rect x="3" y="19" width="5" height="8" clip-path="url(#sc)" fill="#071524"/>
+              <rect x="9" y="14" width="5" height="13" clip-path="url(#sc)" fill="#071524"/>
+              <rect x="15" y="17" width="4" height="10" clip-path="url(#sc)" fill="#071524"/>
+              <rect x="23" y="19" width="6" height="8" clip-path="url(#sc)" fill="#071524"/>
+              <rect x="20" y="10" width="2" height="17" clip-path="url(#sc)" fill="#071524"/>
+              <rect x="14.5" y="10" width="12" height="1.5" clip-path="url(#sc)" fill="#071524"/>
+              <line x1="26" y1="11.5" x2="26" y2="16" clip-path="url(#sc)" stroke="#071524" stroke-width="1"/>
+              <rect x="4.5" y="21" width="1.5" height="1.5" clip-path="url(#sc)" fill="#ffd54f" opacity="0.85"/>
+              <rect x="6.5" y="21" width="1.5" height="1.5" clip-path="url(#sc)" fill="#ffd54f" opacity="0.6"/>
+              <rect x="10" y="16" width="1.5" height="1.5" clip-path="url(#sc)" fill="#ffd54f" opacity="0.85"/>
+              <rect x="12" y="19" width="1.5" height="1.5" clip-path="url(#sc)" fill="#ffd54f" opacity="0.6"/>
+              <line x1="2.5" y1="26" x2="33.5" y2="26" clip-path="url(#sc)" stroke="#90caf9" stroke-width="0.8"/>
+              <path d="M18 1.5 L33.5 7 L33.5 23 Q33.5 33 18 38.5 Q2.5 33 2.5 23 L2.5 7 Z" fill="none" stroke="#4fc3f7" stroke-width="1.5"/>
+            </svg>
+        </div>
+        <div>
+            <div class="hdr-title">IAMA BondDesk</div>
+            <div class="hdr-sub">Insurance Agency of Mid America</div>
+        </div>
+    </div>
+    <div class="hdr-right">
+        <div class="hdr-nav">
+            <button class="nav-btn active" id="navBonds"    onclick="switchTab('bonds')">Bond Portfolio</button>
+            <button class="nav-btn"        id="navActivity" onclick="switchTab('activity')">Activity Log</button>
+            <button class="nav-btn"        id="navRecon"    onclick="switchTab('recon')">Direct Bill</button>
+            {% if user.role == 'admin' %}
+            <a href="/admin" class="nav-btn">User Management</a>
+            {% endif %}
+        </div>
+        <div class="settings-wrap" id="settingsWrap">
+            <button class="settings-btn" id="settingsBtn" onclick="toggleSettings()">
+                &#128100; {{ user.username }} <span class="chevron">&#9660;</span>
+            </button>
+            <div class="settings-drop" id="settingsDrop">
+                <div class="drop-header">
+                    <div class="dh-name">{{ user.username }}</div>
+                    <div class="dh-role">{{ user.role }}</div>
+                </div>
+                <button class="drop-item" onclick="openPwModal();toggleSettings()">
+                    <span class="di-ico">&#128274;</span> Change Password
+                </button>
+                <div class="drop-divider"></div>
+                <div style="padding:10px 16px 6px;">
+                    <div style="font-size:11px;color:var(--gray-600);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">Support</div>
+                    <div style="font-size:12px;color:var(--gray-700);margin-bottom:6px;">For troubleshooting, bug fixes, or questions:</div>
+                    <div style="display:flex;align-items:center;gap:6px;">
+                        <span style="font-size:12px;font-weight:600;color:var(--navy);">councilcomputing@gmail.com</span>
+                        <button onclick="copySupport()" style="border:1px solid var(--gray-300);background:#f5f5f5;border-radius:4px;padding:3px 10px;font-size:12px;cursor:pointer;color:#333333;font-weight:500;line-height:1.4;">&#128203; Copy</button>
+                    </div>
+                </div>
+                <div class="drop-divider"></div>
+                <button class="drop-item" onclick="toggleHomeScreen()" style="justify-content:space-between;">
+                    <span><span class="di-ico">&#127968;</span> Add to Home Screen</span>
+                    <span id="hsChevron" style="font-size:10px;color:#555;transition:transform 0.2s;">&#9660;</span>
+                </button>
+                <div id="hsPanel" style="display:none;padding:0 16px 12px;background:#fafafa;border-top:1px solid #eee;">
+                    <div style="font-size:11px;color:#888;text-transform:uppercase;letter-spacing:0.5px;padding-top:10px;margin-bottom:6px;">&#63743; iPhone / iPad</div>
+                    <div style="font-size:12px;color:#444;line-height:1.9;">
+                        1. Open this site in <strong style="color:#222;">Safari</strong><br>
+                        2. Tap the <strong style="color:#222;">Share</strong> button at the bottom<br>
+                        3. Tap <strong style="color:#222;">"Add to Home Screen"</strong><br>
+                        4. Tap <strong style="color:#222;">Add</strong> in the top right
+                    </div>
+                    <div style="font-size:11px;color:#888;text-transform:uppercase;letter-spacing:0.5px;margin:10px 0 6px;">&#x1F4F1; Android</div>
+                    <div style="font-size:12px;color:#444;line-height:1.9;">
+                        1. Open this site in <strong style="color:#222;">Chrome</strong><br>
+                        2. Tap the <strong style="color:#222;">3-dot menu</strong> in the top right<br>
+                        3. Tap <strong style="color:#222;">"Add to Home Screen"</strong><br>
+                        4. Tap <strong style="color:#222;">Add</strong>
+                    </div>
+                    <div style="font-size:11px;color:#888;text-transform:uppercase;letter-spacing:0.5px;margin:10px 0 6px;">&#x1F5A5; Windows (Chrome)</div>
+                    <div style="font-size:12px;color:#444;line-height:1.9;">
+                        1. Open this site in <strong style="color:#222;">Chrome</strong><br>
+                        2. Click the <strong style="color:#222;">3-dot menu</strong> (top right)<br>
+                        3. Click <strong style="color:#222;">"Cast, save, and share"</strong><br>
+                        4. Click <strong style="color:#222;">"Install page as an app"</strong><br>
+                        5. Click <strong style="color:#222;">Install</strong>
+                    </div>
+                    <div style="font-size:11px;color:#888;text-transform:uppercase;letter-spacing:0.5px;margin:10px 0 6px;">&#x1F5A5; Windows (Edge)</div>
+                    <div style="font-size:12px;color:#444;line-height:1.9;">
+                        1. Open this site in <strong style="color:#222;">Edge</strong><br>
+                        2. Click the <strong style="color:#222;">... menu</strong> (top right)<br>
+                        3. Click <strong style="color:#222;">"Apps"</strong><br>
+                        4. Click <strong style="color:#222;">"Install this site as an app"</strong><br>
+                        5. Click <strong style="color:#222;">Install</strong>
+                    </div>
+                </div>
+                <div class="drop-divider"></div>
+                <a href="/logout" class="drop-item signout">
+                    <span class="di-ico">&#10132;</span> Sign Out
+                </a>
+            </div>
+        </div>
+    </div>
+</header>
+
+<!-- Main -->
+<main class="main">
+
+    <!-- ── Bonds Tab ────────────────────────────────────── -->
+    <div id="tabBonds" class="tab-panel active">
+        <div class="page-hdr">
+            <div>
+                <div class="page-title">Bond Portfolio</div>
+                <div class="page-sub">Manage and track all surety bonds</div>
+            </div>
+            <div style="display:flex;gap:8px;">
+                <label class="btn btn-secondary" id="uploadLabel" style="cursor:pointer;margin:0;">
+                    &#128196; Upload PDF
+                    <input type="file" accept=".pdf" style="display:none;" onchange="handlePDFUpload(this)">
+                </label>
+                <button class="btn btn-primary" onclick="openAdd()">+ New Bond</button>
+            </div>
+        </div>
+
+        <div class="stats">
+            <div class="stat"><div class="stat-lbl">Total Bonds</div><div class="stat-val" id="sStat">—</div><div class="stat-sub" id="sAmt"></div></div>
+            <div class="stat s-a"><div class="stat-lbl">Approved</div><div class="stat-val" id="asStat">—</div><div class="stat-sub" id="asAmt"></div></div>
+            <div class="stat s-n"><div class="stat-lbl">Not Approved</div><div class="stat-val" id="naStat">—</div><div class="stat-sub" id="naAmt"></div></div>
+            <div class="stat s-p"><div class="stat-lbl">Pending Review</div><div class="stat-val" id="pStat">—</div><div class="stat-sub" id="pAmt"></div></div>
+            <div class="stat s-e"><div class="stat-lbl">Expiring Soon</div><div class="stat-val" id="eStat">—</div><div class="stat-sub" id="eSub">Within 30 days</div></div>
+        </div>
+
+        <div class="toolbar">
+            <div class="srch-wrap">
+                <span class="srch-ico">&#128269;</span>
+                <input type="text" id="srch" placeholder="Search principal, obligee, surety, bond #..." oninput="renderBonds()">
+            </div>
+            <select class="flt" id="fltStatus" onchange="renderBonds()">
+                <option value="">All Statuses</option>
+                <option>Approved</option>
+                <option>Not Approved</option>
+                <option>Pending</option>
+            </select>
+            <select class="flt" id="fltType" onchange="renderBonds()">
+                <option value="">All Bond Types</option>
+                <option>Bid Bond</option>
+                <option>Final Bond</option>
+                <option>License Bond</option>
+                <option>Maintenance Bond</option>
+                <option>Other</option>
+            </select>
+            <select class="flt" id="fltPrincipal" onchange="renderBonds()">
+                <option value="">All Principals</option>
+            </select>
+            <button class="btn btn-secondary" onclick="openReport()" style="white-space:nowrap;">&#128196; Report</button>
+        </div>
+
+        <div class="tcard">
+            <div class="twrap">
+                <table>
+                    <thead><tr>
+                        <th id="th-bond_number"  onclick="sort('bond_number')">Bond #</th>
+                        <th id="th-principal"    onclick="sort('principal')">Principal</th>
+                        <th id="th-obligee"      onclick="sort('obligee')">Obligee</th>
+                        <th id="th-bond_type"    onclick="sort('bond_type')">Bond Type</th>
+                        <th id="th-bid_date"        onclick="sort('bid_date')">Bid Date</th>
+                        <th id="th-expiration_date" onclick="sort('expiration_date')">Expires</th>
+                        <th id="th-surety"          onclick="sort('surety')">Surety</th>
+                        <th id="th-bond_amount"     onclick="sort('bond_amount')">Amount</th>
+                        <th id="th-status"          onclick="sort('status')">Status</th>
+                        <th>Actions</th>
+                    </tr></thead>
+                    <tbody id="tbody"></tbody>
+                </table>
+                <div id="emptyBonds" class="empty" style="display:none;">
+                    <div class="empty-ico">&#128203;</div>
+                    <div class="empty-title">No bonds found</div>
+                    <div class="empty-sub">Add a bond or adjust your filters.</div>
+                </div>
+            </div>
+            <div class="tfooter"><span id="rowCount"></span><span id="rowAmt"></span></div>
+        </div>
+    </div>
+
+    <!-- ── Activity Tab ─────────────────────────────────── -->
+    <div id="tabActivity" class="tab-panel">
+        <div class="page-hdr">
+            <div>
+                <div class="page-title">Activity Log</div>
+                <div class="page-sub">Every change — who did it, when, and what changed</div>
+            </div>
+            <button class="btn btn-secondary" onclick="loadActivity()">&#8635; Refresh</button>
+        </div>
+        <div class="tcard">
+            <div class="twrap">
+                <table class="log-table">
+                    <thead><tr>
+                        <th style="cursor:default;">Date &amp; Time</th>
+                        <th style="cursor:default;">Bond #</th>
+                        <th style="cursor:default;">Action</th>
+                        <th style="cursor:default;">Changed By</th>
+                        <th style="cursor:default;">Details</th>
+                    </tr></thead>
+                    <tbody id="logBody"></tbody>
+                </table>
+                <div id="emptyLog" class="empty" style="display:none;">
+                    <div class="empty-ico">&#128196;</div>
+                    <div class="empty-title">No activity yet</div>
+                    <div class="empty-sub">Changes to bonds will appear here.</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Direct Bill Tab ───────────────────────────────── -->
+    <div id="tabRecon" class="tab-panel">
+        <div class="page-hdr">
+            <div>
+                <div class="page-title">Direct Bill Reconciliation</div>
+                <div class="page-sub">Match carrier statements against your records</div>
+            </div>
+            <button class="btn btn-primary" onclick="openNewRecon()">+ New Reconciliation</button>
+        </div>
+
+        <div class="tcard">
+            <div class="twrap">
+                <table id="reconTable">
+                    <thead><tr>
+                        <th style="cursor:default;">Carrier</th>
+                        <th style="cursor:default;">Period</th>
+                        <th style="cursor:default;">Status</th>
+                        <th style="cursor:default;">Items</th>
+                        <th style="cursor:default;">Matched</th>
+                        <th style="cursor:default;">Discrepancies</th>
+                        <th style="cursor:default;">Missing</th>
+                        <th style="cursor:default;">Created By</th>
+                        <th style="cursor:default;">Actions</th>
+                    </tr></thead>
+                    <tbody id="reconBody"></tbody>
+                </table>
+                <div id="emptyRecon" class="empty" style="display:none;">
+                    <div class="empty-ico">&#128203;</div>
+                    <div class="empty-title">No reconciliations yet</div>
+                    <div class="empty-sub">Click "New Reconciliation" to get started.</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</main>
+
+<!-- ── Recon Create/Edit Modal ──────────────────────────── -->
+<div class="overlay" id="reconModal">
+    <div class="modal modal-sm">
+        <div class="modal-hdr">
+            <div class="modal-ttl" id="reconModalTitle">New Reconciliation</div>
+            <button class="modal-cls" onclick="closeModal('reconModal')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <form id="reconForm" class="fg" onsubmit="saveRecon(event)">
+                <div class="fgrp full"><label class="flbl">Carrier / Surety Company <span class="req">*</span></label><input type="text" class="fc" id="rCarrier" required placeholder="e.g. Travelers, Liberty Mutual"></div>
+                <div class="fgrp"><label class="flbl">Statement Period</label><input type="month" class="fc" id="rPeriod"></div>
+                <div class="fgrp"><label class="flbl">Status</label>
+                    <select class="fc" id="rRecStatus">
+                        <option>In Progress</option>
+                        <option>Complete</option>
+                    </select>
+                </div>
+                <div class="fgrp full"><label class="flbl">Notes</label><textarea class="fc" id="rNotes" placeholder="Any notes about this reconciliation..."></textarea></div>
+            </form>
+        </div>
+        <div class="modal-ftr">
+            <button class="btn btn-secondary" onclick="closeModal('reconModal')">Cancel</button>
+            <button class="btn btn-primary" onclick="document.getElementById('reconForm').requestSubmit()">Save</button>
+        </div>
+    </div>
+</div>
+
+<!-- ── Recon Detail Modal ──────────────────────────────── -->
+<div class="overlay" id="reconDetailModal">
+    <div class="modal" style="max-width:900px;">
+        <div class="modal-hdr">
+            <div class="modal-ttl" id="reconDetailTitle">Reconciliation Detail</div>
+            <button class="modal-cls" onclick="closeModal('reconDetailModal')">&times;</button>
+        </div>
+        <div class="modal-body" id="reconDetailBody"></div>
+        <div class="modal-ftr">
+            <button class="btn btn-secondary" onclick="closeModal('reconDetailModal')">Close</button>
+            <button class="btn btn-primary" onclick="openAddItem()">+ Add Item</button>
+        </div>
+    </div>
+</div>
+
+<!-- ── Recon Item Modal ───────────────────────────────── -->
+<div class="overlay" id="reconItemModal">
+    <div class="modal modal-sm">
+        <div class="modal-hdr">
+            <div class="modal-ttl" id="reconItemTitle">Add Line Item</div>
+            <button class="modal-cls" onclick="closeModal('reconItemModal')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <form id="reconItemForm" class="fg" onsubmit="saveItem(event)">
+                <div class="fgrp"><label class="flbl">Bond Number</label><input type="text" class="fc" id="iNum" placeholder="Bond # or N/A"></div>
+                <div class="fgrp full"><label class="flbl">Principal</label><input type="text" class="fc" id="iPrincipal" placeholder="Contractor / applicant name"></div>
+                <div class="fgrp"><label class="flbl">Carrier Amount ($)</label><input type="number" class="fc" id="iCarrier" step="0.01" min="0"></div>
+                <div class="fgrp"><label class="flbl">Our Amount ($)</label><input type="number" class="fc" id="iOur" step="0.01" min="0"></div>
+                <div class="fgrp"><label class="flbl">Status</label>
+                    <select class="fc" id="iStatus">
+                        <option value="">Auto-detect</option>
+                        <option value="Matched">Matched</option>
+                        <option value="Discrepancy">Discrepancy</option>
+                        <option value="Missing">Missing</option>
+                    </select>
+                </div>
+                <div class="fgrp full"><label class="flbl">Notes</label><textarea class="fc" id="iNotes" placeholder="Explain any discrepancy..."></textarea></div>
+            </form>
+        </div>
+        <div class="modal-ftr">
+            <button class="btn btn-secondary" onclick="closeModal('reconItemModal')">Cancel</button>
+            <button class="btn btn-primary" id="saveItemBtn" onclick="document.getElementById('reconItemForm').requestSubmit()">Save Item</button>
+        </div>
+    </div>
+</div>
+
+<!-- ── Add/Edit Modal ──────────────────────────────────── -->
+<div class="overlay" id="bondModal">
+    <div class="modal">
+        <div class="modal-hdr">
+            <div class="modal-ttl" id="modalTitle">New Bond</div>
+            <button class="modal-cls" onclick="closeModal('bondModal')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div id="formError" class="empty" style="display:none;padding:10px;background:#ffebee;color:#c62828;border-radius:4px;font-size:13px;margin-bottom:14px;"></div>
+            <form id="bondForm" class="fg" onsubmit="saveBond(event)">
+                <div class="fsect">Bond Information</div>
+                <div class="fgrp"><label class="flbl">Bond Number</label><div style="display:flex;gap:8px;align-items:center;"><input type="text" class="fc" id="fNum" style="flex:1;"><button type="button" class="btn btn-secondary" style="white-space:nowrap;padding:6px 10px;font-size:13px;" onclick="document.getElementById('fNum').value='N/A'">N/A</button></div></div>
+                <div class="fgrp"><label class="flbl">Bond Type <span class="req">*</span></label>
+                    <select class="fc" id="fType" required><option value="">Select...</option><option>Bid Bond</option><option>Final Bond</option><option>License Bond</option><option>Maintenance Bond</option><option>Other</option></select>
+                </div>
+                <div class="fgrp"><label class="flbl">Bond Amount ($)</label><input type="number" class="fc" id="fAmt" min="0" step="0.01"></div>
+                <div class="fgrp"><label class="flbl">Bid Date</label><input type="date" class="fc" id="fBidDate"></div>
+                <div class="fgrp"><label class="flbl">Expiration Date</label><input type="date" class="fc" id="fExpDate"></div>
+                <div class="fsect">Parties</div>
+                <div class="fgrp full"><label class="flbl">Principal (Contractor / Applicant) <span class="req">*</span></label><input type="text" class="fc" id="fPrincipal" placeholder="Name of contractor or entity requesting the bond" required></div>
+                <div class="fgrp full"><label class="flbl">Obligee (Requiring Party) <span class="req">*</span></label><input type="text" class="fc" id="fObligee" placeholder="Entity requiring the bond" required></div>
+                <div class="fgrp full"><label class="flbl">Surety (Bonding Company) <span class="req">*</span></label><input type="text" class="fc" id="fSurety" placeholder="e.g., Travelers, Liberty Mutual" required></div>
+                <div class="fsect">Decision</div>
+                <div class="fgrp"><label class="flbl">Status <span class="req">*</span></label>
+                    <select class="fc" id="fStatus" required><option value="">Select...</option><option>Pending</option><option>Approved</option><option>Not Approved</option></select>
+                </div>
+                <div class="fgrp"><label class="flbl">Decision Date</label><input type="date" class="fc" id="fDecDate"></div>
+                <div class="fgrp full"><label class="flbl">Notes / Reason</label><textarea class="fc" id="fNotes" placeholder="Reason for approval or denial, conditions, notes..."></textarea></div>
+            </form>
+        </div>
+        <div class="modal-ftr">
+            <button class="btn btn-secondary" onclick="closeModal('bondModal')">Cancel</button>
+            <button class="btn btn-primary" id="saveBondBtn" onclick="document.getElementById('bondForm').requestSubmit()">Save Bond</button>
+        </div>
+    </div>
+</div>
+
+<!-- ── View Modal ──────────────────────────────────────── -->
+<div class="overlay" id="viewModal">
+    <div class="modal">
+        <div class="modal-hdr">
+            <div class="modal-ttl" id="viewTitle">Bond Detail</div>
+            <button class="modal-cls" onclick="closeModal('viewModal')">&times;</button>
+        </div>
+        <div class="modal-body" id="viewBody"></div>
+        <div class="modal-ftr">
+            <button class="btn btn-secondary" onclick="closeModal('viewModal')">Close</button>
+            <button class="btn btn-primary"   id="viewEditBtn">Edit Bond</button>
+        </div>
+    </div>
+</div>
+
+<!-- ── Delete Confirm ───────────────────────────────────── -->
+<div class="overlay" id="delModal">
+    <div class="modal modal-sm">
+        <div class="modal-hdr"><div class="modal-ttl">Confirm Delete</div><button class="modal-cls" onclick="closeModal('delModal')">&times;</button></div>
+        <div class="confirm-body">
+            <div class="confirm-ico">&#9888;&#65039;</div>
+            <div class="confirm-msg">Delete this bond record?</div>
+            <div class="confirm-sub" id="delSub"></div>
+        </div>
+        <div class="modal-ftr">
+            <button class="btn btn-secondary" onclick="closeModal('delModal')">Cancel</button>
+            <button class="btn btn-danger" id="delBtn" onclick="doDelete()">Yes, Delete</button>
+        </div>
+    </div>
+</div>
+
+<!-- ── Report Modal ─────────────────────────────────────── -->
+<div class="overlay" id="reportModal">
+    <div class="modal modal-sm">
+        <div class="modal-hdr"><div class="modal-ttl">&#128196; Generate Bond Report</div><button class="modal-cls" onclick="closeModal('reportModal')">&times;</button></div>
+        <div class="modal-body">
+            <div style="font-size:13px;color:var(--gray-600);margin-bottom:16px;">Choose filters then click Download. Leave fields blank to include everything.</div>
+            <div class="fgrp">
+                <label class="flbl">Status</label>
+                <select class="fc" id="rStatus">
+                    <option value="">All Statuses</option>
+                    <option value="Pending">Pending</option>
+                    <option value="Approved">Approved</option>
+                    <option value="Not Approved">Not Approved</option>
+                </select>
+            </div>
+            <div class="fgrp">
+                <label class="flbl">Bid Date — From</label>
+                <input type="date" class="fc" id="rFrom">
+            </div>
+            <div class="fgrp">
+                <label class="flbl">Bid Date — To</label>
+                <input type="date" class="fc" id="rTo">
+            </div>
+        </div>
+        <div class="modal-ftr">
+            <button class="btn btn-secondary" onclick="closeModal('reportModal')">Cancel</button>
+            <button class="btn btn-secondary" onclick="downloadExcel()">&#8595; Excel</button>
+            <button class="btn btn-primary"   onclick="downloadReport()">&#8595; PDF</button>
+        </div>
+    </div>
+</div>
+
+<!-- ── Change Password Modal ────────────────────────────── -->
+<div class="overlay" id="pwModal">
+    <div class="modal modal-pw">
+        <div class="modal-hdr"><div class="modal-ttl">Change Password</div><button class="modal-cls" onclick="closeModal('pwModal')">&times;</button></div>
+        <div class="modal-body">
+            <div id="pwError" style="display:none;background:#ffebee;color:#c62828;border-radius:4px;padding:10px 13px;font-size:13px;margin-bottom:14px;"></div>
+            <form id="pwForm" onsubmit="changePw(event)" style="display:flex;flex-direction:column;gap:14px;">
+                <div class="fgrp"><label class="flbl">Current Password</label><input type="password" class="fc" id="pwCurrent" required></div>
+                <div class="fgrp"><label class="flbl">New Password</label><input type="password" class="fc" id="pwNew" required minlength="8"></div>
+                <div class="fgrp"><label class="flbl">Confirm New Password</label><input type="password" class="fc" id="pwConfirm" required minlength="8"></div>
+            </form>
+        </div>
+        <div class="modal-ftr">
+            <button class="btn btn-secondary" onclick="closeModal('pwModal')">Cancel</button>
+            <button class="btn btn-primary"   onclick="document.getElementById('pwForm').requestSubmit()">Update Password</button>
+        </div>
+    </div>
+</div>
+
+<div class="toasts" id="toasts"></div>
+
+<script>
+// ── State ──────────────────────────────────────────────────────────────
+let bonds    = [];
+let editId   = null;
+let delId    = null;
+let sortF    = 'bid_date';
+let sortAsc  = false;
+let activeTab = 'bonds';
+
+const LABELS = {
+    bond_number:'Bond #', bond_type:'Bond Type', principal:'Principal',
+    obligee:'Obligee', surety:'Surety', bond_amount:'Amount',
+    bid_date:'Bid Date', expiration_date:'Expiration Date', decision_date:'Decision Date',
+    status:'Status', notes:'Notes',
+};
+
+// ── API ────────────────────────────────────────────────────────────────
+async function api(path, method='GET', body=null) {
+    const opts = { method, headers: {'Content-Type':'application/json'} };
+    if (body) opts.body = JSON.stringify(body);
+    const r = await fetch(path, opts);
+    if (r.redirected || r.headers.get('content-type')?.includes('text/html')) {
+        window.location.href = '/login';
+        throw new Error('Session expired — redirecting to login...');
+    }
+    const data = await r.json();
+    if (!r.ok) throw new Error(data.error || 'Request failed');
+    return data;
+}
+
+// ── Tab switching ──────────────────────────────────────────────────────
+function switchTab(tab) {
+    activeTab = tab;
+    document.getElementById('tabBonds').classList.toggle('active',    tab==='bonds');
+    document.getElementById('tabActivity').classList.toggle('active', tab==='activity');
+    document.getElementById('tabRecon').classList.toggle('active',    tab==='recon');
+    document.getElementById('navBonds').classList.toggle('active',    tab==='bonds');
+    document.getElementById('navActivity').classList.toggle('active', tab==='activity');
+    document.getElementById('navRecon').classList.toggle('active',    tab==='recon');
+    if (tab==='activity') loadActivity();
+    if (tab==='recon')    loadRecons();
+}
+
+// ── Bonds ──────────────────────────────────────────────────────────────
+async function loadBonds() {
+    bonds = await api('/api/bonds');
+    populatePrincipalFilter();
+    renderBonds();
+}
+
+function populatePrincipalFilter() {
+    const sel = document.getElementById('fltPrincipal');
+    const cur = sel.value;
+    const principals = [...new Set(bonds.map(b=>b.principal).filter(Boolean))].sort();
+    sel.innerHTML = '<option value="">All Principals</option>' +
+        principals.map(p=>`<option value="${esc(p)}"${p===cur?' selected':''}>${esc(p)}</option>`).join('');
+}
+
+function expStyle(dateStr) {
+    if (!dateStr) return '';
+    const today = new Date().toISOString().split('T')[0];
+    const in30  = new Date(Date.now()+30*24*60*60*1000).toISOString().split('T')[0];
+    if (dateStr < today) return 'color:#c62828;font-weight:600;';
+    if (dateStr <= in30) return 'color:#e65100;font-weight:600;';
+    return '';
+}
+
+function renderBonds() {
+    const q  = document.getElementById('srch').value.toLowerCase();
+    const sf = document.getElementById('fltStatus').value;
+    const tf = document.getElementById('fltType').value;
+    const pf = document.getElementById('fltPrincipal').value;
+
+    let rows = bonds.filter(b => {
+        const hit = !q || [b.bond_number,b.principal,b.obligee,b.surety,b.bond_type]
+            .some(v=>(v||'').toLowerCase().includes(q));
+        return hit && (!sf||b.status===sf) && (!tf||b.bond_type===tf) && (!pf||b.principal===pf);
+    });
+
+    rows.sort((a,b)=>{
+        let va=a[sortF]??'', vb=b[sortF]??'';
+        if(sortF==='bond_amount'){va=+va||0;vb=+vb||0;}
+        return sortAsc?(va<vb?-1:va>vb?1:0):(va>vb?-1:va<vb?1:0);
+    });
+
+    document.querySelectorAll('thead th[id^="th-"]').forEach(th=>th.classList.remove('s-asc','s-desc'));
+    const th=document.getElementById('th-'+sortF);
+    if(th) th.classList.add(sortAsc?'s-asc':'s-desc');
+
+    const tbody=document.getElementById('tbody');
+    const empty=document.getElementById('emptyBonds');
+    if(!rows.length){ tbody.innerHTML=''; empty.style.display=''; }
+    else {
+        empty.style.display='none';
+        tbody.innerHTML=rows.map(b=>`<tr>
+            <td><div class="bond-num">${esc(b.bond_number)}</div><div class="meta">Added by ${esc(b.created_by)} &middot; ${b.created_at}</div></td>
+            <td><span class="principal">${esc(b.principal)}</span></td>
+            <td>${esc(b.obligee)}</td>
+            <td>${esc(b.bond_type)}</td>
+            <td>${fmtDate(b.bid_date)}</td>
+            <td>${b.expiration_date ? '<span style="'+expStyle(b.expiration_date)+'">'+fmtDate(b.expiration_date)+'</span>' : '&mdash;'}</td>
+            <td>${esc(b.surety)}</td>
+            <td>${b.bond_amount?'$'+(+b.bond_amount).toLocaleString('en-US',{maximumFractionDigits:0}):'&mdash;'}</td>
+            <td>${badge(b.status)}</td>
+            <td><div class="row-acts">
+                <button class="btn btn-secondary btn-sm" onclick="openView(${b.id})">View</button>
+                <button class="btn btn-secondary btn-sm" onclick="openEdit(${b.id})">Edit</button>
+                <button class="btn btn-danger btn-sm"    onclick="openDel(${b.id})">Delete</button>
+            </div></td>
+        </tr>`).join('');
+    }
+
+    document.getElementById('rowCount').textContent=`Showing ${rows.length} of ${bonds.length} bond${bonds.length!==1?'s':''}`;
+    const tot=rows.reduce((s,b)=>s+(+b.bond_amount||0),0);
+    document.getElementById('rowAmt').textContent=tot?'Filtered total: $'+tot.toLocaleString('en-US',{maximumFractionDigits:0}):'';
+    updateStats();
+}
+
+function updateStats() {
+    const app=bonds.filter(b=>b.status==='Approved');
+    const na=bonds.filter(b=>b.status==='Not Approved');
+    const pend=bonds.filter(b=>b.status==='Pending');
+    const today=new Date().toISOString().split('T')[0];
+    const in30=new Date(Date.now()+30*24*60*60*1000).toISOString().split('T')[0];
+    const expiring=bonds.filter(b=>b.expiration_date&&b.expiration_date>=today&&b.expiration_date<=in30);
+    const sum=arr=>arr.reduce((s,b)=>s+(+b.bond_amount||0),0);
+    const fmt=n=>n?'$'+n.toLocaleString('en-US',{notation:'compact',maximumFractionDigits:1})+' total':'';
+    document.getElementById('sStat').textContent=bonds.length;
+    document.getElementById('asStat').textContent=app.length;
+    document.getElementById('naStat').textContent=na.length;
+    document.getElementById('pStat').textContent=pend.length;
+    document.getElementById('eStat').textContent=expiring.length;
+    document.getElementById('sAmt').textContent=fmt(sum(bonds));
+    document.getElementById('asAmt').textContent=fmt(sum(app));
+    document.getElementById('naAmt').textContent=fmt(sum(na));
+    document.getElementById('pAmt').textContent=fmt(sum(pend));
+}
+
+function sort(field) {
+    sortAsc = (sortF===field)?!sortAsc:true;
+    sortF   = field;
+    renderBonds();
+}
+
+// ── View ───────────────────────────────────────────────────────────────
+function openView(id) {
+    const b = bonds.find(x=>x.id===id);
+    if (!b) return;
+    document.getElementById('viewTitle').textContent = 'Bond — ' + b.bond_number;
+    document.getElementById('viewBody').innerHTML = `
+        <div class="fg" style="row-gap:16px;">
+            <div class="fsect">Bond Information</div>
+            ${dv('Bond Number',b.bond_number)} ${dv('Bond Type',b.bond_type)}
+            ${dv('Bond Amount',b.bond_amount?'$'+(+b.bond_amount).toLocaleString('en-US'):'')} ${dv('Bid Date',fmtDate(b.bid_date))}
+            ${dv('Expiration Date',fmtDate(b.expiration_date))}
+            <div class="fsect">Parties</div>
+            ${dv('Principal',b.principal,true)} ${dv('Obligee',b.obligee,true)} ${dv('Surety',b.surety,true)}
+            <div class="fsect">Decision</div>
+            <div class="fgrp"><div class="flbl">Status</div><div style="margin-top:2px;">${badge(b.status)}</div></div>
+            ${dv('Decision Date',fmtDate(b.decision_date))}
+            ${b.notes?`<div class="fgrp full"><div class="flbl">Notes</div><div style="font-size:14px;white-space:pre-wrap;line-height:1.55;margin-top:2px;">${esc(b.notes)}</div></div>`:''}
+            <div class="fsect">Record Info</div>
+            ${dv('Added By',b.created_by)} ${dv('Added At',b.created_at)}
+            ${b.updated_by?dv('Last Updated By',b.updated_by):''}
+            ${b.updated_at?dv('Last Updated At',b.updated_at):''}
+        </div>`;
+    document.getElementById('viewEditBtn').onclick=()=>{closeModal('viewModal');openEdit(id);};
+    open_('viewModal');
+}
+
+function dv(label,value,full){
+    return `<div class="fgrp${full?' full':''}"><div class="flbl">${label}</div><div style="font-size:14px;font-weight:500;margin-top:2px;">${value||'&mdash;'}</div></div>`;
+}
+
+// ── Add / Edit ─────────────────────────────────────────────────────────
+function openAdd() {
+    editId=null;
+    document.getElementById('modalTitle').textContent='New Bond';
+    document.getElementById('bondForm').reset();
+    document.getElementById('fStatus').value='Pending';
+    document.getElementById('formError').style.display='none';
+    open_('bondModal');
+}
+
+function openEdit(id) {
+    const b=bonds.find(x=>x.id===id);
+    if(!b) return;
+    editId=id;
+    document.getElementById('modalTitle').textContent='Edit Bond';
+    document.getElementById('formError').style.display='none';
+    document.getElementById('fNum').value     = b.bond_number   ||'';
+    document.getElementById('fType').value    = b.bond_type     ||'';
+    document.getElementById('fAmt').value     = b.bond_amount   ||'';
+    document.getElementById('fBidDate').value  = b.bid_date        ||'';
+    document.getElementById('fExpDate').value  = b.expiration_date ||'';
+    document.getElementById('fPrincipal').value= b.principal       ||'';
+    document.getElementById('fObligee').value = b.obligee       ||'';
+    document.getElementById('fSurety').value  = b.surety        ||'';
+    document.getElementById('fStatus').value  = b.status        ||'';
+    document.getElementById('fDecDate').value = b.decision_date ||'';
+    document.getElementById('fNotes').value   = b.notes         ||'';
+    open_('bondModal');
+}
+
+async function saveBond(e) {
+    e.preventDefault();
+    const btn = document.getElementById('saveBondBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span>Saving...';
+    const body = {
+        bond_number:   document.getElementById('fNum').value.trim(),
+        bond_type:     document.getElementById('fType').value,
+        bond_amount:   document.getElementById('fAmt').value||null,
+        bid_date:        document.getElementById('fBidDate').value||null,
+        expiration_date: document.getElementById('fExpDate').value||null,
+        principal:     document.getElementById('fPrincipal').value.trim(),
+        obligee:       document.getElementById('fObligee').value.trim(),
+        surety:        document.getElementById('fSurety').value.trim(),
+        status:        document.getElementById('fStatus').value,
+        decision_date: document.getElementById('fDecDate').value||null,
+        notes:         document.getElementById('fNotes').value.trim(),
+    };
+    try {
+        if (editId) { await api(`/api/bonds/${editId}`,'PUT',body); toast('Bond updated'); }
+        else        { await api('/api/bonds','POST',body); toast('Bond saved'); }
+        closeModal('bondModal');
+        await loadBonds();
+        loadActivity();
+    } catch(err) {
+        const el=document.getElementById('formError');
+        el.textContent='Error: ' + err.message;
+        el.style.display='';
+        el.scrollIntoView({behavior:'smooth', block:'nearest'});
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = 'Save Bond';
+    }
+}
+
+// ── Delete ─────────────────────────────────────────────────────────────
+function openDel(id) {
+    const b=bonds.find(x=>x.id===id);
+    delId=id;
+    document.getElementById('delSub').textContent=`${b.bond_number} — ${b.principal}`;
+    open_('delModal');
+}
+async function doDelete() {
+    const btn = document.getElementById('delBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span>Deleting...';
+    try {
+        await api(`/api/bonds/${delId}`,'DELETE');
+        closeModal('delModal');
+        await loadBonds();
+        loadActivity();
+        toast('Bond deleted');
+    } catch(err) {
+        toast(err.message,'err');
+        btn.disabled = false;
+        btn.innerHTML = 'Yes, Delete';
+    }
+}
+
+// ── Activity log ────────────────────────────────────────────────────────
+async function loadActivity() {
+    const logs = await api('/api/audit');
+    const tbody = document.getElementById('logBody');
+    const empty = document.getElementById('emptyLog');
+    if (!logs.length) { tbody.innerHTML=''; empty.style.display=''; return; }
+    empty.style.display='none';
+
+    tbody.innerHTML = logs.map(l => {
+        const cls = {created:'la-created',updated:'la-updated',deleted:'la-deleted'}[l.action]||'la-updated';
+        const label = {created:'Added',updated:'Updated',deleted:'Deleted'}[l.action]||l.action;
+        let details = '';
+        if (l.action==='updated' && l.old_values && l.new_values) {
+            const changed = [];
+            const fields = ['bond_number','bond_type','principal','obligee','surety','bond_amount','bid_date','expiration_date','decision_date','status','notes'];
+            fields.forEach(f=>{
+                const ov=l.old_values[f], nv=l.new_values[f];
+                if(String(ov)!==String(nv)){
+                    const lbl=LABELS[f]||f;
+                    changed.push(`<span class="diff-field">${lbl}:</span> ${esc(String(ov||''))} &rarr; ${esc(String(nv||''))}`);
+                }
+            });
+            details=`<div class="diff-list">${changed.join('<br>')}</div>`;
+        } else if (l.action==='created' && l.new_values) {
+            details=`<div class="diff-list"><span class="diff-field">Principal:</span> ${esc(l.new_values.principal||'')} &middot; <span class="diff-field">Status:</span> ${esc(l.new_values.status||'')}</div>`;
+        } else if (l.action==='deleted' && l.old_values) {
+            details=`<div class="diff-list"><span class="diff-field">Principal:</span> ${esc(l.old_values.principal||'')}</div>`;
+        }
+        return `<tr>
+            <td style="white-space:nowrap;font-size:12px;color:var(--gray-600);">${l.changed_at}</td>
+            <td><span class="bond-num">${esc(l.bond_number)}</span></td>
+            <td><span class="log-action ${cls}">${label}</span></td>
+            <td style="font-weight:500;">${esc(l.changed_by)}</td>
+            <td>${details}</td>
+        </tr>`;
+    }).join('');
+}
+
+// ── Change password ─────────────────────────────────────────────────────
+function openPwModal() {
+    document.getElementById('pwForm').reset();
+    document.getElementById('pwError').style.display='none';
+    open_('pwModal');
+}
+async function changePw(e) {
+    e.preventDefault();
+    const np=document.getElementById('pwNew').value;
+    const nc=document.getElementById('pwConfirm').value;
+    const err=document.getElementById('pwError');
+    if(np!==nc){ err.textContent='New passwords do not match.'; err.style.display=''; return; }
+    try {
+        await api('/api/me/password','PUT',{current_password:document.getElementById('pwCurrent').value,new_password:np});
+        closeModal('pwModal');
+        toast('Password updated');
+    } catch(e2){ err.textContent=e2.message; err.style.display=''; }
+}
+
+// ── Helpers ─────────────────────────────────────────────────────────────
+function badge(s) {
+    const m={Approved:'b-approved','Not Approved':'b-not-approved',Pending:'b-pending'};
+    return `<span class="badge ${m[s]||'b-pending'}">${s||'Pending'}</span>`;
+}
+function fmtDate(d) {
+    if(!d) return '&mdash;';
+    const[y,m,day]=d.split('-'); return `${m}/${day}/${y}`;
+}
+function esc(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function open_(id){ document.getElementById(id).classList.add('open'); }
+
+async function handlePDFUpload(input) {
+    const file = input.files[0];
+    if (!file) return;
+    const lbl = document.getElementById('uploadLabel');
+    lbl.textContent = '⏳ Reading PDF...';
+    try {
+        const fd = new FormData();
+        fd.append('file', file);
+        const resp = await fetch('/api/bonds/extract', { method:'POST', body:fd });
+        const data = await resp.json();
+        if (!resp.ok) throw new Error(data.error || 'Extraction failed');
+
+        openAdd();
+        if (data.bond_number)   document.getElementById('fNum').value      = data.bond_number;
+        if (data.bond_type)     document.getElementById('fType').value     = data.bond_type;
+        if (data.principal)     document.getElementById('fPrincipal').value = data.principal;
+        if (data.obligee)       document.getElementById('fObligee').value  = data.obligee;
+        if (data.surety)        document.getElementById('fSurety').value   = data.surety;
+        if (data.bond_amount)   document.getElementById('fAmt').value      = data.bond_amount;
+        if (data.bid_date)      document.getElementById('fBidDate').value  = data.bid_date;
+        if (data.decision_date) document.getElementById('fDecDate').value  = data.decision_date;
+        toast('Form filled from PDF — review and save');
+    } catch(e) {
+        toast(e.message, 'err');
+    }
+    lbl.innerHTML = '&#128196; Upload PDF<input type="file" accept=".pdf" style="display:none;" onchange="handlePDFUpload(this)">';
+    input.value = '';
+}
+
+function openReport() {
+    document.getElementById('rStatus').value = '';
+    document.getElementById('rFrom').value   = '';
+    document.getElementById('rTo').value     = '';
+    open_('reportModal');
+}
+function reportParams() {
+    const status = document.getElementById('rStatus').value;
+    const from   = document.getElementById('rFrom').value;
+    const to     = document.getElementById('rTo').value;
+    const params = new URLSearchParams();
+    if (status) params.append('status',    status);
+    if (from)   params.append('from_date', from);
+    if (to)     params.append('to_date',   to);
+    return params.toString();
+}
+function downloadReport() {
+    window.location.href = '/reports/pdf?' + reportParams();
+    closeModal('reportModal');
+}
+function downloadExcel() {
+    window.location.href = '/reports/excel?' + reportParams();
+    closeModal('reportModal');
+}
+function closeModal(id){ document.getElementById(id).classList.remove('open'); }
+function toast(msg,type='ok'){
+    const t=document.createElement('div');
+    t.className='toast '+type; t.textContent=msg;
+    document.getElementById('toasts').appendChild(t);
+    setTimeout(()=>t.remove(),3200);
+}
+
+// ── Init ────────────────────────────────────────────────────────────────
+document.querySelectorAll('.overlay').forEach(el=>{
+    el.addEventListener('click',e=>{if(e.target===el){el.classList.remove('open');delId=null;}});
+});
+document.addEventListener('keydown',e=>{
+    if(e.key==='Escape'){document.querySelectorAll('.overlay').forEach(el=>el.classList.remove('open'));delId=null;closeSettings();}
+});
+document.addEventListener('click',e=>{
+    if(!document.getElementById('settingsWrap').contains(e.target)) closeSettings();
+});
+
+function toggleSettings(){
+    const btn=document.getElementById('settingsBtn');
+    const drop=document.getElementById('settingsDrop');
+    btn.classList.toggle('open');
+    drop.classList.toggle('open');
+}
+function closeSettings(){
+    document.getElementById('settingsBtn').classList.remove('open');
+    document.getElementById('settingsDrop').classList.remove('open');
+}
+function copySupport(){
+    navigator.clipboard.writeText('councilcomputing@gmail.com').then(()=>toast('Email copied!'));
+}
+function toggleHomeScreen(){
+    const panel = document.getElementById('hsPanel');
+    const chev  = document.getElementById('hsChevron');
+    const open  = panel.style.display === 'none';
+    panel.style.display = open ? 'block' : 'none';
+    chev.style.transform = open ? 'rotate(180deg)' : '';
+}
+
+// ── Reconciliation ────────────────────────────────────────────────────
+let recons = [];
+let activeReconId = null;
+let activeItemId  = null;
+
+async function loadRecons() {
+    recons = await api('/api/reconciliations');
+    renderRecons();
+}
+
+function reconStatusBadge(s) {
+    const cls = s==='Complete'?'s-approved':s==='In Progress'?'s-pending':'s-na';
+    return `<span class="badge ${cls}">${s}</span>`;
+}
+function itemBadge(s) {
+    const cls = s==='Matched'?'s-approved':s==='Discrepancy'?'s-na':s==='Missing'?'s-pending':'s-pending';
+    return `<span class="badge ${cls}">${s}</span>`;
+}
+
+function renderRecons() {
+    const tbody = document.getElementById('reconBody');
+    const empty = document.getElementById('emptyRecon');
+    if (!recons.length) { tbody.innerHTML=''; empty.style.display=''; return; }
+    empty.style.display='none';
+    tbody.innerHTML = recons.map(r=>`<tr>
+        <td><strong>${esc(r.carrier)}</strong></td>
+        <td>${r.period ? fmtPeriod(r.period) : '&mdash;'}</td>
+        <td>${reconStatusBadge(r.status)}</td>
+        <td style="text-align:center;">${r.item_count}</td>
+        <td style="text-align:center;color:var(--green);font-weight:600;">${r.matched}</td>
+        <td style="text-align:center;color:var(--red);font-weight:600;">${r.discrepant}</td>
+        <td style="text-align:center;color:var(--amber);font-weight:600;">${r.missing}</td>
+        <td>${esc(r.created_by)}</td>
+        <td><div class="row-acts">
+            <button class="btn btn-secondary btn-sm" onclick="openReconDetail(${r.id})">View</button>
+            <button class="btn btn-secondary btn-sm" onclick="openEditRecon(${r.id})">Edit</button>
+            <button class="btn btn-danger btn-sm"    onclick="deleteRecon(${r.id})">Delete</button>
+        </div></td>
+    </tr>`).join('');
+}
+
+function fmtPeriod(p) {
+    if (!p) return '';
+    const [y,m] = p.split('-');
+    const names = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    return `${names[+m-1]} ${y}`;
+}
+
+function openNewRecon() {
+    activeReconId = null;
+    document.getElementById('reconModalTitle').textContent = 'New Reconciliation';
+    document.getElementById('reconForm').reset();
+    open_('reconModal');
+}
+
+function openEditRecon(id) {
+    const r = recons.find(x=>x.id===id);
+    if (!r) return;
+    activeReconId = id;
+    document.getElementById('reconModalTitle').textContent = 'Edit Reconciliation';
+    document.getElementById('rCarrier').value    = r.carrier;
+    document.getElementById('rPeriod').value     = r.period;
+    document.getElementById('rRecStatus').value  = r.status;
+    document.getElementById('rNotes').value      = r.notes;
+    open_('reconModal');
+}
+
+async function saveRecon(e) {
+    e.preventDefault();
+    const body = {
+        carrier: document.getElementById('rCarrier').value.trim(),
+        period:  document.getElementById('rPeriod').value,
+        status:  document.getElementById('rRecStatus').value,
+        notes:   document.getElementById('rNotes').value.trim(),
+    };
+    try {
+        if (activeReconId) await api(`/api/reconciliations/${activeReconId}`, 'PUT', body);
+        else               await api('/api/reconciliations', 'POST', body);
+        closeModal('reconModal');
+        await loadRecons();
+        toast(activeReconId ? 'Reconciliation updated' : 'Reconciliation created');
+    } catch(err) { toast(err.message, 'err'); }
+}
+
+async function deleteRecon(id) {
+    if (!confirm('Delete this reconciliation and all its items?')) return;
+    try {
+        await api(`/api/reconciliations/${id}`, 'DELETE');
+        await loadRecons();
+        toast('Deleted');
+    } catch(err) { toast(err.message, 'err'); }
+}
+
+async function openReconDetail(id) {
+    const rec = await api(`/api/reconciliations/${id}`);
+    activeReconId = id;
+    const totalCarrier = rec.items.reduce((s,i)=>s+(+i.carrier_amount||0),0);
+    const totalOur     = rec.items.reduce((s,i)=>s+(+i.our_amount||0),0);
+    const fmt$ = n => n!=null ? '$'+n.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}) : '&mdash;';
+
+    document.getElementById('reconDetailTitle').textContent = `${rec.carrier} — ${rec.period ? fmtPeriod(rec.period) : 'No Period'}`;
+    document.getElementById('reconDetailBody').innerHTML = `
+        <div style="display:flex;gap:16px;margin-bottom:16px;flex-wrap:wrap;">
+            <div style="background:#f5f7fa;border-radius:8px;padding:12px 18px;flex:1;min-width:120px;">
+                <div style="font-size:11px;color:#888;text-transform:uppercase;letter-spacing:0.5px;">Status</div>
+                <div style="margin-top:4px;">${reconStatusBadge(rec.status)}</div>
+            </div>
+            <div style="background:#f5f7fa;border-radius:8px;padding:12px 18px;flex:1;min-width:120px;">
+                <div style="font-size:11px;color:#888;text-transform:uppercase;letter-spacing:0.5px;">Carrier Total</div>
+                <div style="font-size:18px;font-weight:700;color:var(--navy);margin-top:4px;">${fmt$(totalCarrier)}</div>
+            </div>
+            <div style="background:#f5f7fa;border-radius:8px;padding:12px 18px;flex:1;min-width:120px;">
+                <div style="font-size:11px;color:#888;text-transform:uppercase;letter-spacing:0.5px;">Our Total</div>
+                <div style="font-size:18px;font-weight:700;color:var(--navy);margin-top:4px;">${fmt$(totalOur)}</div>
+            </div>
+            <div style="background:${Math.abs(totalCarrier-totalOur)<0.01?'#e8f5e9':'#ffebee'};border-radius:8px;padding:12px 18px;flex:1;min-width:120px;">
+                <div style="font-size:11px;color:#888;text-transform:uppercase;letter-spacing:0.5px;">Difference</div>
+                <div style="font-size:18px;font-weight:700;color:${Math.abs(totalCarrier-totalOur)<0.01?'var(--green)':'var(--red)'};margin-top:4px;">${fmt$(Math.abs(totalCarrier-totalOur))}</div>
+            </div>
+        </div>
+        ${rec.notes ? `<div style="font-size:13px;color:#555;margin-bottom:14px;padding:10px 14px;background:#fffbea;border-radius:6px;border-left:3px solid var(--amber);">${esc(rec.notes)}</div>` : ''}
+        <table style="width:100%;">
+            <thead><tr>
+                <th style="cursor:default;">Bond #</th>
+                <th style="cursor:default;">Principal</th>
+                <th style="cursor:default;">Carrier Amt</th>
+                <th style="cursor:default;">Our Amt</th>
+                <th style="cursor:default;">Status</th>
+                <th style="cursor:default;">Notes</th>
+                <th style="cursor:default;"></th>
+            </tr></thead>
+            <tbody>
+            ${rec.items.length ? rec.items.map(i=>`<tr>
+                <td>${esc(i.bond_number)||'&mdash;'}</td>
+                <td>${esc(i.principal)||'&mdash;'}</td>
+                <td style="text-align:right;">${fmt$(i.carrier_amount)}</td>
+                <td style="text-align:right;">${fmt$(i.our_amount)}</td>
+                <td>${itemBadge(i.status)}</td>
+                <td style="font-size:12px;color:#666;">${esc(i.notes)||''}</td>
+                <td><button class="btn btn-danger btn-sm" onclick="deleteItem(${i.id})">&#x2715;</button></td>
+            </tr>`).join('') : `<tr><td colspan="7" style="text-align:center;padding:20px;color:#aaa;">No items yet — click Add Item below.</td></tr>`}
+            </tbody>
+        </table>`;
+    open_('reconDetailModal');
+}
+
+function openAddItem() {
+    activeItemId = null;
+    document.getElementById('reconItemTitle').textContent = 'Add Line Item';
+    document.getElementById('reconItemForm').reset();
+    open_('reconItemModal');
+}
+
+async function saveItem(e) {
+    e.preventDefault();
+    const btn = document.getElementById('saveItemBtn');
+    btn.disabled = true;
+    const body = {
+        bond_number:    document.getElementById('iNum').value.trim(),
+        principal:      document.getElementById('iPrincipal').value.trim(),
+        carrier_amount: document.getElementById('iCarrier').value || null,
+        our_amount:     document.getElementById('iOur').value     || null,
+        status:         document.getElementById('iStatus').value  || null,
+        notes:          document.getElementById('iNotes').value.trim(),
+    };
+    try {
+        await api(`/api/reconciliations/${activeReconId}/items`, 'POST', body);
+        closeModal('reconItemModal');
+        await openReconDetail(activeReconId);
+        await loadRecons();
+        toast('Item added');
+    } catch(err) { toast(err.message, 'err'); }
+    finally { btn.disabled = false; }
+}
+
+async function deleteItem(itemId) {
+    if (!confirm('Remove this line item?')) return;
+    try {
+        await api(`/api/reconciliations/${activeReconId}/items/${itemId}`, 'DELETE');
+        await openReconDetail(activeReconId);
+        await loadRecons();
+        toast('Item removed');
+    } catch(err) { toast(err.message, 'err'); }
+}
+
+loadBonds();
+</script>
+</body>
+</html>
