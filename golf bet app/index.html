@@ -547,31 +547,13 @@ function mkRound(d){
 
 // ── AI COURSE FILL ────────────────────────────────────
 async function fillPars(course, holes){
-  const key=localStorage.getItem('golf_apikey')
-  if(!key)throw new Error('No API key')
-  const resp=await fetch('https://api.anthropic.com/v1/messages',{
+  const resp=await fetch('/.netlify/functions/course',{
     method:'POST',
-    headers:{
-      'x-api-key':key,
-      'anthropic-version':'2023-06-01',
-      'content-type':'application/json',
-      'anthropic-dangerous-direct-browser-access':'true'
-    },
-    body:JSON.stringify({
-      model:'claude-sonnet-4-6',
-      max_tokens:120,
-      messages:[{
-        role:'user',
-        content:`What is the par for each hole at ${course}? Return ONLY a JSON array of ${holes} integers (each 3, 4, or 5). If you don't know the exact course layout, give a realistic estimate for a typical ${holes}-hole course. No explanation, just the array.`
-      }]
-    })
+    headers:{'content-type':'application/json'},
+    body:JSON.stringify({course,holes})
   })
-  if(!resp.ok){const e=await resp.json();throw new Error(e.error?.message||resp.statusText)}
-  const data=await resp.json()
-  const text=data.content?.[0]?.text||''
-  const match=text.match(/\[[\d,\s]+\]/)
-  if(!match)throw new Error('Could not parse response')
-  const pars=JSON.parse(match[0])
+  if(!resp.ok){const e=await resp.text();throw new Error(e||resp.statusText)}
+  const pars=await resp.json()
   if(!Array.isArray(pars)||pars.length<holes)throw new Error('Wrong number of holes returned')
   return pars.slice(0,holes).map(p=>Math.min(5,Math.max(3,parseInt(p)||4)))
 }
@@ -690,7 +672,7 @@ function pg_home(){
 
 // ── PLAYERS ───────────────────────────────────────────
 function pg_players(){
-  const D=db(),key=localStorage.getItem('golf_apikey')||''
+  const D=db()
   const eg=S.editGroup  // null = not editing, 'new' = new group, id = editing existing
 
   // group editor
@@ -737,17 +719,6 @@ function pg_players(){
   ${!eg?groupsList:''}
 
   <div style="font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.08em;padding:18px 4px 6px;text-transform:uppercase">Settings</div>
-  <div class="card">
-    <div class="card-title">API Key</div>
-    <div class="fg"><label class="flabel">Anthropic API Key <span style="font-weight:400;color:var(--muted)">(for AI course fill)</span></label>
-      <div class="irow">
-        <input class="finput" id="ak" type="password" placeholder="sk-ant-..." value="${key}" autocomplete="off">
-        <button class="btn-sm btn-secondary" data-savekey>Save</button>
-      </div>
-      <div style="font-size:11px;color:var(--muted);margin-top:5px">Stored locally on this device. Get a key at console.anthropic.com</div>
-    </div>
-    ${key?`<div style="font-size:13px;color:var(--green);font-weight:600">✓ API key saved</div>`:''}
-  </div>
 
   <div class="card"><div class="card-title">📲 Add to Home Screen</div>
     <div style="margin-bottom:14px">
@@ -795,7 +766,6 @@ function pg_players(){
 function pg_setup(){
   const d=S.draft||newDraft(),D=db()
   if(S.step===1){
-    const hasKey=!!localStorage.getItem('golf_apikey')
     const saved=D.courses||[]
     // par grid — tap to cycle 3→4→5→3
     const parGrid=Array.from({length:d.holes},(_,i)=>{
@@ -827,10 +797,9 @@ function pg_setup(){
         <option value="18" ${d.holes===18?'selected':''}>18 Holes</option>
       </select></div>
       <div style="display:flex;gap:8px;margin-bottom:4px">
-        ${hasKey?`<button class="btn btn-secondary" data-aifill ${S.aiLoading?'disabled':''} style="flex:1">${S.aiLoading?'⏳ Looking up…':'✨ AI Fill Pars'}</button>`:''}
+        <button class="btn btn-secondary" data-aifill ${S.aiLoading?'disabled':''} style="flex:1">${S.aiLoading?'⏳ Looking up…':'✨ AI Fill Pars'}</button>
         <button class="btn btn-outline" data-savec style="flex:1">💾 Save Course</button>
       </div>
-      ${!hasKey?`<div style="font-size:12px;color:var(--muted);margin-bottom:8px">Add an API key in the Settings tab to enable AI lookup.</div>`:''}
     </div>
     <div class="card"><div class="card-title" style="display:flex;align-items:center;justify-content:space-between">Par per Hole <span style="font-weight:800;color:var(--text)">Total: ${totalPar}</span></div>
       <div style="display:grid;grid-template-columns:repeat(9,1fr);gap:4px">${parGrid}</div>
