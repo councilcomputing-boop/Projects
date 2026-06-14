@@ -285,6 +285,10 @@ firebase.initializeApp(firebaseConfig)
 const auth=firebase.auth()
 const fdb=firebase.firestore()
 
+// ── STRIPE ────────────────────────────────────────────
+// Paste your Stripe Payment Link URL here after creating it at stripe.com
+const STRIPE_LINK='YOUR_STRIPE_PAYMENT_LINK_URL'
+
 function genCode(){
   const c='ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
   return Array.from({length:5},()=>c[Math.floor(Math.random()*c.length)]).join('')
@@ -344,7 +348,7 @@ function toast(msg,type='info'){
 function dialog(msg,onConfirm,opts={}){
   const el=document.createElement('div')
   el.className='dlg-overlay'
-  el.innerHTML=`<div class="dlg-box">${opts.title?`<div class="dlg-title">${opts.title}</div>`:''}<div class="dlg-msg">${msg}</div><div class="dlg-btns"><button class="btn btn-outline" id="dlg-cancel">Cancel</button><button class="btn ${opts.dangerous?'btn-danger':'btn-primary'}" id="dlg-ok">${opts.confirmText||'OK'}</button></div></div>`
+  el.innerHTML=`<div class="dlg-box">${opts.title?`<div class="dlg-title">${opts.title}</div>`:''}<div class="dlg-msg">${msg}</div><div class="dlg-btns"><button class="btn btn-outline" id="dlg-cancel">${opts.cancelText||'Cancel'}</button><button class="btn ${opts.dangerous?'btn-danger':'btn-primary'}" id="dlg-ok">${opts.confirmText||'OK'}</button></div></div>`
   document.body.appendChild(el)
   requestAnimationFrame(()=>requestAnimationFrame(()=>el.classList.add('dlg-show')))
   const close=()=>{el.classList.remove('dlg-show');setTimeout(()=>el.remove(),200)}
@@ -558,6 +562,48 @@ async function fillPars(course, holes){
   return pars.slice(0,holes).map(p=>Math.min(5,Math.max(3,parseInt(p)||4)))
 }
 
+// ── PAYWALL ───────────────────────────────────────────
+function getWeekKey(){
+  const d=new Date(),jan1=new Date(d.getFullYear(),0,1)
+  const wk=Math.ceil(((d-jan1)/86400000+jan1.getDay()+1)/7)
+  return`${d.getFullYear()}-W${wk}`
+}
+
+function showPaywall(){
+  const uid=S.user?.uid||''
+  const url=STRIPE_LINK+(STRIPE_LINK.includes('?')?'&':'?')+`client_reference_id=${uid}`
+  dialog(
+    `<div style="text-align:center;padding:4px 0">
+      <div style="font-size:36px;margin-bottom:8px">⛳</div>
+      <div style="font-size:18px;font-weight:800;margin-bottom:6px">Upgrade to Wager Pro</div>
+      <div style="font-size:13px;color:var(--muted);margin-bottom:16px">Free plan includes 1 round per week</div>
+      <div style="background:var(--green-pale);border-radius:10px;padding:12px 14px;margin-bottom:16px;text-align:left">
+        <div style="font-size:13px;font-weight:700;color:var(--green2);margin-bottom:5px">✓ Unlimited rounds</div>
+        <div style="font-size:13px;font-weight:700;color:var(--green2);margin-bottom:5px">✓ AI course fill for everyone</div>
+        <div style="font-size:13px;font-weight:700;color:var(--green2)">✓ Full history &amp; ledger</div>
+      </div>
+      <div style="font-size:26px;font-weight:900">$5 <span style="font-size:13px;font-weight:400;color:var(--muted)">one-time</span></div>
+    </div>`,
+    ()=>window.open(url,'_blank'),
+    {confirmText:'Upgrade Now →',cancelText:'Maybe Later'}
+  )
+}
+
+async function verifyPayment(sessionId){
+  try{
+    const resp=await fetch('/.netlify/functions/verify-payment',{
+      method:'POST',headers:{'content-type':'application/json'},
+      body:JSON.stringify({sessionId,uid:S.user?.uid})
+    })
+    if(resp.ok){
+      S.user.isPaid=true
+      history.replaceState({},'','/')
+      toast('Welcome to Wager Pro! 🏆','success')
+      ren()
+    }
+  }catch(e){console.error('Payment verify failed:',e)}
+}
+
 // ── RENDER ────────────────────────────────────────────
 function ren(){
   document.getElementById('H').innerHTML=hdr()
@@ -646,7 +692,8 @@ function pg_home(){
   const rec=done.slice(0,3)
   const uname=S.user?.displayName||S.user?.email?.split('@')[0]||'Player'
   const uinitial=uname[0].toUpperCase()
-  const userBadge=`<div class="user-badge"><div class="user-avatar">${uinitial}</div><div><div class="user-name">${uname}</div><div class="user-email">${S.user?.email||''}</div></div><button class="signout-btn" data-signout>Sign out</button></div>`
+  const isPro=S.user?.isPaid
+  const userBadge=`<div class="user-badge"><div class="user-avatar">${uinitial}</div><div><div class="user-name">${uname} ${isPro?'<span style="font-size:11px;background:var(--gold);color:#fff;border-radius:6px;padding:1px 6px;font-weight:700;vertical-align:middle">PRO</span>':''}</div><div class="user-email">${S.user?.email||''}</div></div><button class="signout-btn" data-signout>Sign out</button></div>`
   const banner=act?`<div class="act-banner"><div><div class="act-lbl">In progress</div><div class="act-title">${act.course}</div></div><button class="btn" data-gsc="${act.id}">Continue &#8594;</button></div>`:''
   const rematch=last&&!act?`<button class="btn btn-gold" data-rematch style="margin-bottom:12px">🔁 Quick Rematch — ${last.course}</button>`:''
   const recent=rec.length?`<div class="card"><div class="card-title">Recent Rounds</div>${rec.map(r=>`<div class="hist-item" data-rd="${r.id}"><div class="hist-date">${dt(r.date||r.createdAt)}</div><div class="hist-course">${r.course}</div><div class="hist-tags">${Object.entries(r.games).filter(([,v])=>v.enabled).map(([k])=>k[0].toUpperCase()+k.slice(1)).join(' · ')}</div></div>`).join('')}</div>`:''
@@ -1203,6 +1250,7 @@ function bind(){
 
   // AI auto-fill pars
   document.querySelector('[data-aifill]')?.addEventListener('click',async()=>{
+    if(!S.user?.isPaid){showPaywall();return}
     const course=document.getElementById('dc')?.value.trim()
     const holes=parseInt(document.getElementById('dh')?.value)||18
     if(!course){toast('Enter a course name first','error');return}
@@ -1251,6 +1299,14 @@ function bind(){
     const d=S.draft
     ;[['na','nassau','amount'],['sa','skins','amount'],['ma','matchPlay','amount'],['wa','wolf','pointValue']].forEach(([id,gk,fk])=>{const el=document.getElementById(id);if(el){const v=parseFloat(el.value);if(!isNaN(v)&&v>0)d.games[gk][fk]=v}})
     if(!Object.values(d.games).some(g=>g.enabled)){toast('Enable at least one game','error');return}
+    // Paywall: free users get 1 round per week
+    if(!S.user?.isPaid){
+      const wk=getWeekKey(),same=S.user?.weekKey===wk,count=same?(S.user?.weekRounds||0):0
+      if(count>=1){showPaywall();return}
+      const newCount=count+1
+      fdb.collection('users').doc(S.user.uid).set({weekRounds:newCount,weekKey:wk},{merge:true})
+      S.user.weekRounds=newCount;S.user.weekKey=wk
+    }
     const round=mkRound(d)
     round.code=genCode()
     round.hostId=S.user?.uid||''
@@ -1417,8 +1473,16 @@ function bind(){
 // ── AUTH STATE ────────────────────────────────────────
 auth.onAuthStateChanged(async user=>{
   if(user){
-    S.user={uid:user.uid,email:user.email,displayName:user.displayName||user.email.split('@')[0]}
+    S.user={uid:user.uid,email:user.email,displayName:user.displayName||user.email.split('@')[0],isPaid:false,weekRounds:0,weekKey:''}
+    // Load paid status + weekly round count from Firestore
+    try{
+      const doc=await fdb.collection('users').doc(user.uid).get()
+      if(doc.exists){const d=doc.data();S.user.isPaid=d.isPaid||false;S.user.weekRounds=d.weekRounds||0;S.user.weekKey=d.weekKey||''}
+    }catch(e){console.warn('Could not load user doc:',e)}
     if(S.sc==='auth')nav('home')
+    // Check if returning from Stripe payment
+    const params=new URLSearchParams(location.search)
+    if(params.get('payment')==='success'){const sid=params.get('session_id');if(sid)verifyPayment(sid)}
   }else{
     if(unsubRound){unsubRound();unsubRound=null}
     S.user=null;S.round=null;S.historyRounds=null
