@@ -1,0 +1,1492 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Wager">
+<meta name="theme-color" content="#1a5c38">
+<title>Wager</title>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --green:#1a5c38;--green2:#2d8a5e;--green-pale:#e8f5ee;
+  --gold:#c9a227;--gold-pale:#fff8e1;
+  --red:#c0392b;--red-pale:#fee8e8;
+  --text:#1a1a1a;--muted:#666;--border:#e0e0e0;
+  --bg:#f0f4f0;--card:#fff;
+  --r:12px;--shadow:0 2px 10px rgba(0,0,0,.08);
+}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;max-width:600px;margin:0 auto;overscroll-behavior:none;-webkit-tap-highlight-color:transparent}
+.hdr{background:var(--green);color:#fff;padding:14px 16px;display:flex;align-items:center;gap:10px;position:sticky;top:0;z-index:200;box-shadow:0 2px 8px rgba(0,0,0,.2)}
+.hdr-back{background:none;border:none;color:#fff;font-size:24px;cursor:pointer;padding:0 6px;line-height:1;font-weight:300}
+.hdr-title{font-size:19px;font-weight:700;flex:1}
+.hdr-action{background:rgba(255,255,255,.15);border:none;color:#fff;font-size:13px;font-weight:600;padding:6px 12px;border-radius:20px;cursor:pointer}
+.bot-nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:600px;background:#fff;border-top:1px solid var(--border);display:flex;z-index:200}
+.nav-btn{flex:1;display:flex;flex-direction:column;align-items:center;padding:8px 4px 10px;background:none;border:none;cursor:pointer;font-size:10px;color:var(--muted);gap:2px}
+.nav-btn .ni{font-size:22px;line-height:1}
+.nav-btn.active{color:var(--green);font-weight:600}
+#C{padding:14px 14px 90px}
+.card{background:var(--card);border-radius:var(--r);box-shadow:var(--shadow);padding:16px;margin-bottom:12px}
+.card-title{font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;margin-bottom:12px}
+.btn{display:flex;align-items:center;justify-content:center;gap:8px;padding:13px 20px;border-radius:10px;border:none;font-size:16px;font-weight:600;cursor:pointer;width:100%;touch-action:manipulation}
+.btn:active{opacity:.75}
+.btn-primary{background:var(--green);color:#fff}
+.btn-secondary{background:var(--green-pale);color:var(--green)}
+.btn-gold{background:var(--gold);color:#fff}
+.btn-danger{background:var(--red-pale);color:var(--red)}
+.btn-outline{background:#fff;color:var(--text);border:1px solid var(--border)}
+.btn-sm{padding:8px 14px;font-size:14px;width:auto;border-radius:8px}
+.btn-xs{padding:5px 10px;font-size:12px;width:auto;border-radius:6px}
+.btn-row{display:flex;gap:8px}
+.btn-row .btn{flex:1}
+.fg{margin-bottom:14px}
+.flabel{display:block;font-size:14px;font-weight:600;margin-bottom:5px}
+.finput{width:100%;padding:12px;border:1.5px solid var(--border);border-radius:8px;font-size:16px;background:#fff;-webkit-appearance:none}
+.finput:focus{outline:none;border-color:var(--green)}
+.finput-sm{padding:8px 10px;font-size:14px}
+.tog-row{display:flex;align-items:center;justify-content:space-between;padding:11px 0;border-bottom:1px solid var(--border)}
+.tog-row:last-child{border-bottom:none}
+.tname{font-size:15px;font-weight:600}
+.tsub{font-size:12px;color:var(--muted);margin-top:1px}
+.tog{position:relative;width:46px;height:26px;flex-shrink:0}
+.tog input{opacity:0;width:0;height:0;position:absolute}
+.tog-sl{position:absolute;inset:0;background:#ccc;border-radius:26px;cursor:pointer;transition:.25s}
+.tog-sl::before{content:'';position:absolute;width:20px;height:20px;left:3px;top:3px;background:#fff;border-radius:50%;transition:.25s}
+.tog input:checked+.tog-sl{background:var(--green)}
+.tog input:checked+.tog-sl::before{transform:translateX(20px)}
+.pchip{display:inline-flex;align-items:center;padding:6px 12px;background:var(--green-pale);border:1.5px solid var(--green);border-radius:20px;font-size:14px;font-weight:600;color:var(--green);cursor:pointer;user-select:none}
+.pchip.on{background:var(--green);color:#fff}
+.pchips{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}
+.list-item{display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--border)}
+.list-item:last-child{border-bottom:none}
+.li-main{font-size:15px;font-weight:600}
+.li-sub{font-size:12px;color:var(--muted);margin-top:2px}
+
+/* Scorecard */
+.sc-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;border-radius:var(--r);box-shadow:var(--shadow)}
+.sc-table{width:100%;border-collapse:collapse;background:#fff;font-size:13px}
+.sc-table th{background:var(--green);color:#fff;padding:9px 4px;text-align:center;font-weight:700;white-space:nowrap}
+.sc-table th:first-child{text-align:left;padding-left:10px;min-width:52px}
+.sc-table td{padding:2px 2px;text-align:center;border-bottom:1px solid var(--border)}
+.sc-table td:first-child{text-align:left;padding-left:10px;font-weight:600;color:var(--muted);font-size:12px;white-space:nowrap}
+.sc-table tr.nine-row td{background:#f5f5f5;font-weight:700;font-size:12px;color:var(--muted)}
+.sc-table tr.tot-row td{background:var(--green-pale);font-weight:800;font-size:14px}
+.sc-table tr.bet-row td{background:var(--gold-pale);padding:0}
+
+/* Score stepper */
+.stepper{display:flex;align-items:center;justify-content:center;gap:1px}
+.step-btn{width:28px;height:28px;border-radius:50%;border:1.5px solid var(--border);background:#fff;font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--text);flex-shrink:0;line-height:1;font-weight:300;touch-action:manipulation;user-select:none}
+.step-btn:active{background:var(--green-pale)}
+.step-val{width:28px;text-align:center;font-size:14px;font-weight:700;color:var(--text)}
+.step-val.eagle{color:var(--green);text-decoration:underline double}
+.step-val.birdie{color:var(--green2)}
+.step-val.bogey{color:var(--gold)}
+.step-val.dbogey{color:var(--red)}
+.step-val.skinw{color:var(--gold) !important;font-style:italic}
+
+/* Hole bet button */
+.bet-dot{width:8px;height:8px;background:var(--gold);border-radius:50%;display:inline-block;margin-left:3px;vertical-align:middle}
+.hole-bet-btn{background:none;border:1.5px solid var(--border);border-radius:6px;padding:3px 6px;font-size:11px;cursor:pointer;color:var(--muted);white-space:nowrap;display:flex;align-items:center;gap:3px;margin:2px auto}
+.hole-bet-btn.has-bets{border-color:var(--gold);color:var(--gold);font-weight:700}
+
+/* Bet panel */
+.bet-panel-inner{padding:10px 12px;border-top:2px solid var(--gold)}
+.bet-panel-inner .bp-title{font-size:11px;font-weight:700;color:var(--gold);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px}
+.existing-bet{display:flex;align-items:center;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border);font-size:13px}
+.existing-bet:last-of-type{border-bottom:none}
+.bet-type-lbl{font-weight:700;color:var(--text)}
+.bet-winner-lbl{color:var(--green);font-weight:600}
+.bet-amt-lbl{color:var(--red);font-weight:700}
+.bet-note-lbl{font-size:11px;color:var(--muted)}
+.add-bet-form{background:#fff;border-radius:8px;padding:10px;margin-top:8px;display:grid;gap:6px}
+.add-bet-form select,.add-bet-form input{width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:7px;font-size:14px;background:#fff;-webkit-appearance:none}
+.add-bet-form select:focus,.add-bet-form input:focus{outline:none;border-color:var(--green)}
+.bet-form-row{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+
+/* Stats */
+.stat-row{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
+.stat-card{background:#fff;border-radius:10px;padding:12px 8px;text-align:center;box-shadow:var(--shadow)}
+.stat-val{font-size:22px;font-weight:800}
+.stat-lbl{font-size:10px;color:var(--muted);margin-top:2px;font-weight:600;text-transform:uppercase;letter-spacing:.4px}
+.mpos{color:var(--green);font-weight:700}
+.mneg{color:var(--red);font-weight:700}
+.mzro{color:var(--muted);font-weight:600}
+
+/* Results */
+.res-item{display:flex;align-items:center;justify-content:space-between;padding:11px 0;border-bottom:1px solid var(--border)}
+.res-item:last-child{border-bottom:none}
+.res-name{font-size:15px;font-weight:700}
+.res-amt{font-size:17px;font-weight:800}
+.settle-item{display:flex;align-items:center;gap:8px;padding:11px 0;border-bottom:1px solid var(--border)}
+.settle-item:last-child{border-bottom:none}
+.settle-from{font-weight:700;font-size:15px}
+.settle-to{font-weight:700;font-size:15px;color:var(--green)}
+.settle-amt{margin-left:auto;font-size:16px;font-weight:800;color:var(--red)}
+
+/* History */
+.hist-item{padding:12px 0;border-bottom:1px solid var(--border);cursor:pointer}
+.hist-item:last-child{border-bottom:none}
+.hist-date{font-size:12px;color:var(--muted)}
+.hist-course{font-size:16px;font-weight:700;margin:2px 0}
+.hist-tags{font-size:12px;color:var(--green);font-weight:600}
+.badge{display:inline-block;padding:2px 7px;border-radius:20px;font-size:11px;font-weight:700}
+.bg{background:var(--green-pale);color:var(--green)}
+.br{background:var(--red-pale);color:var(--red)}
+.bo{background:var(--gold-pale);color:var(--gold)}
+.bx{background:#f0f0f0;color:var(--muted)}
+
+/* Wolf */
+.wolf-row{padding:10px 0;border-bottom:1px solid var(--border)}
+.wolf-row:last-child{border-bottom:none}
+.wpicks{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.wp-btn{padding:7px 12px;border-radius:20px;border:1.5px solid var(--border);background:#fff;font-size:13px;font-weight:600;cursor:pointer}
+.wp-btn.on{background:var(--green);color:#fff;border-color:var(--green)}
+
+/* Hole-by-hole scorecard */
+.hh-hole-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:14px;padding-bottom:12px;border-bottom:1px solid var(--border)}
+.hh-hole-num{font-size:36px;font-weight:900;color:var(--green);line-height:1}
+.hh-hole-sub{font-size:13px;color:var(--muted);margin-top:2px}
+.hh-players{margin:0 0 4px}
+.hh-player{display:flex;align-items:center;justify-content:space-between;padding:14px 0;border-bottom:1px solid var(--border)}
+.hh-player:last-child{border-bottom:none}
+.hh-player-name{font-size:17px;font-weight:700;flex:1}
+.hh-stepper{gap:12px}
+.hh-stepper .step-btn{width:44px;height:44px;font-size:28px;border-radius:50%;border-width:2px}
+.hh-stepper .step-val{width:54px;font-size:34px;font-weight:900}
+
+/* Hole menu overlay */
+.hm-overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:400;display:flex;align-items:flex-end}
+.hm-sheet{background:#fff;border-radius:20px 20px 0 0;padding:20px 16px 36px;width:100%;max-width:600px;margin:0 auto;max-height:75vh;overflow-y:auto}
+.hm-sheet-title{font-size:18px;font-weight:800;text-align:center;margin-bottom:16px}
+.hm-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-bottom:4px}
+.hm-btn{background:#f5f5f5;border:2px solid var(--border);border-radius:10px;padding:10px 2px;cursor:pointer;text-align:center;position:relative}
+.hm-btn.hm-cur{border-color:var(--green);background:var(--green);color:#fff}
+.hm-btn.hm-done:not(.hm-cur){background:var(--green-pale);border-color:var(--green2)}
+.hm-num{font-size:17px;font-weight:800}
+.hm-par{font-size:10px;opacity:.7;margin-top:1px}
+.hm-betdot{position:absolute;top:1px;right:3px;font-size:9px}
+
+/* Install banner */
+.install-banner{background:var(--green);color:#fff;border-radius:var(--r);padding:14px 16px;margin-bottom:12px;display:flex;align-items:center;gap:12px}
+.install-banner .ib-icon{font-size:28px;flex-shrink:0}
+.install-banner .ib-text{flex:1;font-size:13px;line-height:1.4}
+.install-banner .ib-title{font-weight:700;font-size:15px;margin-bottom:2px}
+.install-banner .ib-close{background:none;border:none;color:rgba(255,255,255,.7);font-size:20px;cursor:pointer;padding:0;line-height:1;flex-shrink:0}
+
+/* Empty */
+.empty{text-align:center;padding:48px 20px;color:var(--muted)}
+.empty .ei{font-size:50px;margin-bottom:10px}
+.empty p{font-size:15px}
+
+/* Game sub-panel */
+.gsub{background:var(--green-pale);border-radius:8px;padding:12px;margin:6px 0 4px}
+.gsub .fg:last-child{margin-bottom:0}
+
+/* Hero / banner */
+.hero{background:linear-gradient(135deg,var(--green) 0%,var(--green2) 100%);border-radius:var(--r);padding:22px 18px;color:#fff;margin-bottom:12px;box-shadow:var(--shadow)}
+.hero h2{font-size:21px;font-weight:800;margin-bottom:3px}
+.hero p{font-size:13px;opacity:.8}
+.hero .btn{margin-top:14px;background:rgba(255,255,255,.2);color:#fff;border:1.5px solid rgba(255,255,255,.35)}
+.act-banner{background:var(--gold);border-radius:var(--r);padding:13px 15px;display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;box-shadow:var(--shadow)}
+.act-lbl{font-size:11px;font-weight:600;color:rgba(255,255,255,.8)}
+.act-title{font-size:15px;font-weight:800;color:#fff}
+.act-banner .btn{background:#fff;color:var(--gold);width:auto;padding:8px 14px;font-size:14px;flex-shrink:0}
+
+/* Breakdown table */
+.bk-table{width:100%;border-collapse:collapse;font-size:13px}
+.bk-table th{background:#f5f5f5;padding:7px 8px;text-align:left;font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:var(--muted)}
+.bk-table th:not(:first-child){text-align:right}
+.bk-table td{padding:7px 8px;border-bottom:1px solid var(--border)}
+.bk-table td:not(:first-child){text-align:right;font-weight:600}
+.bk-table tr:last-child td{border-bottom:none}
+.sc-par{font-size:10px;color:var(--muted);display:block;font-weight:400}
+.par-btn{background:none;border:1.5px solid var(--border);border-radius:5px;font-size:12px;font-weight:700;color:var(--muted);padding:3px 6px;cursor:pointer;min-width:28px}
+.par-cell{border:1.5px solid var(--border);border-radius:7px;padding:5px 2px;cursor:pointer;text-align:center;width:100%;line-height:1.2}
+.hs{font-size:12px;font-weight:700;padding:3px 7px;border-radius:5px;display:inline-block}
+.hs-up{background:var(--green-pale);color:var(--green)}
+.hs-dn{background:var(--red-pale);color:var(--red)}
+.hs-ev{background:#f0f0f0;color:var(--muted)}
+.irow{display:flex;align-items:center;gap:8px}
+.irow .finput{flex:1}
+
+/* Auth screen */
+.auth-wrap{min-height:100vh;display:flex;flex-direction:column;justify-content:center;padding:24px 20px 40px;max-width:400px;margin:0 auto}
+.auth-logo{text-align:center;font-size:52px;margin-bottom:6px}
+.auth-appname{text-align:center;font-size:30px;font-weight:900;color:var(--green);margin-bottom:4px}
+.auth-sub{text-align:center;font-size:14px;color:var(--muted);margin-bottom:28px}
+.auth-switch{text-align:center;font-size:14px;color:var(--muted);margin-top:16px}
+.auth-switch button{background:none;border:none;color:var(--green);font-weight:700;font-size:14px;cursor:pointer;padding:0;text-decoration:underline}
+
+/* Session code */
+.session-code-bar{background:var(--green);color:#fff;border-radius:var(--r);padding:14px 18px;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between}
+.scb-left .scb-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;opacity:.75;margin-bottom:2px}
+.scb-left .scb-code{font-size:28px;font-weight:900;letter-spacing:5px;font-family:monospace}
+.scb-share{background:rgba(255,255,255,.2);border:1.5px solid rgba(255,255,255,.4);color:#fff;border-radius:8px;padding:8px 14px;font-size:13px;font-weight:700;cursor:pointer}
+
+/* User badge */
+.user-badge{display:flex;align-items:center;gap:8px;padding:10px 14px;background:#fff;border-radius:var(--r);box-shadow:var(--shadow);margin-bottom:12px}
+.user-avatar{width:34px;height:34px;border-radius:50%;background:var(--green);color:#fff;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:800;flex-shrink:0}
+.user-name{font-size:14px;font-weight:700;flex:1}
+.user-email{font-size:11px;color:var(--muted)}
+.signout-btn{background:none;border:1.5px solid var(--border);border-radius:6px;padding:5px 10px;font-size:12px;font-weight:600;color:var(--muted);cursor:pointer}
+
+/* Toast notifications */
+.toast{position:fixed;bottom:90px;left:50%;transform:translateX(-50%) translateY(12px);background:#222;color:#fff;padding:12px 20px;border-radius:12px;font-size:14px;font-weight:600;z-index:700;opacity:0;transition:opacity .22s,transform .22s;white-space:nowrap;max-width:calc(100% - 32px);text-align:center;box-shadow:0 6px 24px rgba(0,0,0,.22);pointer-events:none}
+.toast.toast-show{opacity:1;transform:translateX(-50%) translateY(0)}
+.toast.toast-error{background:var(--red)}
+.toast.toast-success{background:var(--green)}
+.toast.toast-warning{background:var(--gold)}
+
+/* Confirm dialog */
+.dlg-overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:600;display:flex;align-items:center;justify-content:center;padding:24px;opacity:0;transition:opacity .18s}
+.dlg-overlay.dlg-show{opacity:1}
+.dlg-box{background:#fff;border-radius:18px;padding:24px 20px 18px;width:100%;max-width:310px;transform:scale(.94) translateY(10px);transition:transform .2s}
+.dlg-overlay.dlg-show .dlg-box{transform:scale(1) translateY(0)}
+.dlg-title{font-size:17px;font-weight:800;margin-bottom:6px;color:var(--text)}
+.dlg-msg{font-size:15px;color:var(--muted);margin-bottom:22px;line-height:1.45}
+.dlg-btns{display:flex;gap:10px}
+.dlg-btns .btn{flex:1;padding:12px}
+</style>
+</head>
+<body>
+<div id="H"></div>
+<div id="C"></div>
+<nav class="bot-nav" id="N"></nav>
+<div id="OL"></div>
+<script>
+// ── DATA ──────────────────────────────────────────────
+const KEY='golfbets_v3'
+function db(){try{const r=localStorage.getItem(KEY);const d=r?JSON.parse(r):{};if(!d.players)d.players=[];if(!d.rounds)d.rounds=[];if(!d.courses)d.courses=[];if(!d.groups)d.groups=[];return d}catch(e){return{players:[],rounds:[],courses:[],groups:[]}}}
+function save(d){localStorage.setItem(KEY,JSON.stringify(d))}
+function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,5)}
+function $$(n){if(n==null||isNaN(n))return'$0';const a=Math.abs(n);const s=a%1===0?a.toFixed(0):a.toFixed(2);return(n<0?'-':'')+'$'+s}
+function pname(pid){
+  // Check round players first (for Firestore rounds where player may not be in local roster)
+  const rp=S.round?.players?.find(x=>x.id===pid)
+  if(rp)return rp.name
+  const p=db().players.find(x=>x.id===pid);return p?p.name:'?'
+}
+
+// ── FIREBASE ──────────────────────────────────────────
+const firebaseConfig={
+  apiKey:'AIzaSyD89oNZPjRZra4FYdI7WdZAHsB1ywN4LOw',
+  authDomain:'wager-c7670.firebaseapp.com',
+  projectId:'wager-c7670',
+  storageBucket:'wager-c7670.firebasestorage.app',
+  messagingSenderId:'395917940024',
+  appId:'1:395917940024:web:394edaa9e7dbda87a7ddcd'
+}
+firebase.initializeApp(firebaseConfig)
+const auth=firebase.auth()
+const fdb=firebase.firestore()
+
+function genCode(){
+  const c='ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
+  return Array.from({length:5},()=>c[Math.floor(Math.random()*c.length)]).join('')
+}
+
+let unsubRound=null
+function subscribeRound(rid){
+  if(unsubRound){unsubRound();unsubRound=null}
+  unsubRound=fdb.collection('rounds').doc(rid).onSnapshot(snap=>{
+    if(snap.exists){
+      const data=snap.data()
+      // Only update if it's newer than our optimistic state to avoid flicker
+      S.round=data
+      if(S.sc==='scorecard'||S.sc==='wolf'||S.sc==='results')ren()
+    }
+  })
+}
+
+async function joinRound(code){
+  try{
+    const snap=await fdb.collection('rounds').where('code','==',code.toUpperCase()).where('completed','==',false).limit(1).get()
+    if(snap.empty){toast('Round not found — check the code','error');return}
+    const doc=snap.docs[0],rid=doc.id
+    await doc.ref.update({joinedUsers:firebase.firestore.FieldValue.arrayUnion(S.user.uid)})
+    S.round=doc.data()
+    subscribeRound(rid)
+    go('scorecard',{rid,hole:0,holeMenu:false})
+  }catch(e){toast('Could not join round','error')}
+}
+
+async function loadHistory(){
+  if(!S.user)return
+  try{
+    const snap=await fdb.collection('rounds').where('joinedUsers','array-contains',S.user.uid).get()
+    S.historyRounds=snap.docs.map(d=>d.data()).filter(r=>r.completed).sort((a,b)=>(b.createdAt?.seconds||0)-(a.createdAt?.seconds||0))
+  }catch(e){
+    // fall back to localStorage rounds
+    S.historyRounds=db().rounds.filter(r=>r.completed).slice().reverse()
+  }
+  ren()
+}
+
+function dt(iso){
+  const d=iso?.toDate?iso.toDate():new Date(iso)
+  return d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})
+}
+
+function toast(msg,type='info'){
+  const el=document.createElement('div')
+  el.className=`toast toast-${type}`
+  el.textContent=msg
+  document.body.appendChild(el)
+  requestAnimationFrame(()=>requestAnimationFrame(()=>el.classList.add('toast-show')))
+  setTimeout(()=>{el.classList.remove('toast-show');setTimeout(()=>el.remove(),300)},3000)
+}
+
+function dialog(msg,onConfirm,opts={}){
+  const el=document.createElement('div')
+  el.className='dlg-overlay'
+  el.innerHTML=`<div class="dlg-box">${opts.title?`<div class="dlg-title">${opts.title}</div>`:''}<div class="dlg-msg">${msg}</div><div class="dlg-btns"><button class="btn btn-outline" id="dlg-cancel">Cancel</button><button class="btn ${opts.dangerous?'btn-danger':'btn-primary'}" id="dlg-ok">${opts.confirmText||'OK'}</button></div></div>`
+  document.body.appendChild(el)
+  requestAnimationFrame(()=>requestAnimationFrame(()=>el.classList.add('dlg-show')))
+  const close=()=>{el.classList.remove('dlg-show');setTimeout(()=>el.remove(),200)}
+  el.querySelector('#dlg-cancel').onclick=close
+  el.querySelector('#dlg-ok').onclick=()=>{close();onConfirm()}
+  el.addEventListener('click',e=>{if(e.target===el)close()})
+}
+
+const BET_TYPES=[
+  {val:'ctp',  lbl:'📍 Closest to Pin'},
+  {val:'putt', lbl:'🕳️ Long Putt'},
+  {val:'drive',lbl:'💨 Longest Drive'},
+  {val:'sandy',lbl:'🏖️ Sandy (par from bunker)'},
+  {val:'greenie',lbl:'🟢 Greenie (par 3 CTP + par)'},
+  {val:'custom',lbl:'✏️ Custom Bet'},
+]
+function betLabel(val){return BET_TYPES.find(t=>t.val===val)?.lbl||val}
+
+// ── STATE ─────────────────────────────────────────────
+let S={sc:'auth',user:null,rid:null,round:null,draft:null,step:1,betHole:null,aiLoading:false,editGroup:null,hole:0,holeMenu:false,authMode:'signin',joinCode:'',historyRounds:null}
+function go(sc,x){S={...S,sc,...(x||{})};ren();scrollTo(0,0)}
+function nav(sc){
+  if(sc==='history')S.historyRounds=null
+  S={...S,sc,rid:null,round:null,draft:null,step:1,betHole:null,hole:0,holeMenu:false}
+  ren();scrollTo(0,0)
+}
+
+// ── GAME MATH ─────────────────────────────────────────
+function nassau(round){
+  const c=round.games.nassau;if(!c||!c.enabled)return{}
+  const{players:pl,scores:sc}=round,amt=c.amount,pay={}
+  pl.forEach(p=>pay[p.id]=0)
+  function st(pid,s,e){return(sc[pid]||[]).slice(s,e).reduce((a,b)=>a+(b||0),0)}
+  function seg(s,e,a){
+    const segs=pl.map(p=>({id:p.id,v:st(p.id,s,e)})).filter(p=>p.v>0)
+    if(segs.length<2)return
+    const mn=Math.min(...segs.map(x=>x.v))
+    const win=segs.filter(x=>x.v===mn),los=segs.filter(x=>x.v>mn)
+    if(!los.length)return
+    const pot=los.length*a
+    win.forEach(w=>pay[w.id]+=pot/win.length)
+    los.forEach(l=>pay[l.id]-=a)
+    if(c.autoPress){
+      const mid=Math.floor((s+e)/2)
+      const ms=pl.map(p=>({id:p.id,v:st(p.id,s,mid)})).filter(p=>p.v>0)
+      if(ms.length<2)return
+      const mm=Math.min(...ms.map(x=>x.v))
+      if(ms.some(x=>x.v-mm>=2)){
+        const ps=pl.map(p=>({id:p.id,v:st(p.id,mid,e)})).filter(p=>p.v>0)
+        if(ps.length<2)return
+        const pm=Math.min(...ps.map(x=>x.v))
+        const pw=ps.filter(x=>x.v===pm),pl2=ps.filter(x=>x.v>pm)
+        if(!pl2.length)return
+        const pp=pl2.length*a
+        pw.forEach(w=>pay[w.id]+=pp/pw.length)
+        pl2.forEach(l=>pay[l.id]-=a)
+      }
+    }
+  }
+  seg(0,9,amt);seg(9,18,amt);seg(0,18,amt)
+  return pay
+}
+
+function skins(round){
+  const c=round.games.skins;if(!c||!c.enabled)return{payouts:{},won:{},carry:0}
+  const{players:pl,scores:sc}=round,amt=c.amount,holes=round.holes||18
+  const pay={},won={};pl.forEach(p=>{pay[p.id]=0;won[p.id]=0})
+  let carry=0
+  for(let h=0;h<holes;h++){
+    const hs=pl.map(p=>({id:p.id,s:(sc[p.id]||[])[h]})).filter(x=>x.s>0)
+    if(hs.length<2){if(c.carryTies)carry++;continue}
+    const mn=Math.min(...hs.map(x=>x.s)),win=hs.filter(x=>x.s===mn)
+    if(win.length===1){won[win[0].id]+=(1+carry);carry=0}
+    else if(c.carryTies)carry++
+  }
+  const tot=Object.values(won).reduce((a,b)=>a+b,0)
+  if(tot===0)return{payouts:pay,won,carry}
+  pl.forEach(p=>{const w=won[p.id],l=tot-w;pay[p.id]=w*(pl.length-1)*amt-l*amt})
+  return{payouts:pay,won,carry}
+}
+
+function matchplay(round){
+  const c=round.games.matchPlay;if(!c||!c.enabled)return{}
+  const{players:pl,scores:sc}=round,amt=c.amount,holes=round.holes||18
+  const pay={};pl.forEach(p=>pay[p.id]=0)
+  function match(ga,gb,ia,ib){
+    let st=0,win=null
+    for(let h=0;h<holes;h++){
+      const a=ga(h),b=gb(h);if(!a||!b)continue
+      if(a<b)st++;else if(b<a)st--
+      const rem=holes-1-h
+      if(st>rem){win=ia;break}if(-st>rem){win=ib;break}
+    }
+    if(!win){if(st>0)win=ia;else if(st<0)win=ib}
+    return win
+  }
+  if(pl.length===2){
+    const[p1,p2]=pl
+    const w=match(h=>(sc[p1.id]||[])[h],h=>(sc[p2.id]||[])[h],p1.id,p2.id)
+    if(w){pay[w]+=amt;pl.forEach(p=>{if(p.id!==w)pay[p.id]-=amt})}
+  }else if(pl.length===4&&c.teams&&c.teams.length===2){
+    const[t1,t2]=c.teams
+    const w=match(
+      h=>Math.min(...t1.map(id=>(sc[id]||[])[h]||99)),
+      h=>Math.min(...t2.map(id=>(sc[id]||[])[h]||99)),
+      't1','t2'
+    )
+    if(w==='t1'){t1.forEach(id=>pay[id]+=amt);t2.forEach(id=>pay[id]-=amt)}
+    else if(w==='t2'){t2.forEach(id=>pay[id]+=amt);t1.forEach(id=>pay[id]-=amt)}
+  }
+  return pay
+}
+
+function wolf(round){
+  const c=round.games.wolf;if(!c||!c.enabled)return{}
+  const{players:pl,scores:sc}=round,pv=c.pointValue,dec=round.wolfDecisions||{},holes=round.holes||18
+  const pts={};pl.forEach(p=>pts[p.id]=0)
+  for(let h=0;h<holes;h++){
+    const wi=h%pl.length,wid=pl[wi].id,d=dec[h+1]||{},pi=d.partnerIdx
+    const hs={};pl.forEach(p=>{const s=(sc[p.id]||[])[h];if(s>0)hs[p.id]=s})
+    if(Object.keys(hs).length<pl.length)continue
+    if(pi===-1||pi===undefined||pi===null){
+      const ws=hs[wid],oth=pl.filter(p=>p.id!==wid),om=Math.min(...oth.map(p=>hs[p.id]||99)),n=oth.length
+      if(ws<om){pts[wid]+=2*n;oth.forEach(p=>pts[p.id]-=2)}
+      else if(ws>om){pts[wid]-=2*n;oth.forEach(p=>pts[p.id]+=2)}
+    }else{
+      const pid2=pl[pi]?.id;if(!pid2)continue
+      const wt=[wid,pid2],ot=pl.filter(p=>!wt.includes(p.id)).map(p=>p.id)
+      const wb=Math.min(...wt.map(id=>hs[id]||99)),ob=Math.min(...ot.map(id=>hs[id]||99))
+      if(wb<ob){wt.forEach(id=>pts[id]+=ot.length);ot.forEach(id=>pts[id]-=wt.length)}
+      else if(ob<wb){ot.forEach(id=>pts[id]+=wt.length);wt.forEach(id=>pts[id]-=ot.length)}
+    }
+  }
+  const pay={};pl.forEach(p=>pay[p.id]=pts[p.id]*pv)
+  return pay
+}
+
+// Side bets: winner collects wager from each other player
+function calcSideBets(round){
+  const bets=round.sideBets||{}
+  const pl=round.players
+  const pay={};pl.forEach(p=>pay[p.id]=0)
+  const summary=[]
+  Object.entries(bets).forEach(([hole,hbets])=>{
+    hbets.forEach(b=>{
+      if(!b.winner||!b.wager)return
+      const wager=parseFloat(b.wager)||0
+      const others=pl.filter(p=>p.id!==b.winner)
+      pay[b.winner]+= wager*others.length
+      others.forEach(p=>pay[p.id]-=wager)
+      summary.push({hole:parseInt(hole),type:b.type,winner:b.winner,wager,note:b.note||''})
+    })
+  })
+  return{payouts:pay,summary}
+}
+
+function calcAll(round){
+  const n=nassau(round)
+  const sr=skins(round),sp=sr.payouts||{}
+  const mp=matchplay(round)
+  const wf=wolf(round)
+  const sb=calcSideBets(round)
+  const tot={}
+  round.players.forEach(p=>{
+    tot[p.id]=(n[p.id]||0)+(sp[p.id]||0)+(mp[p.id]||0)+(wf[p.id]||0)+(sb.payouts[p.id]||0)
+  })
+  return{tot,nassau:n,skins:sr,matchPlay:mp,wolf:wf,sideBets:sb}
+}
+
+function settle(players,net){
+  const cr=[],de=[]
+  players.forEach(p=>{const v=net[p.id]||0;if(v>0.01)cr.push({id:p.id,a:v});else if(v<-0.01)de.push({id:p.id,a:-v})})
+  cr.sort((a,b)=>b.a-a.a);de.sort((a,b)=>b.a-a.a)
+  const tx=[];let i=0,j=0
+  while(i<cr.length&&j<de.length){
+    const c=cr[i],d=de[j],s=Math.min(c.a,d.a)
+    if(s>0.01)tx.push({from:d.id,to:c.id,amount:Math.round(s*100)/100})
+    c.a-=s;d.a-=s;if(c.a<0.01)i++;if(d.a<0.01)j++
+  }
+  return tx
+}
+
+function mpStatus(round){
+  if(!round.games.matchPlay?.enabled||round.players.length!==2)return null
+  const[p1,p2]=round.players,sc=round.scores,holes=round.holes||18;let st=0
+  for(let h=0;h<holes;h++){const a=(sc[p1.id]||[])[h],b=(sc[p2.id]||[])[h];if(!a||!b)continue;if(a<b)st++;else if(b<a)st--}
+  return st
+}
+
+function scCls(s,p){if(!s||!p)return '';const d=s-p;if(d<=-2)return 'eagle';if(d===-1)return 'birdie';if(d===1)return 'bogey';if(d>=2)return 'dbogey';return ''}
+
+// ── DRAFT ─────────────────────────────────────────────
+function newDraft(){return{course:'',playerIds:[],holes:18,games:{nassau:{enabled:false,amount:5,autoPress:false},skins:{enabled:false,amount:1,carryTies:true},matchPlay:{enabled:false,amount:10,teams:[]},wolf:{enabled:false,pointValue:1}},pars:Array(18).fill(4)}}
+
+function mkRound(d){
+  const D=db(),pl=d.playerIds.map(id=>D.players.find(p=>p.id===id)).filter(Boolean),sc={}
+  pl.forEach(p=>sc[p.id]=Array(18).fill(null))
+  return{id:uid(),date:new Date().toISOString(),course:d.course||'Round',players:pl.map(p=>({id:p.id,name:p.name,handicap:p.handicap||0})),games:JSON.parse(JSON.stringify(d.games)),pars:d.pars,holes:d.holes||18,scores:sc,wolfDecisions:{},sideBets:{},completed:false,payouts:{}}
+}
+
+// ── AI COURSE FILL ────────────────────────────────────
+async function fillPars(course, holes){
+  const key=localStorage.getItem('golf_apikey')
+  if(!key)throw new Error('No API key')
+  const resp=await fetch('https://api.anthropic.com/v1/messages',{
+    method:'POST',
+    headers:{
+      'x-api-key':key,
+      'anthropic-version':'2023-06-01',
+      'content-type':'application/json',
+      'anthropic-dangerous-direct-browser-access':'true'
+    },
+    body:JSON.stringify({
+      model:'claude-sonnet-4-6',
+      max_tokens:120,
+      messages:[{
+        role:'user',
+        content:`What is the par for each hole at ${course}? Return ONLY a JSON array of ${holes} integers (each 3, 4, or 5). If you don't know the exact course layout, give a realistic estimate for a typical ${holes}-hole course. No explanation, just the array.`
+      }]
+    })
+  })
+  if(!resp.ok){const e=await resp.json();throw new Error(e.error?.message||resp.statusText)}
+  const data=await resp.json()
+  const text=data.content?.[0]?.text||''
+  const match=text.match(/\[[\d,\s]+\]/)
+  if(!match)throw new Error('Could not parse response')
+  const pars=JSON.parse(match[0])
+  if(!Array.isArray(pars)||pars.length<holes)throw new Error('Wrong number of holes returned')
+  return pars.slice(0,holes).map(p=>Math.min(5,Math.max(3,parseInt(p)||4)))
+}
+
+// ── RENDER ────────────────────────────────────────────
+function ren(){
+  document.getElementById('H').innerHTML=hdr()
+  document.getElementById('C').innerHTML=scr()
+  document.getElementById('N').innerHTML=nav_bar()
+  const ol=document.getElementById('OL')
+  if(ol)ol.innerHTML=S.holeMenu&&S.sc==='scorecard'?pg_hole_menu():''
+  bind()
+}
+
+function nav_bar(){
+  if(['auth','join'].includes(S.sc))return''
+  const tabs=[{id:'home',i:'⛳',l:'Home'},{id:'history',i:'📋',l:'History'},{id:'ledger',i:'💰',l:'Ledger'},{id:'players',i:'👤',l:'Players'}]
+  const main=['home','history','ledger','players']
+  const act=main.includes(S.sc)?S.sc:'home'
+  return tabs.map(t=>`<button class="nav-btn ${act===t.id?'active':''}" data-nav="${t.id}"><span class="ni">${t.i}</span>${t.l}</button>`).join('')
+}
+
+function hdr(){
+  if(S.sc==='auth')return''
+  if(S.sc==='scorecard'){
+    const round=S.round,holes=round?.holes||18,h=Math.min(S.hole||0,holes-1)
+    return`<div class="hdr"><button class="hdr-back" data-back="home">&#8249;</button><span class="hdr-title">Hole ${h+1} / ${holes}</span><button class="hdr-action" style="margin-right:4px" data-open-hole-menu>&#9776; Holes</button><button class="hdr-action" data-finish>Finish</button></div>`
+  }
+  const titles={join:'Join Round',home:'Wager',players:'👤 Players',setup:'🏌️ New Round',results:'🏆 Results',history:'📋 History',ledger:'💰 Ledger','round-detail':'📋 Round Detail',wolf:'🐺 Wolf'}
+  const back_map={join:'home',setup:'home',results:'home','round-detail':'history',wolf:'scorecard'}
+  const has_back=['join','setup','results','round-detail','wolf'].includes(S.sc)
+  return`<div class="hdr">${has_back?`<button class="hdr-back" data-back="${back_map[S.sc]||'home'}">&#8249;</button>`:''}<span class="hdr-title">${titles[S.sc]||'Wager'}</span></div>`
+}
+
+function scr(){
+  switch(S.sc){
+    case 'auth':return pg_auth()
+    case 'join':return pg_join()
+    case 'home':return pg_home()
+    case 'players':return pg_players()
+    case 'setup':return pg_setup()
+    case 'scorecard':return pg_scorecard()
+    case 'results':return pg_results()
+    case 'history':return pg_history()
+    case 'round-detail':return pg_rd()
+    case 'ledger':return pg_ledger()
+    case 'wolf':return pg_wolf()
+    default:return pg_home()
+  }
+}
+
+// ── AUTH ──────────────────────────────────────────────
+function pg_auth(){
+  const up=S.authMode==='signup'
+  return`<div class="auth-wrap">
+    <div class="auth-logo">⛳</div>
+    <div class="auth-appname">Wager</div>
+    <div class="auth-sub">Golf bets with your group</div>
+    <div class="card">
+      ${up?`<div class="fg"><label class="flabel">Your Name</label><input class="finput" id="auth-name" placeholder="e.g. Hayes" autocomplete="name"></div>`:''}
+      <div class="fg"><label class="flabel">Email</label><input class="finput" id="auth-email" type="email" placeholder="you@example.com" autocomplete="email"></div>
+      <div class="fg" style="margin-bottom:16px"><label class="flabel">Password</label><input class="finput" id="auth-pass" type="password" placeholder="Password" autocomplete="${up?'new-password':'current-password'}"></div>
+      <button class="btn btn-primary" data-auth-submit>${up?'Create Account':'Sign In'}</button>
+    </div>
+    <div class="auth-switch">${up?'Already have an account?':'New to Wager?'} <button data-auth-toggle>${up?'Sign in':'Create account'}</button></div>
+  </div>`
+}
+
+// ── JOIN ──────────────────────────────────────────────
+function pg_join(){
+  return`<div class="card" style="margin-top:8px">
+    <div class="card-title">Join a Round</div>
+    <p style="font-size:13px;color:var(--muted);margin-bottom:14px">Get the 5-letter code from whoever started the round</p>
+    <div class="fg">
+      <label class="flabel">Round Code</label>
+      <input class="finput" id="join-code" placeholder="e.g. GX7K2" maxlength="5"
+        style="text-transform:uppercase;letter-spacing:6px;font-size:26px;font-weight:900;text-align:center"
+        value="${S.joinCode||''}">
+    </div>
+    <button class="btn btn-primary" data-join-submit>Join Round &#8594;</button>
+  </div>`
+}
+
+// ── HOME ──────────────────────────────────────────────
+function pg_home(){
+  const D=db()
+  const act=S.round&&!S.round.completed?S.round:null
+  const done=S.historyRounds||D.rounds.filter(r=>r.completed)
+  const last=done[done.length-1]
+  const rec=done.slice(0,3)
+  const uname=S.user?.displayName||S.user?.email?.split('@')[0]||'Player'
+  const uinitial=uname[0].toUpperCase()
+  const userBadge=`<div class="user-badge"><div class="user-avatar">${uinitial}</div><div><div class="user-name">${uname}</div><div class="user-email">${S.user?.email||''}</div></div><button class="signout-btn" data-signout>Sign out</button></div>`
+  const banner=act?`<div class="act-banner"><div><div class="act-lbl">In progress</div><div class="act-title">${act.course}</div></div><button class="btn" data-gsc="${act.id}">Continue &#8594;</button></div>`:''
+  const rematch=last&&!act?`<button class="btn btn-gold" data-rematch style="margin-bottom:12px">🔁 Quick Rematch — ${last.course}</button>`:''
+  const recent=rec.length?`<div class="card"><div class="card-title">Recent Rounds</div>${rec.map(r=>`<div class="hist-item" data-rd="${r.id}"><div class="hist-date">${dt(r.date||r.createdAt)}</div><div class="hist-course">${r.course}</div><div class="hist-tags">${Object.entries(r.games).filter(([,v])=>v.enabled).map(([k])=>k[0].toUpperCase()+k.slice(1)).join(' · ')}</div></div>`).join('')}</div>`:''
+  const nop=!D.players.length?`<div class="card"><div class="empty"><div class="ei">👤</div><p>Add players to get started</p></div><button class="btn btn-secondary" data-nav="players">Add Players</button></div>`:''
+  const isIOS=/iphone|ipad|ipod/i.test(navigator.userAgent)
+  const isStandalone=window.navigator.standalone||window.matchMedia('(display-mode: standalone)').matches
+  const dismissed=localStorage.getItem('install_dismissed')
+  const installBanner=isIOS&&!isStandalone&&!dismissed?`<div class="install-banner"><div class="ib-icon">⛳</div><div class="ib-text"><div class="ib-title">Add Wager to Home Screen</div>Tap <strong>Share &#8593;</strong> then <strong>"Add to Home Screen"</strong> to install as an app</div><button class="ib-close" data-dismiss-install>&#10005;</button></div>`:''
+  return`${installBanner}${userBadge}${banner}
+  <div class="hero"><h2>Ready to play?</h2><p>${D.players.length} players registered</p>
+    <div class="btn-row" style="margin-top:14px">
+      <button class="btn" data-start>+ Start Round</button>
+      <button class="btn" style="background:rgba(255,255,255,.2);border:1.5px solid rgba(255,255,255,.35)" data-nav="join">Enter Code</button>
+    </div>
+  </div>
+  ${rematch}
+  <div class="stat-row">
+    <div class="stat-card"><div class="stat-val">${D.players.length}</div><div class="stat-lbl">Players</div></div>
+    <div class="stat-card"><div class="stat-val">${done.length}</div><div class="stat-lbl">Rounds</div></div>
+    <div class="stat-card"><div class="stat-val">${done.reduce((a,r)=>a+Object.values(r.games||{}).filter(g=>g.enabled).length,0)}</div><div class="stat-lbl">Games</div></div>
+  </div>${recent}${nop}`
+}
+
+// ── PLAYERS ───────────────────────────────────────────
+function pg_players(){
+  const D=db(),key=localStorage.getItem('golf_apikey')||''
+  const eg=S.editGroup  // null = not editing, 'new' = new group, id = editing existing
+
+  // group editor
+  let groupEditor=''
+  if(eg){
+    const grp=eg==='new'?{id:'new',name:'',playerIds:[]}:D.groups.find(g=>g.id===eg)||{id:eg,name:'',playerIds:[]}
+    groupEditor=`<div class="card" style="border:2px solid var(--green)"><div class="card-title">${eg==='new'?'Create Group':'Edit Group'}</div>
+      <div class="fg"><label class="flabel">Group Name</label><input class="finput" id="gn" placeholder="e.g. Friday Crew" value="${grp.name}"></div>
+      <div class="flabel" style="margin-bottom:6px">Players</div>
+      <div class="pchips" style="margin-bottom:12px">${D.players.map(p=>`<div class="pchip ${grp.playerIds.includes(p.id)?'on':''}" data-tgp="${p.id}">${p.name}</div>`).join('')}</div>
+      <div class="btn-row">
+        <button class="btn btn-outline" data-cancelg>Cancel</button>
+        <button class="btn btn-primary" data-saveg="${eg}">Save Group</button>
+      </div>
+    </div>`
+  }
+
+  const groupsList=D.groups.length?`<div class="card"><div class="card-title">Groups</div>
+    ${D.groups.map(g=>`<div class="list-item"><div>
+      <div class="li-main">${g.name}</div>
+      <div class="li-sub">${g.playerIds.map(id=>pname(id)).join(', ')||'No players'}</div>
+    </div><div style="display:flex;gap:6px">
+      <button class="btn-xs btn-secondary" data-editg="${g.id}">Edit</button>
+      <button class="btn-xs btn-danger" data-delg="${g.id}">&#10005;</button>
+    </div></div>`).join('')}
+    <button class="btn btn-secondary" data-newg style="margin-top:10px">+ New Group</button>
+  </div>`:`<div class="card"><div class="card-title">Groups</div>
+    <div style="font-size:13px;color:var(--muted);margin-bottom:10px">Save a group of players for quick round setup</div>
+    <button class="btn btn-secondary" data-newg>+ New Group</button>
+  </div>`
+
+  return`<div class="card"><div class="card-title">Player Roster</div>
+    ${!D.players.length?`<div class="empty"><div class="ei">👤</div><p>No players yet</p></div>`:''}
+    ${D.players.map(p=>`<div class="list-item"><div><div class="li-main">${p.name}</div><div class="li-sub">HCP ${p.handicap||0}</div></div><button class="btn-xs btn-danger" data-delp="${p.id}">Remove</button></div>`).join('')}
+  </div>
+  <div class="card"><div class="card-title">Add Player</div>
+    <div class="fg"><label class="flabel">Name</label><input class="finput" id="pn" placeholder="Player name"></div>
+    <div class="fg"><label class="flabel">Handicap</label><input class="finput" id="ph" type="number" min="0" max="54" placeholder="0"></div>
+    <button class="btn btn-primary" data-addp>Add Player</button>
+  </div>
+  ${groupEditor}
+  ${!eg?groupsList:''}
+  <div class="card"><div class="card-title">⚙️ Settings</div>
+    <div class="fg"><label class="flabel">Anthropic API Key <span style="font-weight:400;color:var(--muted)">(for AI course fill)</span></label>
+      <div class="irow">
+        <input class="finput" id="ak" type="password" placeholder="sk-ant-..." value="${key}" autocomplete="off">
+        <button class="btn-sm btn-secondary" data-savekey>Save</button>
+      </div>
+      <div style="font-size:11px;color:var(--muted);margin-top:5px">Stored locally on device only. Get a key at console.anthropic.com</div>
+    </div>
+    ${key?`<div style="font-size:13px;color:var(--green);font-weight:600">✓ API key saved</div>`:''}
+  </div>
+
+  <div class="card"><div class="card-title">📲 Add to Home Screen</div>
+    <div style="margin-bottom:14px">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+        <span style="font-size:22px">🍎</span>
+        <div>
+          <div style="font-size:14px;font-weight:700;margin-bottom:2px">iPhone (Safari only)</div>
+          <div style="font-size:12px;color:var(--muted);line-height:1.6">
+            1. Open Wager in <strong>Safari</strong> — not Chrome<br>
+            2. Tap the <strong>Share</strong> button (box with arrow ↑)<br>
+            3. Scroll down → tap <strong>"Add to Home Screen"</strong><br>
+            4. Tap <strong>Add</strong> — Wager appears on your home screen
+          </div>
+        </div>
+      </div>
+      <div style="border-top:1px solid var(--border);padding-top:12px;display:flex;align-items:center;gap:10px">
+        <span style="font-size:22px">🤖</span>
+        <div>
+          <div style="font-size:14px;font-weight:700;margin-bottom:2px">Android (Chrome)</div>
+          <div style="font-size:12px;color:var(--muted);line-height:1.6">
+            1. Open Wager in <strong>Chrome</strong><br>
+            2. Tap the <strong>3-dot menu</strong> (⋮) top right<br>
+            3. Tap <strong>"Add to Home screen"</strong><br>
+            4. Tap <strong>Add</strong> — Wager appears on your home screen
+          </div>
+        </div>
+      </div>
+    </div>
+    <div style="font-size:12px;color:var(--muted);background:var(--green-pale);border-radius:8px;padding:10px">
+      ⚡ Once added, Wager opens full screen like a real app — no browser bar
+    </div>
+  </div>
+
+  <div class="card" style="text-align:center;padding:18px 16px">
+    <div style="font-size:20px;margin-bottom:6px">⛳</div>
+    <div style="font-size:15px;font-weight:800;margin-bottom:2px">Wager</div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:10px">Golf betting with your group</div>
+    <a href="mailto:councilcomputing@gmail.com" style="font-size:13px;color:var(--green);font-weight:600;text-decoration:none">councilcomputing@gmail.com</a>
+    <div style="font-size:11px;color:var(--muted);margin-top:4px">Questions or feedback? Reach out anytime</div>
+  </div>`
+}
+
+// ── SETUP ─────────────────────────────────────────────
+function pg_setup(){
+  const d=S.draft||newDraft(),D=db()
+  if(S.step===1){
+    const hasKey=!!localStorage.getItem('golf_apikey')
+    const saved=D.courses||[]
+    // par grid — tap to cycle 3→4→5→3
+    const parGrid=Array.from({length:d.holes},(_,i)=>{
+      const p=d.pars[i]||4
+      return`<button class="par-cell" data-dp="${i}" style="background:${p===3?'var(--green-pale)':p===5?'var(--gold-pale)':'#f5f5f5'};color:${p===3?'var(--green2)':p===5?'var(--gold)':'var(--muted)'}">
+        <span style="font-size:9px;display:block">${i+1}</span>
+        <span style="font-size:15px;font-weight:800">${p}</span>
+      </button>`
+    }).join('')
+    const totalPar=d.pars.slice(0,d.holes).reduce((a,b)=>a+b,0)
+    const savedCourses=saved.length?`<div class="card"><div class="card-title">Saved Courses</div>
+      <div style="display:flex;flex-direction:column;gap:6px">
+        ${saved.map(c=>`<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border)">
+          <div>
+            <div style="font-weight:700;font-size:15px">${c.name}</div>
+            <div style="font-size:12px;color:var(--muted)">${c.holes} holes &middot; Par ${c.pars.reduce((a,b)=>a+b,0)}</div>
+          </div>
+          <div style="display:flex;gap:6px">
+            <button class="btn-sm btn-secondary" data-loadc="${c.id}">Load</button>
+            <button class="btn-xs btn-danger" data-delc="${c.id}">&#10005;</button>
+          </div>
+        </div>`).join('')}
+      </div>
+    </div>`:''
+    return`${savedCourses}<div class="card"><div class="card-title">Round Info</div>
+      <div class="fg"><label class="flabel">Course Name</label><input class="finput" id="dc" value="${d.course}" placeholder="e.g. Pebble Beach, Oak Tree"></div>
+      <div class="fg"><label class="flabel">Holes</label><select class="finput" id="dh">
+        <option value="9" ${d.holes===9?'selected':''}>9 Holes</option>
+        <option value="18" ${d.holes===18?'selected':''}>18 Holes</option>
+      </select></div>
+      <div style="display:flex;gap:8px;margin-bottom:4px">
+        ${hasKey?`<button class="btn btn-secondary" data-aifill ${S.aiLoading?'disabled':''} style="flex:1">${S.aiLoading?'⏳ Looking up…':'✨ AI Fill Pars'}</button>`:''}
+        <button class="btn btn-outline" data-savec style="flex:1">💾 Save Course</button>
+      </div>
+      ${!hasKey?`<div style="font-size:12px;color:var(--muted);margin-bottom:8px">Add an API key in Players → Settings to enable AI lookup.</div>`:''}
+    </div>
+    <div class="card"><div class="card-title" style="display:flex;align-items:center;justify-content:space-between">Par per Hole <span style="font-weight:800;color:var(--text)">Total: ${totalPar}</span></div>
+      <div style="display:grid;grid-template-columns:repeat(9,1fr);gap:4px">${parGrid}</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:8px;text-align:center">Tap any hole to cycle par 3 → 4 → 5</div>
+    </div>
+    <div class="card"><div class="card-title">Select Players</div>
+      ${D.groups?.length?`<div style="margin-bottom:10px"><div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:6px">LOAD FROM GROUP</div>
+        <div class="pchips">${D.groups.map(g=>`<div class="pchip" data-loadg="${g.id}" style="background:var(--gold-pale);border-color:var(--gold);color:#7a5c00">👥 ${g.name}</div>`).join('')}</div>
+      </div>`:``}
+      ${!D.players.length?`<div style="font-size:13px;color:var(--muted)">No players saved. <button class="btn-xs btn-secondary" data-nav="players">Add Players</button></div>`:''}
+      <div class="pchips">${D.players.map(p=>`<div class="pchip ${d.playerIds.includes(p.id)?'on':''}" data-tp="${p.id}">${p.name}</div>`).join('')}</div>
+      <div style="margin-top:8px;font-size:13px;color:var(--muted)">${d.playerIds.length} selected</div>
+    </div>
+    <button class="btn btn-primary" data-sn>Next: Choose Games &#8594;</button>`
+  }
+  const g=d.games,sp=D.players.filter(p=>d.playerIds.includes(p.id))
+  const t1=g.matchPlay.teams[0]||[],t2=g.matchPlay.teams[1]||[]
+  const nsub=g.nassau.enabled?`<div class="gsub">
+    <div class="fg"><label class="flabel">$ per segment (front/back/18)</label><input class="finput finput-sm" id="na" type="number" min="0" step="0.5" value="${g.nassau.amount}"></div>
+    <div class="tog-row" style="padding:6px 0;border:none"><div><div class="tname" style="font-size:14px">Auto-Press (2 strokes down at midpoint)</div></div>
+    <label class="tog"><input type="checkbox" id="np" ${g.nassau.autoPress?'checked':''}><span class="tog-sl"></span></label></div>
+  </div>`:''
+  const ssub=g.skins.enabled?`<div class="gsub">
+    <div class="fg"><label class="flabel">$ per skin</label><input class="finput finput-sm" id="sa" type="number" min="0" step="0.5" value="${g.skins.amount}"></div>
+    <div class="tog-row" style="padding:6px 0;border:none"><div><div class="tname" style="font-size:14px">Carry Ties</div></div>
+    <label class="tog"><input type="checkbox" id="sc2" ${g.skins.carryTies?'checked':''}><span class="tog-sl"></span></label></div>
+  </div>`:''
+  const mpsub=g.matchPlay.enabled?`<div class="gsub">
+    <div class="fg"><label class="flabel">$ per match</label><input class="finput finput-sm" id="ma" type="number" min="0" step="0.5" value="${g.matchPlay.amount}"></div>
+    ${sp.length===4?`<div style="margin-top:4px"><div class="flabel" style="font-size:13px;margin-bottom:6px">Team 1 (pick 2)</div>
+    <div class="pchips">${sp.map(p=>`<div class="pchip ${t1.includes(p.id)?'on':''}" data-mpt="${p.id}">${p.name}</div>`).join('')}</div>
+    <div style="font-size:12px;color:var(--muted);margin-top:6px">T1: ${t1.map(id=>pname(id)).join(' &amp; ')||'—'} &nbsp;|&nbsp; T2: ${t2.map(id=>pname(id)).join(' &amp; ')||'—'}</div></div>`:
+    `<div style="font-size:12px;color:var(--muted)">${sp.length===2?'Head-to-head match play':sp.length+' players selected'}</div>`}
+  </div>`:''
+  const wsub=g.wolf.enabled?`<div class="gsub">
+    <div class="fg"><label class="flabel">$ per point</label><input class="finput finput-sm" id="wa" type="number" min="0.25" step="0.25" value="${g.wolf.pointValue}"></div>
+    <div style="font-size:12px;color:var(--muted)">Regular: 1 pt each side &middot; Lone Wolf win: 2 pts each</div>
+  </div>`:''
+  return`<div class="card"><div class="card-title">Choose Games</div>
+    <div class="tog-row"><div><div class="tname">🏌️ Nassau</div><div class="tsub">Front 9 &middot; Back 9 &middot; Total 18</div></div>
+      <label class="tog"><input type="checkbox" id="tn" ${g.nassau.enabled?'checked':''}><span class="tog-sl"></span></label></div>${nsub}
+    <div class="tog-row"><div><div class="tname">💰 Skins</div><div class="tsub">Win holes outright to collect</div></div>
+      <label class="tog"><input type="checkbox" id="ts" ${g.skins.enabled?'checked':''}><span class="tog-sl"></span></label></div>${ssub}
+    <div class="tog-row"><div><div class="tname">🆚 Match Play</div><div class="tsub">${sp.length===4?'2v2 best ball':'Head-to-head hole by hole'}</div></div>
+      <label class="tog"><input type="checkbox" id="tm" ${g.matchPlay.enabled?'checked':''}><span class="tog-sl"></span></label></div>${mpsub}
+    <div class="tog-row"><div><div class="tname">🐺 Wolf</div><div class="tsub">Rotating captain picks partner each hole</div></div>
+      <label class="tog"><input type="checkbox" id="tw" ${g.wolf.enabled?'checked':''}><span class="tog-sl"></span></label></div>${wsub}
+  </div>
+  <div class="btn-row"><button class="btn btn-outline" data-sb>&#8592; Back</button><button class="btn btn-primary" data-sg>Start Round ⛳</button></div>`
+}
+
+// ── SCORECARD (hole-by-hole) ──────────────────────────
+function pg_scorecard(){
+  const round=S.round||db().rounds.find(r=>r.id===S.rid)
+  if(!round)return`<div class="empty"><div class="ei">⚠️</div><p>Round not found</p></div>`
+  // Store in S.round if not already there
+  if(!S.round)S.round=round
+  const{players:pl,scores:sc,pars}=round,holes=round.holes||18
+  const h=Math.min(S.hole||0,holes-1)
+  const par=pars[h]||4
+  const won=round.games.wolf?.enabled
+  const sideBets=round.sideBets||{}
+  const hbets=sideBets[h+1]||[]
+
+  // skin winner for current hole
+  let skinWinner=null
+  if(round.games.skins?.enabled){
+    let cy=0
+    for(let i=0;i<holes;i++){
+      const hs=pl.map(p=>({id:p.id,s:(sc[p.id]||[])[i]})).filter(x=>x.s>0)
+      if(hs.length<2){if(round.games.skins.carryTies)cy++;continue}
+      const mn=Math.min(...hs.map(x=>x.s)),win=hs.filter(x=>x.s===mn)
+      if(win.length===1){if(i===h)skinWinner=win[0].id;cy=0}
+      else if(round.games.skins.carryTies)cy++
+    }
+  }
+
+  const mps=mpStatus(round)
+  let info=''
+  if(mps!==null){
+    const[p1,p2]=pl,lbl=mps===0?'All Square':mps>0?`${p1.name.split(' ')[0]} ${mps} UP`:`${p2.name.split(' ')[0]} ${Math.abs(mps)} UP`
+    info+=`<div class="card" style="padding:10px 14px"><span class="hs ${mps>0?'hs-up':mps<0?'hs-dn':'hs-ev'}">Match Play: ${lbl}</span></div>`
+  }
+  if(won)info+=`<div class="card" style="padding:10px 14px;display:flex;align-items:center;justify-content:space-between"><span style="font-size:14px;font-weight:600">🐺 Wolf picks</span><button class="btn-sm btn-gold" data-gwolf>Set Picks &#8594;</button></div>`
+
+  const wi=won?h%pl.length:-1
+
+  const playerRows=pl.map((p,pi)=>{
+    const s=(sc[p.id]||[])[h],cls=scCls(s,par),sk=skinWinner===p.id,iw=won&&pi===wi
+    return`<div class="hh-player">
+      <div class="hh-player-name">${p.name.split(' ')[0]}${iw?` <span style="font-size:11px;color:var(--gold)">🐺</span>`:''}${sk?` <span style="font-size:11px;color:var(--gold)">💰</span>`:''}</div>
+      <div class="stepper hh-stepper">
+        <button class="step-btn" data-dec="${p.id}" data-h="${h}">&#8722;</button>
+        <span class="step-val ${cls} ${sk?'skinw':''}">${s||'·'}</span>
+        <button class="step-btn" data-inc="${p.id}" data-h="${h}">+</button>
+      </div>
+    </div>`
+  }).join('')
+
+  const parBtns=[3,4,5].map(p=>`<button class="par-btn" data-par-set="${h}" data-pv="${p}" style="${p===par?'background:var(--green);color:#fff;border-color:var(--green)':''}">Par ${p}</button>`).join('')
+
+  const betTypeOpts=BET_TYPES.map(t=>`<option value="${t.val}">${t.lbl}</option>`).join('')
+  const playerOpts=pl.map(p=>`<option value="${p.id}">${p.name.split(' ')[0]}</option>`).join('')
+  const existingBets=hbets.map((b,bi)=>`
+    <div class="existing-bet">
+      <div>
+        <span class="bet-type-lbl">${betLabel(b.type)}</span>
+        ${b.note?`<span class="bet-note-lbl"> &middot; ${b.note}</span>`:''}
+        <br><span class="bet-winner-lbl">&#127942; ${pname(b.winner)}</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <span class="bet-amt-lbl">${$$(b.wager)}/player</span>
+        <button class="btn-xs btn-danger" data-del-bet="${h+1}" data-bet-idx="${bi}">&#10005;</button>
+      </div>
+    </div>`).join('')
+
+  const prevBtn=h>0?`<button class="btn btn-outline" data-go-hole="${h-1}">&#8592; Hole ${h}</button>`:`<div></div>`
+  const nextBtn=h<holes-1?`<button class="btn btn-primary" data-go-hole="${h+1}">Hole ${h+2} &#8594;</button>`:`<button class="btn btn-gold" data-finish>Finish &#127942;</button>`
+
+  // running totals strip
+  const totals=pl.map(p=>{const t=(sc[p.id]||[]).slice(0,holes).reduce((a,b)=>a+(b||0),0);return`<span style="font-size:12px;font-weight:600;color:var(--muted)">${p.name.split(' ')[0]}: <strong style="color:var(--text)">${t||'–'}</strong></span>`}).join('<span style="color:var(--border);margin:0 6px">|</span>')
+
+  const codeBar=round.code?`<div class="session-code-bar"><div class="scb-left"><div class="scb-label">Round Code — share with group</div><div class="scb-code">${round.code}</div></div><button class="scb-share" data-share-code="${round.code}">Copy</button></div>`:''
+
+  return`${codeBar}${info}
+  <div class="card">
+    <div class="hh-hole-header">
+      <div>
+        <div class="hh-hole-num">Hole ${h+1}</div>
+        <div class="hh-hole-sub">of ${holes}</div>
+      </div>
+      <div style="text-align:right">
+        <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px">Par</div>
+        <div style="display:flex;gap:5px">${parBtns}</div>
+      </div>
+    </div>
+    <div class="hh-players">${playerRows}</div>
+    <div class="btn-row" style="margin-top:16px">${prevBtn}${nextBtn}</div>
+  </div>
+  <div class="card">
+    <div class="card-title">💰 Side Bets — Hole ${h+1}</div>
+    ${existingBets||`<div style="font-size:13px;color:var(--muted);margin-bottom:8px">No bets yet for this hole</div>`}
+    <div class="add-bet-form" style="margin-top:${hbets.length?'10':'0'}px">
+      <select id="bt-type-${h+1}">${betTypeOpts}</select>
+      <div class="bet-form-row">
+        <div><div style="font-size:11px;color:var(--muted);margin-bottom:3px">Winner</div><select id="bt-win-${h+1}">${playerOpts}</select></div>
+        <div><div style="font-size:11px;color:var(--muted);margin-bottom:3px">$ per player</div><input id="bt-amt-${h+1}" type="number" min="0" step="0.5" placeholder="5"></div>
+      </div>
+      <input id="bt-note-${h+1}" placeholder="Note (e.g. 40ft putt, back bunker...)">
+      <button class="btn btn-gold" style="padding:10px" data-add-bet="${h+1}">+ Add Bet</button>
+    </div>
+  </div>
+  <div class="card" style="padding:12px 16px">
+    <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Running Totals</div>
+    <div style="display:flex;flex-wrap:wrap;gap:6px">${totals}</div>
+  </div>`
+}
+
+// ── HOLE MENU OVERLAY ─────────────────────────────────
+function pg_hole_menu(){
+  const round=S.round||db().rounds.find(r=>r.id===S.rid)
+  if(!round)return''
+  const{players:pl,scores:sc,pars}=round,holes=round.holes||18,h=S.hole||0
+  const buttons=Array.from({length:holes},(_,i)=>{
+    const done=pl.every(p=>(sc[p.id]||[])[i]>0)
+    const cur=i===h
+    const hasBets=(round.sideBets||{})[i+1]?.length>0
+    return`<button class="hm-btn${cur?' hm-cur':''}${done&&!cur?' hm-done':''}" data-go-hole="${i}">
+      <div class="hm-num">${i+1}</div>
+      <div class="hm-par">par ${pars[i]||4}</div>
+      ${hasBets?`<div class="hm-betdot">💰</div>`:''}
+    </button>`
+  }).join('')
+  return`<div class="hm-overlay" id="hm-ov">
+    <div class="hm-sheet">
+      <div class="hm-sheet-title">Jump to Hole</div>
+      <div class="hm-grid">${buttons}</div>
+      <button class="btn btn-outline" data-close-hole-menu style="margin-top:12px">Cancel</button>
+    </div>
+  </div>`
+}
+
+// ── WOLF PANEL ────────────────────────────────────────
+function pg_wolf(){
+  const round=S.round||db().rounds.find(r=>r.id===S.rid)
+  if(!round)return''
+  const{players:pl}=round,dec=round.wolfDecisions||{},holes=round.holes||18
+  return`<div class="card"><div class="card-title">Wolf Rotation &amp; Partner Picks</div>
+    <p style="font-size:13px;color:var(--muted);margin-bottom:12px">Pick partner after tee shots, or go Lone Wolf for double points</p>
+    ${Array.from({length:holes},(_,h)=>{
+      const wi=h%pl.length,wp=pl[wi],d=dec[h+1]||{},pi=d.partnerIdx
+      return`<div class="wolf-row"><div style="font-weight:700;font-size:14px;margin-bottom:6px">Hole ${h+1} &nbsp; 🐺 Wolf: ${wp?.name.split(' ')[0]}</div>
+        <div class="wpicks">
+          ${pl.map((p,i)=>i===wi?'':
+            `<button class="wp-btn ${pi===i?'on':''}" data-wp="${h+1}" data-pi="${i}">${p.name.split(' ')[0]}</button>`).join('')}
+          <button class="wp-btn ${pi===-1?'on':''}" data-wp="${h+1}" data-pi="-1">Lone Wolf</button>
+        </div></div>`
+    }).join('')}
+  </div>
+  <button class="btn btn-secondary" data-back="scorecard">&#8592; Back to Scorecard</button>`
+}
+
+// ── RESULTS ───────────────────────────────────────────
+function pg_results(){
+  const round=S.round||db().rounds.find(r=>r.id===S.rid)
+  if(!round)return''
+  const res=calcAll(round),{players:pl}=round
+  const games=[
+    {key:'nassau',lbl:'🏌️ Nassau',p:res.nassau},
+    {key:'skins',lbl:'💰 Skins',p:res.skins.payouts||{}},
+    {key:'matchPlay',lbl:'🆚 Match Play',p:res.matchPlay},
+    {key:'wolf',lbl:'🐺 Wolf',p:res.wolf}
+  ].filter(g=>round.games[g.key]?.enabled)
+
+  const sbSummary=res.sideBets.summary||[]
+  const hasSB=Object.values(round.sideBets||{}).some(a=>a.length>0)
+
+  const ph=pl.map(p=>`<th>${p.name.split(' ')[0]}</th>`).join('')
+  const bkr=games.map(g=>{const c=pl.map(p=>{const v=g.p?.[p.id]||0;return`<td class="${v>0?'mpos':v<0?'mneg':'mzro'}">${$$(v)}</td>`}).join('');return`<tr><td><strong>${g.lbl}</strong></td>${c}</tr>`}).join('')
+  const sbRow=hasSB?`<tr><td><strong>💰 Side Bets</strong></td>${pl.map(p=>{const v=res.sideBets.payouts[p.id]||0;return`<td class="${v>0?'mpos':v<0?'mneg':'mzro'}">${$$(v)}</td>`}).join('')}</tr>`:''
+  const tr=pl.map(p=>{const v=res.tot[p.id]||0;return`<td class="${v>0?'mpos':v<0?'mneg':'mzro'}"><strong>${$$(v)}</strong></td>`}).join('')
+
+  const sd=round.games.skins?.enabled?`<div class="card"><div class="card-title">💰 Skins Detail</div>
+    ${pl.map(p=>`<div class="list-item"><div class="li-main">${p.name}</div><span class="badge bo">${res.skins.won?.[p.id]||0} skins</span></div>`).join('')}
+    ${res.skins.carry?`<div style="font-size:12px;color:var(--muted);margin-top:6px">⚠️ ${res.skins.carry} unresolved skin${res.skins.carry>1?'s':''}</div>`:''}
+  </div>`:''
+
+  const sbDetail=hasSB?`<div class="card"><div class="card-title">💰 Side Bets Detail</div>
+    ${sbSummary.map(b=>`<div class="list-item"><div><div class="li-main">${betLabel(b.type)} &mdash; Hole ${b.hole}</div><div class="li-sub">${b.note||''}</div></div><div style="text-align:right"><div style="font-weight:700;color:var(--green)">${pname(b.winner)}</div><div style="font-size:13px;color:var(--red)">${$$(b.wager)}/player</div></div></div>`).join('')}
+  </div>`:''
+
+  const tx=settle(pl,res.tot)
+  const sh=tx.length?`<div class="card"><div class="card-title">💸 Settle Up</div>${tx.map(t=>`<div class="settle-item"><span class="settle-from">${pname(t.from)}</span><span style="color:var(--red)"> &#8594; </span><span class="settle-to">${pname(t.to)}</span><span class="settle-amt">${$$(t.amount)}</span></div>`).join('')}</div>`:`<div class="card"><div style="text-align:center;padding:14px;color:var(--muted)">All square &#8212; no money moves!</div></div>`
+
+  return`<div class="card"><div class="card-title">Results &#8212; ${round.course}</div>
+    ${pl.map(p=>{const v=res.tot[p.id]||0;return`<div class="res-item"><div class="res-name">${p.name}</div><div class="res-amt ${v>0?'mpos':v<0?'mneg':'mzro'}">${$$(v)}</div></div>`}).join('')}
+  </div>
+  ${(games.length>0||hasSB)?`<div class="card"><div class="card-title">Breakdown</div><div style="overflow-x:auto"><table class="bk-table"><tr><th>Game</th>${ph}</tr>${bkr}${sbRow}<tr style="background:var(--green-pale)"><td><strong>TOTAL</strong></td>${tr}</tr></table></div></div>`:''}
+  ${sd}${sbDetail}${sh}
+  <div class="btn-row"><button class="btn btn-secondary" data-nav="home">Done</button><button class="btn btn-outline" data-gsc="${round.id}">Edit Scores</button></div>`
+}
+
+// ── HISTORY ───────────────────────────────────────────
+function pg_history(){
+  if(S.historyRounds===null){loadHistory();return`<div class="empty"><div class="ei">📋</div><p>Loading rounds...</p></div>`}
+  const rounds=S.historyRounds
+  if(!rounds.length)return`<div class="empty"><div class="ei">📋</div><p>No completed rounds yet</p></div>`
+  return`<div class="card"><div class="card-title">All Rounds</div>
+    ${rounds.map(r=>{
+      const res=calcAll(r),games=Object.entries(r.games).filter(([,v])=>v.enabled).map(([k])=>k[0].toUpperCase()+k.slice(1)).join(' · ')
+      return`<div class="hist-item" data-rd="${r.id}"><div class="hist-date">${dt(r.date||r.createdAt)}</div><div class="hist-course">${r.course}</div><div class="hist-tags">${games}</div>
+        <div style="margin-top:4px;display:flex;flex-wrap:wrap;gap:4px">${r.players.map(p=>{const v=res.tot[p.id]||0;return`<span class="badge ${v>0?'bg':v<0?'br':'bx'}">${p.name.split(' ')[0]}: ${$$(v)}</span>`}).join('')}</div>
+      </div>`
+    }).join('')}
+  </div>`
+}
+
+// ── ROUND DETAIL ──────────────────────────────────────
+function pg_rd(){
+  const allRounds=S.historyRounds||db().rounds.filter(r=>r.completed)
+  const round=S.round||allRounds.find(r=>r.id===S.rid)
+  if(!round)return''
+  const res=calcAll(round),{players:pl}=round,tx=settle(pl,res.tot)
+  return`<div class="card"><div class="card-title">${dt(round.date)} &middot; ${round.course}</div>
+    ${pl.map(p=>{const v=res.tot[p.id]||0;return`<div class="res-item"><div class="res-name">${p.name}</div><div class="res-amt ${v>0?'mpos':v<0?'mneg':'mzro'}">${$$(v)}</div></div>`}).join('')}
+  </div>
+  ${tx.length?`<div class="card"><div class="card-title">Settle Up</div>${tx.map(t=>`<div class="settle-item"><span class="settle-from">${pname(t.from)}</span><span style="color:var(--red)"> &#8594; </span><span class="settle-to">${pname(t.to)}</span><span class="settle-amt">${$$(t.amount)}</span></div>`).join('')}</div>`:''}
+  <button class="btn btn-danger" data-delr="${round.id}" style="margin-top:4px">Delete Round</button>`
+}
+
+// ── LEDGER ────────────────────────────────────────────
+function pg_ledger(){
+  const D=db(),done=S.historyRounds||D.rounds.filter(r=>r.completed)
+  if(!done.length)return`<div class="empty"><div class="ei">💰</div><p>No completed rounds yet</p></div>`
+  const ids=new Set();done.forEach(r=>r.players.forEach(p=>ids.add(p.id)))
+  const pids=[...ids],net={};pids.forEach(id=>net[id]=0)
+  done.forEach(r=>{const res=calcAll(r);r.players.forEach(p=>net[p.id]=(net[p.id]||0)+(res.tot[p.id]||0))})
+  const wk={};done.forEach(r=>{const d=new Date(r.date),sun=new Date(d);sun.setDate(d.getDate()-d.getDay());const k=sun.toISOString().slice(0,10);if(!wk[k])wk[k]=[];wk[k].push(r)})
+  const sorted=pids.slice().sort((a,b)=>(net[b]||0)-(net[a]||0))
+  const tx=settle(pids.map(id=>({id})),net)
+  const wkHtml=Object.entries(wk).sort(([a],[b])=>b.localeCompare(a)).map(([k,rounds])=>{
+    const wn={};pids.forEach(id=>wn[id]=0)
+    rounds.forEach(r=>{const res=calcAll(r);r.players.forEach(p=>wn[p.id]=(wn[p.id]||0)+(res.tot[p.id]||0))})
+    const active=pids.filter(id=>Math.abs(wn[id])>0.01);if(!active.length)return''
+    const d=new Date(k),lbl=`Week of ${d.toLocaleDateString('en-US',{month:'short',day:'numeric'})}`
+    return`<div class="list-item" style="flex-direction:column;align-items:flex-start;gap:6px"><div style="font-size:12px;color:var(--muted);font-weight:600">${lbl} &middot; ${rounds.length} round${rounds.length>1?'s':''}</div>
+      <div style="display:flex;flex-wrap:wrap;gap:4px">${active.map(id=>{const v=wn[id];return`<span class="badge ${v>0?'bg':v<0?'br':'bx'}">${pname(id)}: ${$$(v)}</span>`}).join('')}</div>
+    </div>`
+  }).join('')
+  return`<div class="card"><div class="card-title">All-Time Standings</div>
+    ${sorted.map(id=>{const v=net[id];const cnt=done.filter(r=>r.players.some(p=>p.id===id)).length
+      return`<div class="res-item"><div><div class="res-name">${pname(id)}</div><div class="li-sub">${cnt} round${cnt!==1?'s':''}</div></div><div class="res-amt ${v>0?'mpos':v<0?'mneg':'mzro'}">${$$(v)}</div></div>`
+    }).join('')}
+  </div>
+  ${tx.length?`<div class="card"><div class="card-title">💸 Current Settlements</div><p style="font-size:12px;color:var(--muted);margin-bottom:10px">Minimum transactions to clear all debts</p>${tx.map(t=>`<div class="settle-item"><span class="settle-from">${pname(t.from)}</span><span style="color:var(--red)"> &#8594; </span><span class="settle-to">${pname(t.to)}</span><span class="settle-amt">${$$(t.amount)}</span></div>`).join('')}</div>`:`<div class="card"><div style="text-align:center;padding:14px;color:var(--muted)">All square! 🎉</div></div>`}
+  <div class="card"><div class="card-title">Week by Week</div>${wkHtml||`<div class="empty" style="padding:14px"><p>No weekly data</p></div>`}</div>`
+}
+
+// ── BIND EVENTS ───────────────────────────────────────
+function bind(){
+  document.querySelectorAll('[data-nav]').forEach(el=>el.addEventListener('click',()=>nav(el.dataset.nav)))
+  document.querySelector('.hdr-back')?.addEventListener('click',e=>{const t=e.currentTarget.dataset.back;if(t==='scorecard')go('scorecard',{rid:S.rid});else if(t==='history')go('history');else nav(t||'home')})
+  document.querySelector('[data-back]')?.addEventListener('click',e=>{const t=e.currentTarget.dataset.back;if(t==='scorecard')go('scorecard',{rid:S.rid});else nav(t||'home')})
+
+  // home
+  document.querySelector('[data-start]')?.addEventListener('click',()=>{const D=db();if(!D.players.length){nav('players');return}S.draft=newDraft();S.step=1;go('setup')})
+  document.querySelectorAll('[data-gsc]').forEach(el=>el.addEventListener('click',()=>go('scorecard',{rid:el.dataset.gsc})))
+  document.querySelectorAll('[data-rd]').forEach(el=>el.addEventListener('click',()=>go('round-detail',{rid:el.dataset.rd})))
+
+  // quick rematch
+  document.querySelector('[data-rematch]')?.addEventListener('click',()=>{
+    const D=db(),last=D.rounds.filter(r=>r.completed).slice(-1)[0];if(!last)return
+    const d=newDraft()
+    d.course=last.course;d.holes=last.holes||18;d.pars=[...last.pars]
+    d.playerIds=last.players.map(p=>p.id).filter(id=>D.players.some(pl=>pl.id===id))
+    d.games=JSON.parse(JSON.stringify(last.games))
+    S.draft=d;S.step=1;go('setup')
+  })
+
+  // group new/edit/delete/cancel/save
+  document.querySelector('[data-newg]')?.addEventListener('click',()=>{S.editGroup='new';ren()})
+  document.querySelector('[data-cancelg]')?.addEventListener('click',()=>{S.editGroup=null;ren()})
+  document.querySelectorAll('[data-editg]').forEach(el=>el.addEventListener('click',()=>{S.editGroup=el.dataset.editg;ren()}))
+  document.querySelectorAll('[data-delg]').forEach(el=>el.addEventListener('click',()=>{
+    dialog('Delete this group?',()=>{const D=db();D.groups=D.groups.filter(g=>g.id!==el.dataset.delg);save(D);ren()},{dangerous:true,confirmText:'Delete'})
+  }))
+
+  // toggle player in group editor
+  document.querySelectorAll('[data-tgp]').forEach(el=>el.addEventListener('click',()=>{
+    const pid=el.dataset.tgp
+    const D=db(),gid=S.editGroup
+    if(gid==='new'){
+      // find current draft state from the DOM
+      const cur=Array.from(document.querySelectorAll('[data-tgp].on')).map(e=>e.dataset.tgp)
+      el.classList.toggle('on')
+      return
+    }
+    const g=D.groups.find(g=>g.id===gid);if(!g)return
+    if(g.playerIds.includes(pid))g.playerIds=g.playerIds.filter(x=>x!==pid);else g.playerIds.push(pid)
+    save(D);ren()
+  }))
+
+  // save group
+  document.querySelector('[data-saveg]')?.addEventListener('click',e=>{
+    const gid=e.currentTarget.dataset.saveg
+    const name=document.getElementById('gn')?.value.trim()
+    if(!name){toast('Enter a group name','error');return}
+    const playerIds=Array.from(document.querySelectorAll('[data-tgp].on')).map(el=>el.dataset.tgp)
+    const D=db()
+    if(gid==='new'){
+      D.groups.push({id:uid(),name,playerIds})
+    }else{
+      const g=D.groups.find(g=>g.id===gid);if(g){g.name=name;g.playerIds=playerIds}
+    }
+    save(D);S.editGroup=null;ren()
+  })
+
+  // load group into setup player selection
+  document.querySelectorAll('[data-loadg]').forEach(el=>el.addEventListener('click',()=>{
+    const D=db(),g=D.groups.find(g=>g.id===el.dataset.loadg);if(!g)return
+    S.draft.playerIds=[...g.playerIds];ren()
+  }))
+
+  // save API key
+  document.querySelector('[data-savekey]')?.addEventListener('click',()=>{
+    const v=document.getElementById('ak')?.value.trim()
+    if(v)localStorage.setItem('golf_apikey',v);else localStorage.removeItem('golf_apikey')
+    ren()
+  })
+
+  // draft par grid (setup step 1) — cycle 3→4→5→3
+  document.querySelectorAll('[data-dp]').forEach(el=>el.addEventListener('click',()=>{
+    const i=parseInt(el.dataset.dp),cur=S.draft.pars[i]||4
+    S.draft.pars[i]=cur===3?4:cur===4?5:3;ren()
+  }))
+
+  // save course
+  document.querySelector('[data-savec]')?.addEventListener('click',()=>{
+    const name=document.getElementById('dc')?.value.trim()
+    if(!name){toast('Enter a course name first','error');return}
+    const holes=parseInt(document.getElementById('dh')?.value)||18
+    S.draft.course=name;S.draft.holes=holes
+    const D=db()
+    const existing=D.courses.findIndex(c=>c.name.toLowerCase()===name.toLowerCase())
+    const entry={id:existing>=0?D.courses[existing].id:uid(),name,holes,pars:[...S.draft.pars.slice(0,holes)]}
+    if(existing>=0)D.courses[existing]=entry;else D.courses.push(entry)
+    save(D);ren()
+    toast('Course saved!','success')
+  })
+
+  // load saved course
+  document.querySelectorAll('[data-loadc]').forEach(el=>el.addEventListener('click',()=>{
+    const D=db(),c=D.courses.find(x=>x.id===el.dataset.loadc);if(!c)return
+    S.draft.course=c.name;S.draft.holes=c.holes;S.draft.pars=[...c.pars];ren()
+  }))
+
+  // delete saved course
+  document.querySelectorAll('[data-delc]').forEach(el=>el.addEventListener('click',()=>{
+    dialog('Remove this course?',()=>{const D=db();D.courses=D.courses.filter(c=>c.id!==el.dataset.delc);save(D);ren()},{dangerous:true,confirmText:'Remove'})
+  }))
+
+  // AI auto-fill pars
+  document.querySelector('[data-aifill]')?.addEventListener('click',async()=>{
+    const course=document.getElementById('dc')?.value.trim()
+    const holes=parseInt(document.getElementById('dh')?.value)||18
+    if(!course){toast('Enter a course name first','error');return}
+    S.draft.course=course;S.draft.holes=holes;S.aiLoading=true;ren()
+    try{
+      const pars=await fillPars(course,holes)
+      S.draft.pars=pars
+      S.aiLoading=false;ren()
+    }catch(e){
+      S.aiLoading=false;ren()
+      toast('AI lookup failed: '+e.message,'error')
+    }
+  })
+
+  // players
+  document.querySelector('[data-addp]')?.addEventListener('click',()=>{
+    const n=document.getElementById('pn')?.value.trim(),h=parseInt(document.getElementById('ph')?.value)||0
+    if(!n)return;const D=db();D.players.push({id:uid(),name:n,handicap:h});save(D);ren()
+  })
+  document.querySelectorAll('[data-delp]').forEach(el=>el.addEventListener('click',()=>{
+    dialog('Remove this player?',()=>{const D=db();D.players=D.players.filter(p=>p.id!==el.dataset.delp);save(D);ren()},{dangerous:true,confirmText:'Remove'})
+  }))
+
+  // setup step 1
+  document.querySelectorAll('[data-tp]').forEach(el=>el.addEventListener('click',()=>{const id=el.dataset.tp,d=S.draft;if(d.playerIds.includes(id))d.playerIds=d.playerIds.filter(x=>x!==id);else d.playerIds.push(id);ren()}))
+  document.querySelector('[data-sn]')?.addEventListener('click',()=>{const d=S.draft;d.course=document.getElementById('dc')?.value||'';d.holes=parseInt(document.getElementById('dh')?.value)||18;if(d.playerIds.length<2){toast('Select at least 2 players','error');return}S.step=2;ren()})
+  document.querySelector('[data-sb]')?.addEventListener('click',()=>{S.step=1;ren()})
+
+  // game toggles
+  document.getElementById('tn')?.addEventListener('change',e=>{S.draft.games.nassau.enabled=e.target.checked;ren()})
+  document.getElementById('ts')?.addEventListener('change',e=>{S.draft.games.skins.enabled=e.target.checked;ren()})
+  document.getElementById('tm')?.addEventListener('change',e=>{S.draft.games.matchPlay.enabled=e.target.checked;ren()})
+  document.getElementById('tw')?.addEventListener('change',e=>{S.draft.games.wolf.enabled=e.target.checked;ren()})
+  document.getElementById('np')?.addEventListener('change',e=>{S.draft.games.nassau.autoPress=e.target.checked})
+  document.getElementById('sc2')?.addEventListener('change',e=>{S.draft.games.skins.carryTies=e.target.checked})
+
+  // match play teams
+  document.querySelectorAll('[data-mpt]').forEach(el=>el.addEventListener('click',()=>{
+    const pid=el.dataset.mpt,d=S.draft,D=db(),sp=D.players.filter(p=>d.playerIds.includes(p.id))
+    let t1=d.games.matchPlay.teams[0]||[];t1=t1.includes(pid)?t1.filter(x=>x!==pid):[...t1.filter(x=>x!==pid),pid].slice(0,2)
+    d.games.matchPlay.teams=[t1,sp.filter(p=>!t1.includes(p.id)).map(p=>p.id)];ren()
+  }))
+
+  // start round
+  document.querySelector('[data-sg]')?.addEventListener('click',()=>{
+    const d=S.draft
+    ;[['na','nassau','amount'],['sa','skins','amount'],['ma','matchPlay','amount'],['wa','wolf','pointValue']].forEach(([id,gk,fk])=>{const el=document.getElementById(id);if(el){const v=parseFloat(el.value);if(!isNaN(v)&&v>0)d.games[gk][fk]=v}})
+    if(!Object.values(d.games).some(g=>g.enabled)){toast('Enable at least one game','error');return}
+    const round=mkRound(d)
+    round.code=genCode()
+    round.hostId=S.user?.uid||''
+    round.joinedUsers=S.user?[S.user.uid]:[]
+    round.createdAt=firebase.firestore.FieldValue.serverTimestamp()
+    fdb.collection('rounds').doc(round.id).set(round)
+    S.round=round
+    subscribeRound(round.id)
+    go('scorecard',{rid:round.id,hole:0,holeMenu:false})
+  })
+
+  // scorecard steppers
+  document.querySelectorAll('[data-inc]').forEach(el=>el.addEventListener('click',()=>{
+    const r=S.round;if(!r)return
+    const pid=el.dataset.inc,h=parseInt(el.dataset.h)
+    navigator.vibrate?.(8)
+    r.scores[pid][h]=(r.scores[pid][h]||0)+1
+    fdb.collection('rounds').doc(S.rid).update({[`scores.${pid}`]:r.scores[pid]})
+    ren()
+  }))
+  document.querySelectorAll('[data-dec]').forEach(el=>el.addEventListener('click',()=>{
+    const r=S.round;if(!r)return
+    const pid=el.dataset.dec,h=parseInt(el.dataset.h),cur=r.scores[pid][h]||0
+    if(cur>0){navigator.vibrate?.(8);r.scores[pid][h]=cur-1;fdb.collection('rounds').doc(S.rid).update({[`scores.${pid}`]:r.scores[pid]});ren()}
+  }))
+
+  // finish round
+  document.querySelector('[data-finish]')?.addEventListener('click',()=>{
+    const r=S.round;if(!r)return
+    const res=calcAll(r);r.payouts=res.tot;r.completed=true
+    fdb.collection('rounds').doc(S.rid).update({completed:true,payouts:r.payouts})
+    if(unsubRound){unsubRound();unsubRound=null}
+    S.historyRounds=null  // force reload
+    go('results',{rid:S.rid})
+  })
+
+  // wolf
+  document.querySelector('[data-gwolf]')?.addEventListener('click',()=>go('wolf',{rid:S.rid}))
+  document.querySelectorAll('[data-wp]').forEach(el=>el.addEventListener('click',()=>{
+    const r=S.round;if(!r)return
+    if(!r.wolfDecisions)r.wolfDecisions={}
+    r.wolfDecisions[parseInt(el.dataset.wp)]={partnerIdx:parseInt(el.dataset.pi)}
+    fdb.collection('rounds').doc(S.rid).update({wolfDecisions:r.wolfDecisions});ren()
+  }))
+
+  // delete round
+  document.querySelectorAll('[data-delr]').forEach(el=>el.addEventListener('click',()=>{
+    dialog('Delete this round?',()=>{
+      fdb.collection('rounds').doc(el.dataset.delr).delete()
+      if(S.round?.id===el.dataset.delr){if(unsubRound){unsubRound();unsubRound=null}S.round=null}
+      S.historyRounds=null;nav('history')
+    },{dangerous:true,confirmText:'Delete'})
+  }))
+
+  // par cycle (3→4→5→3)
+  document.querySelectorAll('[data-par]').forEach(el=>el.addEventListener('click',()=>{
+    const r=S.round;if(!r)return
+    const h=parseInt(el.dataset.par),cur=r.pars[h]||4
+    r.pars[h]=cur===3?4:cur===4?5:3;fdb.collection('rounds').doc(S.rid).update({pars:r.pars});ren()
+  }))
+
+  // ── AUTH ──
+  document.querySelector('[data-auth-toggle]')?.addEventListener('click',()=>{S.authMode=S.authMode==='signin'?'signup':'signin';ren()})
+  document.querySelector('[data-auth-submit]')?.addEventListener('click',async()=>{
+    const email=document.getElementById('auth-email')?.value.trim()
+    const pass=document.getElementById('auth-pass')?.value
+    if(!email||!pass){toast('Enter your email and password','error');return}
+    const btn=document.querySelector('[data-auth-submit]')
+    if(btn)btn.textContent='...'
+    try{
+      if(S.authMode==='signup'){
+        const name=document.getElementById('auth-name')?.value.trim()||email.split('@')[0]
+        const cred=await auth.createUserWithEmailAndPassword(email,pass)
+        await cred.user.updateProfile({displayName:name})
+        await fdb.collection('users').doc(cred.user.uid).set({name,email})
+      }else{
+        await auth.signInWithEmailAndPassword(email,pass)
+      }
+    }catch(e){
+      console.error('Auth error:',e.code,e.message)
+      const msgs={
+        'auth/email-already-in-use':'An account with that email already exists',
+        'auth/user-not-found':'No account found — tap Create account',
+        'auth/wrong-password':'Wrong password',
+        'auth/invalid-credential':'Wrong email or password',
+        'auth/invalid-email':'Invalid email address',
+        'auth/weak-password':'Password must be at least 6 characters',
+        'auth/operation-not-allowed':'Email sign-in isn\'t enabled yet — check Firebase console',
+        'auth/network-request-failed':'No internet connection',
+        'auth/too-many-requests':'Too many attempts — try again later'
+      }
+      toast(msgs[e.code]||`Sign in failed (${e.code})`,'error');if(btn)btn.textContent=S.authMode==='signin'?'Sign In':'Create Account'
+    }
+  })
+  document.querySelector('[data-signout]')?.addEventListener('click',()=>{
+    dialog('Sign out of Wager?',()=>{
+      if(unsubRound){unsubRound();unsubRound=null}
+      S.round=null;S.historyRounds=null
+      auth.signOut()
+    },{confirmText:'Sign Out'})
+  })
+
+  // ── JOIN ──
+  document.querySelector('[data-join-submit]')?.addEventListener('click',()=>{
+    const code=document.getElementById('join-code')?.value.trim().toUpperCase()
+    if(code.length!==5){toast('Enter the 5-letter round code','error');return}
+    S.joinCode=code;joinRound(code)
+  })
+
+  // ── COPY CODE ──
+  document.querySelectorAll('[data-share-code]').forEach(el=>el.addEventListener('click',()=>{
+    const code=el.dataset.shareCode
+    navigator.clipboard?.writeText(code).then(()=>toast(`Code ${code} copied!`,'success')).catch(()=>{
+      // fallback for browsers without clipboard API
+      const ta=document.createElement('textarea');ta.value=code;document.body.appendChild(ta);ta.select();document.execCommand('copy');ta.remove();toast(`Code ${code} copied!`,'success')
+    })
+  }))
+
+  // ── HOLE NAVIGATION ──
+  document.querySelectorAll('[data-go-hole]').forEach(el=>el.addEventListener('click',()=>{S.hole=parseInt(el.dataset.goHole);S.holeMenu=false;ren();scrollTo(0,0)}))
+  document.querySelector('[data-open-hole-menu]')?.addEventListener('click',()=>{S.holeMenu=true;ren()})
+  document.querySelectorAll('[data-close-hole-menu]').forEach(el=>el.addEventListener('click',()=>{S.holeMenu=false;ren()}))
+  document.getElementById('hm-ov')?.addEventListener('click',e=>{if(e.target===document.getElementById('hm-ov')){S.holeMenu=false;ren()}})
+
+  // explicit par set (hole-by-hole view)
+  document.querySelectorAll('[data-par-set]').forEach(el=>el.addEventListener('click',()=>{
+    const r=S.round;if(!r)return
+    const hi=parseInt(el.dataset.parSet),pv=parseInt(el.dataset.pv)
+    r.pars[hi]=pv;fdb.collection('rounds').doc(S.rid).update({pars:r.pars});ren()
+  }))
+
+  // ── SIDE BETS ──
+  // Toggle hole bet panel (kept for compat, not used in hole-by-hole view)
+  document.querySelectorAll('[data-bet-toggle]').forEach(el=>el.addEventListener('click',()=>{
+    const h=parseInt(el.dataset.betToggle)
+    S.betHole=S.betHole===h?null:h
+    ren()
+  }))
+
+  // Add bet
+  document.querySelectorAll('[data-add-bet]').forEach(el=>el.addEventListener('click',()=>{
+    const h=parseInt(el.dataset.addBet)
+    const type=document.getElementById(`bt-type-${h}`)?.value
+    const winner=document.getElementById(`bt-win-${h}`)?.value
+    const wager=parseFloat(document.getElementById(`bt-amt-${h}`)?.value)||0
+    const note=document.getElementById(`bt-note-${h}`)?.value.trim()||''
+    if(!winner||!wager){toast('Select a winner and amount','error');return}
+    const r=S.round;if(!r)return
+    if(!r.sideBets)r.sideBets={}
+    if(!r.sideBets[h])r.sideBets[h]=[]
+    r.sideBets[h].push({type,winner,wager,note})
+    fdb.collection('rounds').doc(S.rid).update({sideBets:r.sideBets});ren()
+  }))
+
+  // Delete bet
+  document.querySelectorAll('[data-del-bet]').forEach(el=>el.addEventListener('click',()=>{
+    const h=parseInt(el.dataset.delBet),idx=parseInt(el.dataset.betIdx)
+    const r=S.round;if(!r)return
+    r.sideBets[h].splice(idx,1)
+    fdb.collection('rounds').doc(S.rid).update({sideBets:r.sideBets});ren()
+  }))
+}
+
+// ── AUTH STATE ────────────────────────────────────────
+auth.onAuthStateChanged(async user=>{
+  if(user){
+    S.user={uid:user.uid,email:user.email,displayName:user.displayName||user.email.split('@')[0]}
+    if(S.sc==='auth')nav('home')
+  }else{
+    if(unsubRound){unsubRound();unsubRound=null}
+    S.user=null;S.round=null;S.historyRounds=null
+    S.sc='auth'
+  }
+  ren()
+})
+
+// ── PWA SETUP ─────────────────────────────────────────
+;(function(){
+  // generate app icon via canvas
+  function makeIcon(size){
+    const c=document.createElement('canvas');c.width=c.height=size
+    const ctx=c.getContext('2d')
+    // rounded green background
+    ctx.fillStyle='#1a5c38'
+    if(ctx.roundRect){ctx.beginPath();ctx.roundRect(0,0,size,size,size*0.18);ctx.fill()}
+    else{ctx.fillRect(0,0,size,size)}
+    // golf emoji centered
+    ctx.font=`${size*0.58}px serif`;ctx.textAlign='center';ctx.textBaseline='middle'
+    ctx.fillText('⛳',size/2,size/2)
+    return c.toDataURL('image/png')
+  }
+
+  const icon192=makeIcon(192)
+  const icon512=makeIcon(512)
+
+  // apple touch icon
+  const al=document.createElement('link');al.rel='apple-touch-icon';al.href=icon512
+  document.head.appendChild(al)
+
+  // web app manifest
+  const manifest={name:'Wager',short_name:'Wager',description:'Golf betting with your group',start_url:'.',display:'standalone',background_color:'#1a5c38',theme_color:'#1a5c38',orientation:'portrait',icons:[{src:icon192,sizes:'192x192',type:'image/png'},{src:icon512,sizes:'512x512',type:'image/png'}]}
+  const ml=document.createElement('link');ml.rel='manifest';ml.href='data:application/manifest+json,'+encodeURIComponent(JSON.stringify(manifest))
+  document.head.appendChild(ml)
+
+  // dismiss install banner
+  document.addEventListener('click',e=>{
+    if(e.target.closest('[data-dismiss-install]')){
+      localStorage.setItem('install_dismissed','1');ren()
+    }
+  })
+})()
+</script>
+</body>
+</html>
