@@ -128,6 +128,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .settle-from{font-weight:700;font-size:15px}
 .settle-to{font-weight:700;font-size:15px;color:var(--green)}
 .settle-amt{margin-left:auto;font-size:16px;font-weight:800;color:var(--red)}
+.pay-btn{display:inline-block;padding:5px 12px;border-radius:20px;font-size:12px;font-weight:700;text-decoration:none;border:none;cursor:pointer}
+.pay-venmo{background:#008CFF;color:#fff}
+.pay-cash{background:#00D64F;color:#fff}
 
 /* History */
 .hist-item{padding:12px 0;border-bottom:1px solid var(--border);cursor:pointer}
@@ -1113,6 +1116,7 @@ function pg_scorecard(){
   <div class="card" style="padding:12px 16px">
     <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Running Totals</div>
     <div style="display:flex;flex-wrap:wrap;gap:6px">${totals}</div>
+    ${(()=>{const lm=calcAll(round);const hasAmt=pl.some(p=>lm.tot[p.id]!==0);if(!hasAmt)return'';return`<div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border)"><div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">💵 Live Money</div><div style="display:flex;flex-wrap:wrap;gap:6px">${pl.map(p=>{const v=lm.tot[p.id]||0;return`<span style="font-size:12px;font-weight:600;color:var(--muted)">${p.name.split(' ')[0]}: <strong style="color:${v>0?'var(--green2)':v<0?'var(--red)':'var(--text)'}">${$$(v)}</strong></span>`}).join('<span style="color:var(--border);margin:0 6px">|</span>')}</div></div>`})()}
   </div>`
 }
 
@@ -1196,7 +1200,7 @@ function pg_results(){
   </div>`:''
 
   const tx=settle(pl,res.tot)
-  const sh=tx.length?`<div class="card"><div class="card-title">💸 Settle Up</div>${tx.map(t=>`<div class="settle-item"><span class="settle-from">${pname(t.from)}</span><span style="color:var(--red)"> &#8594; </span><span class="settle-to">${pname(t.to)}</span><span class="settle-amt">${$$(t.amount)}</span></div>`).join('')}</div>`:`<div class="card"><div style="text-align:center;padding:14px;color:var(--muted)">All square &#8212; no money moves!</div></div>`
+  const sh=tx.length?`<div class="card"><div class="card-title">💸 Settle Up</div>${tx.map(t=>{const amt=t.amount.toFixed(2);const note=encodeURIComponent('Golf bets');const venmo=`venmo://paycharge?txn=pay&amount=${amt}&note=${note}`;const cash=`https://cash.app/`;return`<div class="settle-item" style="flex-wrap:wrap;gap:6px"><div style="display:flex;align-items:center;gap:8px;flex:1"><span class="settle-from">${pname(t.from)}</span><span style="color:var(--red)">&#8594;</span><span class="settle-to">${pname(t.to)}</span><span class="settle-amt">${$$(t.amount)}</span></div><div style="display:flex;gap:6px;margin-top:4px"><a href="${venmo}" class="pay-btn pay-venmo">Venmo</a><a href="${cash}" class="pay-btn pay-cash">Cash App</a></div></div>`}).join('')}</div>`:`<div class="card"><div style="text-align:center;padding:14px;color:var(--muted)">All square &#8212; no money moves!</div></div>`
 
   return`<div class="card"><div class="card-title">Results &#8212; ${round.course}</div>
     ${pl.map(p=>{const v=res.tot[p.id]||0;return`<div class="res-item"><div class="res-name">${p.name}</div><div class="res-amt ${v>0?'mpos':v<0?'mneg':'mzro'}">${$$(v)}</div></div>`}).join('')}
