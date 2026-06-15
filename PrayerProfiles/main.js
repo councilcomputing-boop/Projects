@@ -1,11 +1,23 @@
 const { app, BrowserWindow, shell } = require('electron');
-const path = require('path');
-const http = require('http');
+const path   = require('path');
+const fs     = require('fs');
+const crypto = require('crypto');
+const http   = require('http');
 
-process.env.ELECTRON_DISABLE_SECURITY_WARNINGS = 'true';
+// Mark as Electron context so server skips web-only restrictions
+process.env.ELECTRON_APP = '1';
 
-// Store user data (profiles + uploads) in a writable OS folder
-process.env.DATA_DIR = app.getPath('userData');
+// Resolve user data path and set DATA_DIR before requiring server
+const userData = app.getPath('userData');
+process.env.DATA_DIR = userData;
+
+// Generate and persist a unique JWT secret per installation
+const secretFile = path.join(userData, '.jwt-secret');
+if (!fs.existsSync(secretFile)) {
+  fs.mkdirSync(userData, { recursive: true });
+  fs.writeFileSync(secretFile, crypto.randomBytes(48).toString('hex'), { encoding: 'utf8', mode: 0o600 });
+}
+process.env.JWT_SECRET = fs.readFileSync(secretFile, 'utf8').trim();
 
 // Start Express server in-process
 require('./server');
@@ -36,15 +48,16 @@ function createWindow() {
     title: 'Prayer Profiles',
     backgroundColor: '#0D0E1F',
     webPreferences: {
-      nodeIntegration: false,
+      nodeIntegration:  false,
       contextIsolation: true,
+      sandbox:          true,
     },
   });
 
   win.setMenuBarVisibility(false);
   win.loadURL('http://127.0.0.1:3001');
 
-  // Open external links (YouVersion, etc.) in the user's default browser
+  // Open external links in the user's default browser
   win.webContents.setWindowOpenHandler(({ url }) => {
     shell.openExternal(url);
     return { action: 'deny' };

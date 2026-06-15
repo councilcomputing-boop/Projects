@@ -1,23 +1,91 @@
-const express = require('express');
-const fs      = require('fs');
-const path    = require('path');
-const https   = require('https');
-const { URL } = require('url');
-const multer  = require('multer');
-const bcrypt  = require('bcryptjs');
-const jwt     = require('jsonwebtoken');
+require('dotenv').config();
 
-const app         = express();
-const PORT        = process.env.PORT || 3001;
-const DATA_DIR    = process.env.DATA_DIR || __dirname;
-const DB_FILE     = path.join(DATA_DIR, 'profiles.json');
-const UPLOADS     = path.join(DATA_DIR, 'uploads');
-const JWT_SECRET  = process.env.JWT_SECRET  || 'pp-dev-secret-change-in-prod';
-const INVITE_CODE = process.env.INVITE_CODE || 'Blessed';
+const express    = require('express');
+const fs         = require('fs');
+const path       = require('path');
+const https      = require('https');
+const { URL }    = require('url');
+const multer     = require('multer');
+const bcrypt     = require('bcryptjs');
+const jwt        = require('jsonwebtoken');
+const helmet     = require('helmet');
+const rateLimit  = require('express-rate-limit');
+
+// ── Environment & secrets ─────────────────────────────────────────────────────
+const IS_ELECTRON = process.env.ELECTRON_APP === '1';
+const JWT_SECRET  = process.env.JWT_SECRET;
+const INVITE_CODE = process.env.INVITE_CODE;
+
+if (!JWT_SECRET) {
+  console.error('[FATAL] JWT_SECRET is not set. Generate one:\n  node -e "console.log(require(\'crypto\').randomBytes(48).toString(\'hex\'))"');
+  process.exit(1);
+}
+if (!IS_ELECTRON && !INVITE_CODE) {
+  console.warn('[WARN]  INVITE_CODE is not set — registration is open to anyone who reaches this server.');
+}
+
+const PORT     = process.env.PORT || 3001;
+const DATA_DIR = process.env.DATA_DIR || __dirname;
+const DB_FILE  = path.join(DATA_DIR, 'profiles.json');
+const UPLOADS  = path.join(DATA_DIR, 'uploads');
 
 if (!fs.existsSync(UPLOADS)) fs.mkdirSync(UPLOADS, { recursive: true });
 
-// ── Multer ───────────────────────────────────────────────────────────────────
+const app = express();
+
+// ── Security headers ──────────────────────────────────────────────────────────
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc:    ["'self'"],
+      scriptSrc:     ["'self'", "'unsafe-inline'"],
+      styleSrc:      ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
+      fontSrc:       ["'self'", 'https://fonts.gstatic.com'],
+      imgSrc:        ["'self'", 'data:', 'blob:'],
+      connectSrc:    ["'self'", 'https://bible-api.com'],
+      workerSrc:     ["'self'"],
+      frameAncestors:["'none'"],
+    },
+  },
+  crossOriginEmbedderPolicy: false,
+}));
+
+// ── Rate limiting ─────────────────────────────────────────────────────────────
+const skipForElectron = () => IS_ELECTRON;
+
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  message: { error: 'Too many sign-in attempts. Try again in 15 minutes.' },
+  standardHeaders: true, legacyHeaders: false,
+  skip: skipForElectron,
+});
+
+const registerLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 5,
+  message: { error: 'Account creation limit reached. Try again later.' },
+  standardHeaders: true, legacyHeaders: false,
+  skip: skipForElectron,
+});
+
+const icloudLimiter = rateLimit({
+  windowMs: 5 * 60 * 1000,
+  max: 3,
+  message: { error: 'Too many iCloud sync attempts. Wait 5 minutes.' },
+  standardHeaders: true, legacyHeaders: false,
+  skip: skipForElectron,
+});
+
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 500,
+  message: { error: 'Too many requests. Please slow down.' },
+  standardHeaders: true, legacyHeaders: false,
+  skip: skipForElectron,
+});
+
+// ── Multer ────────────────────────────────────────────────────────────────────
 const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, UPLOADS),
   filename:    (req, file, cb) => {
@@ -34,7 +102,7 @@ const upload = multer({
   },
 });
 
-// ── JSON storage ─────────────────────────────────────────────────────────────
+// ── JSON storage ──────────────────────────────────────────────────────────────
 function readDB() {
   if (!fs.existsSync(DB_FILE)) return { users: [], profiles: [], nextId: 1 };
   try { return JSON.parse(fs.readFileSync(DB_FILE, 'utf8')); }
@@ -46,7 +114,9 @@ function writeDB(data) {
 function deletePhoto(photoUrl) {
   if (!photoUrl) return;
   try {
-    const fp = path.join(DATA_DIR, photoUrl);
+    // Use basename only — prevents any path traversal via stored URL
+    const basename = path.basename(photoUrl);
+    const fp = path.join(UPLOADS, basename);
     if (fs.existsSync(fp)) fs.unlinkSync(fp);
   } catch {}
 }
@@ -65,16 +135,28 @@ function requireAuth(req, res, next) {
 }
 
 // ── Middleware ────────────────────────────────────────────────────────────────
-app.use(express.json());
+app.use(express.json({ limit: '512kb' }));
+app.use(apiLimiter);
 app.use('/uploads', express.static(UPLOADS));
 app.use(express.static(path.join(__dirname, 'public')));
 
 // ── Auth routes ───────────────────────────────────────────────────────────────
-app.post('/api/auth/register', async (req, res) => {
-  const { username, password, inviteCode } = req.body;
-  if (!username?.trim() || !password)
+app.post('/api/auth/register', registerLimiter, async (req, res) => {
+  const { password, inviteCode } = req.body;
+  const username = (req.body.username || '').trim();
+
+  if (!username || !password)
     return res.status(400).json({ error: 'Username and password are required' });
-  if (inviteCode !== INVITE_CODE)
+  if (username.length > 32)
+    return res.status(400).json({ error: 'Username must be 32 characters or fewer' });
+  if (!/^[a-zA-Z0-9_.\-]+$/.test(username))
+    return res.status(400).json({ error: 'Username may only contain letters, numbers, _ . -' });
+  if (password.length < 8)
+    return res.status(400).json({ error: 'Password must be at least 8 characters' });
+  if (password.length > 72)
+    return res.status(400).json({ error: 'Password is too long (max 72 characters)' });
+
+  if (!IS_ELECTRON && INVITE_CODE && inviteCode !== INVITE_CODE)
     return res.status(403).json({ error: 'Invalid invite code' });
 
   const db = readDB();
@@ -84,19 +166,21 @@ app.post('/api/auth/register', async (req, res) => {
 
   const user = {
     id:         db.nextId++,
-    username:   username.trim(),
-    password:   await bcrypt.hash(password, 10),
+    username,
+    password:   await bcrypt.hash(password, 12),
     created_at: new Date().toISOString(),
   };
   db.users.push(user);
   writeDB(db);
 
-  const token = jwt.sign({ id: user.id, username: user.username }, JWT_SECRET, { expiresIn: '90d' });
+  const token = jwt.sign({ id: user.id, username: user.username }, JWT_SECRET, { expiresIn: '30d' });
   res.json({ token, username: user.username });
 });
 
-app.post('/api/auth/login', async (req, res) => {
-  const { username, password } = req.body;
+app.post('/api/auth/login', loginLimiter, async (req, res) => {
+  const { password } = req.body;
+  const username = (req.body.username || '').trim();
+
   if (!username || !password)
     return res.status(400).json({ error: 'Username and password are required' });
 
@@ -105,7 +189,7 @@ app.post('/api/auth/login', async (req, res) => {
   if (!user || !(await bcrypt.compare(password, user.password)))
     return res.status(401).json({ error: 'Invalid username or password' });
 
-  const token = jwt.sign({ id: user.id, username: user.username }, JWT_SECRET, { expiresIn: '90d' });
+  const token = jwt.sign({ id: user.id, username: user.username }, JWT_SECRET, { expiresIn: '30d' });
   res.json({ token, username: user.username });
 });
 
@@ -119,21 +203,23 @@ app.get('/api/profiles', requireAuth, (req, res) => {
 });
 
 app.post('/api/profiles', requireAuth, upload.single('photo'), (req, res) => {
-  const { name } = req.body;
-  if (!name || !name.trim()) {
+  const name = (req.body.name || '').trim();
+  if (!name) {
     if (req.file) deletePhoto('/uploads/' + req.file.filename);
     return res.status(400).json({ error: 'Name is required' });
   }
+  if (name.length > 100) return res.status(400).json({ error: 'Name is too long (max 100 characters)' });
+
   const db      = readDB();
   const profile = {
     id:               db.nextId++,
     userId:           req.user.id,
-    name:             name.trim(),
-    relationship:     (req.body.relationship || '').trim(),
-    phone:            (req.body.phone        || '').trim(),
-    email:            (req.body.email        || '').trim(),
-    birthday:         (req.body.birthday     || '').trim(),
-    notes:            (req.body.notes        || '').trim(),
+    name,
+    relationship:     (req.body.relationship || '').trim().slice(0, 50),
+    phone:            (req.body.phone        || '').trim().slice(0, 30),
+    email:            (req.body.email        || '').trim().slice(0, 200),
+    birthday:         (req.body.birthday     || '').trim().slice(0, 30),
+    notes:            (req.body.notes        || '').trim().slice(0, 5000),
     photo_url:        req.file ? '/uploads/' + req.file.filename : null,
     last_prayed_date: null,
     prayer_notes:     [],
@@ -147,11 +233,13 @@ app.post('/api/profiles', requireAuth, upload.single('photo'), (req, res) => {
 });
 
 app.put('/api/profiles/:id', requireAuth, upload.single('photo'), (req, res) => {
-  const { name } = req.body;
-  if (!name || !name.trim()) {
+  const name = (req.body.name || '').trim();
+  if (!name) {
     if (req.file) deletePhoto('/uploads/' + req.file.filename);
     return res.status(400).json({ error: 'Name is required' });
   }
+  if (name.length > 100) return res.status(400).json({ error: 'Name is too long' });
+
   const db  = readDB();
   const idx = db.profiles.findIndex(p => p.id === Number(req.params.id) && p.userId === req.user.id);
   if (idx === -1) {
@@ -167,7 +255,17 @@ app.put('/api/profiles/:id', requireAuth, upload.single('photo'), (req, res) => 
     deletePhoto(prev.photo_url);
     photo_url = null;
   }
-  db.profiles[idx] = { ...prev, name: name.trim(), relationship: (req.body.relationship || '').trim(), phone: (req.body.phone || '').trim(), email: (req.body.email || '').trim(), birthday: (req.body.birthday || '').trim(), notes: (req.body.notes || '').trim(), photo_url, updated_at: new Date().toISOString() };
+  db.profiles[idx] = {
+    ...prev,
+    name,
+    relationship: (req.body.relationship || '').trim().slice(0, 50),
+    phone:        (req.body.phone        || '').trim().slice(0, 30),
+    email:        (req.body.email        || '').trim().slice(0, 200),
+    birthday:     (req.body.birthday     || '').trim().slice(0, 30),
+    notes:        (req.body.notes        || '').trim().slice(0, 5000),
+    photo_url,
+    updated_at: new Date().toISOString(),
+  };
   writeDB(db);
   res.json(db.profiles[idx]);
 });
@@ -196,12 +294,21 @@ app.put('/api/profiles/:id/pray', requireAuth, (req, res) => {
 
 // ── Prayer Notes ──────────────────────────────────────────────────────────────
 app.post('/api/profiles/:id/prayers', requireAuth, (req, res) => {
-  const { text } = req.body;
-  if (!text || !text.trim()) return res.status(400).json({ error: 'Prayer text is required' });
+  const text = (req.body.text || '').trim();
+  if (!text) return res.status(400).json({ error: 'Prayer text is required' });
+  if (text.length > 2000) return res.status(400).json({ error: 'Prayer note is too long (max 2000 characters)' });
+
   const db      = readDB();
   const profile = db.profiles.find(p => p.id === Number(req.params.id) && p.userId === req.user.id);
   if (!profile) return res.status(404).json({ error: 'Profile not found' });
-  const prayer = { id: db.nextId++, text: text.trim(), date: req.body.date || new Date().toISOString().split('T')[0], answered: false, created_at: new Date().toISOString() };
+
+  const prayer = {
+    id:         db.nextId++,
+    text,
+    date:       req.body.date || new Date().toISOString().split('T')[0],
+    answered:   false,
+    created_at: new Date().toISOString(),
+  };
   profile.prayer_notes.push(prayer);
   writeDB(db);
   res.status(201).json(prayer);
@@ -216,9 +323,9 @@ app.put('/api/profiles/:id/prayers/:pid', requireAuth, (req, res) => {
   const prev = profile.prayer_notes[pIdx];
   profile.prayer_notes[pIdx] = {
     ...prev,
-    ...(req.body.text     !== undefined ? { text:     req.body.text.trim()       } : {}),
-    ...(req.body.date     !== undefined ? { date:     req.body.date              } : {}),
-    ...(req.body.answered !== undefined ? { answered: Boolean(req.body.answered) } : {}),
+    ...(req.body.text     !== undefined ? { text:     req.body.text.trim().slice(0, 2000) } : {}),
+    ...(req.body.date     !== undefined ? { date:     req.body.date                       } : {}),
+    ...(req.body.answered !== undefined ? { answered: Boolean(req.body.answered)           } : {}),
   };
   writeDB(db);
   res.json(profile.prayer_notes[pIdx]);
@@ -237,12 +344,20 @@ app.delete('/api/profiles/:id/prayers/:pid', requireAuth, (req, res) => {
 
 // ── Bible Verses ──────────────────────────────────────────────────────────────
 app.post('/api/profiles/:id/verses', requireAuth, (req, res) => {
-  const { reference } = req.body;
-  if (!reference || !reference.trim()) return res.status(400).json({ error: 'Reference is required' });
+  const reference = (req.body.reference || '').trim();
+  if (!reference) return res.status(400).json({ error: 'Reference is required' });
+  if (reference.length > 100) return res.status(400).json({ error: 'Reference is too long' });
+
   const db      = readDB();
   const profile = db.profiles.find(p => p.id === Number(req.params.id) && p.userId === req.user.id);
   if (!profile) return res.status(404).json({ error: 'Profile not found' });
-  const verse = { id: db.nextId++, reference: reference.trim(), text: (req.body.text || '').trim(), added_at: new Date().toISOString() };
+
+  const verse = {
+    id:        db.nextId++,
+    reference,
+    text:      (req.body.text || '').trim().slice(0, 2000),
+    added_at:  new Date().toISOString(),
+  };
   profile.verses.push(verse);
   writeDB(db);
   res.status(201).json(verse);
@@ -312,7 +427,6 @@ async function doICloudFetch(appleId, appPassword) {
     'User-Agent': 'PrayerProfiles/1.0',
   };
 
-  // Step 1 — discover principal via .well-known
   const disc = await carddavFollow({
     method: 'PROPFIND',
     host: 'contacts.icloud.com',
@@ -323,7 +437,6 @@ async function doICloudFetch(appleId, appPassword) {
   if (disc.status === 401) throw new Error('Invalid Apple ID or app-specific password. Make sure you use an app-specific password (not your regular Apple ID password).');
   if (disc.status !== 207) throw new Error(`iCloud returned status ${disc.status}. Check your credentials and try again.`);
 
-  // Step 2 — extract principal path
   let principalPath = '';
   for (const b of xmlTag(disc.body, 'current-user-principal')) {
     const h = xmlHref(b);
@@ -333,7 +446,6 @@ async function doICloudFetch(appleId, appPassword) {
 
   const icloudHost = disc.finalHost;
 
-  // Step 3 — get addressbook-home-set
   const homeResp = await carddavReq({
     method: 'PROPFIND', host: icloudHost, path: principalPath,
     headers: { ...hdrs, Depth: '0' },
@@ -349,7 +461,6 @@ async function doICloudFetch(appleId, appPassword) {
   }
   if (!homePath) throw new Error('Could not find your iCloud address book.');
 
-  // Step 4 — list addressbooks (Depth:1), pick the first real one
   const listResp = await carddavReq({
     method: 'PROPFIND', host: icloudHost, path: homePath,
     headers: { ...hdrs, Depth: '1' },
@@ -362,7 +473,6 @@ async function doICloudFetch(appleId, appPassword) {
   }
   if (!abPath) abPath = homePath;
 
-  // Step 5 — REPORT addressbook-query to get all vCards
   const report = await carddavReq({
     method: 'REPORT', host: icloudHost, path: abPath,
     headers: { ...hdrs, Depth: '1' },
@@ -417,10 +527,12 @@ function parseBdaySrv(val) {
   return val;
 }
 
-app.post('/api/icloud/contacts', requireAuth, async (req, res) => {
+app.post('/api/icloud/contacts', requireAuth, icloudLimiter, async (req, res) => {
   const { appleId, appPassword } = req.body || {};
   if (!appleId || !appPassword)
     return res.status(400).json({ error: 'Apple ID and app-specific password are required.' });
+  if (typeof appleId !== 'string' || appleId.length > 200)
+    return res.status(400).json({ error: 'Invalid Apple ID.' });
   try {
     const contacts = await doICloudFetch(appleId.trim(), appPassword.trim());
     res.json({ contacts });

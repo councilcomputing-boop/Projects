@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Privacy Policy — Prayer Profiles</title>
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Merriweather:ital,wght@0,400;1,400&display=swap');
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0D0E1F; --surface: #14152B; --surface2: #1A1C34;
+      --border: rgba(255,255,255,0.06); --border2: rgba(255,255,255,0.10);
+      --text: #EEEFFE; --text2: #9EA3C0; --text3: #5C6080;
+      --gold: #F5B800; --gold-bg: rgba(245,184,0,0.10);
+    }
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      background: var(--bg); color: var(--text);
+      font-size: 15px; line-height: 1.7;
+      -webkit-font-smoothing: antialiased;
+      min-height: 100vh;
+    }
+    .header {
+      background: rgba(13,14,31,0.98); border-bottom: 1px solid var(--border2);
+      padding: 16px 24px; display: flex; align-items: center; gap: 14px;
+      position: sticky; top: 0; z-index: 10; backdrop-filter: blur(14px);
+    }
+    .header-logo {
+      width: 32px; height: 32px; border-radius: 9px; overflow: hidden;
+      box-shadow: 0 2px 10px rgba(245,184,0,0.25);
+    }
+    .header-logo img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .header a { color: var(--gold); font-size: 13px; font-weight: 600; text-decoration: none; margin-left: auto; }
+    .header a:hover { text-decoration: underline; }
+    .page { max-width: 760px; margin: 0 auto; padding: 48px 24px 80px; }
+    .page-eyebrow {
+      font-size: 11px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 1px; color: var(--gold); margin-bottom: 10px;
+    }
+    h1 { font-size: 32px; font-weight: 700; letter-spacing: -0.5px; margin-bottom: 8px; }
+    .meta { font-size: 13px; color: var(--text3); margin-bottom: 40px; }
+    h2 {
+      font-size: 16px; font-weight: 700; color: var(--text);
+      margin: 36px 0 12px; padding-bottom: 8px;
+      border-bottom: 1px solid var(--border2);
+    }
+    p { color: var(--text2); margin-bottom: 14px; }
+    ul { color: var(--text2); padding-left: 20px; margin-bottom: 14px; }
+    ul li { margin-bottom: 6px; }
+    .callout {
+      background: var(--surface); border: 1px solid var(--border2);
+      border-left: 3px solid var(--gold); border-radius: 8px;
+      padding: 16px 20px; margin: 20px 0;
+    }
+    .callout p { margin: 0; color: var(--text2); }
+    strong { color: var(--text); font-weight: 600; }
+    a { color: var(--gold); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .footer {
+      border-top: 1px solid var(--border); margin-top: 48px; padding-top: 24px;
+      font-size: 12px; color: var(--text3); display: flex; gap: 16px; flex-wrap: wrap;
+    }
+    .footer a { color: var(--text3); }
+    .footer a:hover { color: var(--gold); }
+  </style>
+</head>
+<body>
+
+<header class="header">
+  <div class="header-logo"><img src="/icon-192.png" alt="Prayer Profiles"></div>
+  <span style="font-size:15px;font-weight:700">Prayer Profiles</span>
+  <a href="/">← Back to App</a>
+</header>
+
+<main class="page">
+  <div class="page-eyebrow">Legal</div>
+  <h1>Privacy Policy</h1>
+  <p class="meta">Effective date: June 14, 2026 &nbsp;·&nbsp; Last updated: June 14, 2026</p>
+
+  <div class="callout">
+    <p><strong>Short version:</strong> Your prayer data stays on your device or your own server. We don't sell it, share it, or use it for advertising. Ever.</p>
+  </div>
+
+  <h2>1. Who We Are</h2>
+  <p>Prayer Profiles is a personal prayer-tracking application developed by Council Computing. If you have questions about this policy, contact us at <a href="mailto:councilcomputing@gmail.com">councilcomputing@gmail.com</a>.</p>
+
+  <h2>2. What Data We Collect</h2>
+  <p>When you use Prayer Profiles, the following information is stored:</p>
+  <ul>
+    <li><strong>Account information:</strong> your chosen username and a bcrypt-hashed (one-way encrypted) version of your password. Your plain-text password is never stored.</li>
+    <li><strong>Prayer profiles:</strong> names, relationship labels, phone numbers, email addresses, birthdays, and personal notes you enter for each person you pray for.</li>
+    <li><strong>Prayer notes:</strong> the text of prayer requests and answers you log.</li>
+    <li><strong>Bible verses:</strong> scripture references and text you attach to profiles.</li>
+    <li><strong>Profile photos:</strong> images you upload are stored as files on the server.</li>
+    <li><strong>Prayer activity:</strong> the date you last marked someone as "Prayed Today".</li>
+  </ul>
+  <p>We do <strong>not</strong> collect analytics, usage tracking, device identifiers, location data, or any information beyond what you explicitly enter.</p>
+
+  <h2>3. How Your Data Is Stored</h2>
+  <p>All data is stored in a JSON file and an uploads folder on the server or device running Prayer Profiles:</p>
+  <ul>
+    <li><strong>Desktop (Electron) app:</strong> data is stored locally on your own computer in your OS user-data directory. It never leaves your machine.</li>
+    <li><strong>Self-hosted web deployment:</strong> data is stored on the server you control (e.g., Fly.io, your own VPS). You are responsible for that server's security and backups.</li>
+  </ul>
+
+  <h2>4. iCloud Contact Sync</h2>
+  <p>Prayer Profiles includes an optional feature to import contacts from iCloud. When you use this feature:</p>
+  <ul>
+    <li>Your Apple ID and app-specific password are transmitted to the Prayer Profiles server over HTTPS.</li>
+    <li>These credentials are used <strong>only</strong> to make a one-time CardDAV request to Apple's servers and are <strong>never stored, logged, or retained</strong> after the request completes.</li>
+    <li>We strongly recommend using an <a href="https://appleid.apple.com" target="_blank" rel="noopener">app-specific password</a> (not your primary Apple ID password) for this feature.</li>
+  </ul>
+
+  <h2>5. Third-Party Services</h2>
+  <p>Prayer Profiles connects to the following external services:</p>
+  <ul>
+    <li><strong>Google Fonts</strong> — The app loads fonts from <code>fonts.googleapis.com</code>. Google may log your IP address when serving these fonts. See <a href="https://policies.google.com/privacy" target="_blank" rel="noopener">Google's Privacy Policy</a>.</li>
+    <li><strong>bible-api.com</strong> — When you type a verse reference and click "Save Verse", the reference text is sent to <code>bible-api.com</code> to retrieve the verse text. No account information is included. See their site for their privacy practices.</li>
+    <li><strong>Apple iCloud CardDAV</strong> — Only when you explicitly use the iCloud sync feature, as described in Section 4.</li>
+  </ul>
+  <p>We have no other third-party integrations, no advertising networks, no analytics services, and no social login providers.</p>
+
+  <h2>6. Data Sharing</h2>
+  <p>We do not sell, rent, or share your personal data with any third parties. Your prayer data is yours alone.</p>
+
+  <h2>7. Data Retention and Deletion</h2>
+  <p>Your data is retained until you delete it. You can delete individual profiles, prayer notes, and verses from within the app. To permanently delete all your data, delete your account data file from the server or contact us.</p>
+
+  <h2>8. Security</h2>
+  <p>We take reasonable steps to protect your data:</p>
+  <ul>
+    <li>Passwords are hashed using bcrypt (work factor 12) and are never stored in plain text.</li>
+    <li>Sessions use signed JSON Web Tokens (JWT) that expire after 30 days.</li>
+    <li>The web version enforces HTTPS.</li>
+    <li>API endpoints are rate-limited to reduce brute-force risk.</li>
+    <li>Security headers (CSP, X-Frame-Options, etc.) are applied to all responses.</li>
+  </ul>
+  <p>No system is perfectly secure. We cannot guarantee the security of data you transmit to us, and you do so at your own risk.</p>
+
+  <h2>9. Children's Privacy</h2>
+  <p>Prayer Profiles is not directed at children under 13. We do not knowingly collect personal data from children under 13. If you believe a child under 13 has provided us with personal data, please contact us and we will delete it.</p>
+
+  <h2>10. Changes to This Policy</h2>
+  <p>We may update this privacy policy from time to time. We will update the "Last updated" date at the top of this page. Continued use of the app after changes constitutes acceptance of the new policy.</p>
+
+  <h2>11. Contact</h2>
+  <p>If you have questions, concerns, or requests regarding this privacy policy or your data, contact us at <a href="mailto:councilcomputing@gmail.com">councilcomputing@gmail.com</a>.</p>
+
+  <div class="footer">
+    <a href="/">Prayer Profiles</a>
+    <a href="/privacy.html">Privacy Policy</a>
+    <a href="/terms.html">Terms of Service</a>
+    <span style="margin-left:auto">© 2026 Council Computing</span>
+  </div>
+</main>
+
+</body>
+</html>
