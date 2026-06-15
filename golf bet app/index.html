@@ -930,6 +930,7 @@ function pg_setup(){
         <button class="btn btn-secondary" data-aifill ${S.aiLoading?'disabled':''} style="flex:1">${S.aiLoading?'⏳ Looking up…':'✨ AI Fill Pars'}</button>
         <button class="btn btn-outline" data-savec style="flex:1">💾 Save Course</button>
       </div>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:4px">⚠️ AI pars may not be 100% accurate — tap any hole to adjust.</div>
     </div>
     <div class="card"><div class="card-title" style="display:flex;align-items:center;justify-content:space-between">Par per Hole <span style="font-weight:800;color:var(--text)">Total: ${totalPar}</span></div>
       <div style="display:grid;grid-template-columns:repeat(9,1fr);gap:4px">${parGrid}</div>
