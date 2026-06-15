@@ -1,10 +1,4 @@
 const Stripe = require('stripe')
-const admin = require('firebase-admin')
-
-if (!admin.apps.length) {
-  const svc = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT)
-  admin.initializeApp({ credential: admin.credential.cert(svc) })
-}
 
 exports.handler = async (event) => {
   if (event.httpMethod !== 'POST') return { statusCode: 405, body: 'Method Not Allowed' }
@@ -34,8 +28,7 @@ exports.handler = async (event) => {
     return { statusCode: 403, body: 'UID mismatch' }
   }
 
-  await admin.firestore().doc(`users/${uid}`).set({ isPaid: true }, { merge: true })
-
+  // Payment verified — app will write isPaid to Firestore using the user's own auth
   return {
     statusCode: 200,
     headers: { 'Content-Type': 'application/json' },
