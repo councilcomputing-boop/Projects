@@ -543,17 +543,32 @@ function calcSideBets(round){
   return{payouts:pay,summary}
 }
 
+function strokePlay(round){
+  const pl=round.players,payouts={},totals={},pars=round.pars||[]
+  pl.forEach(p=>payouts[p.id]=0)
+  pl.forEach(p=>{totals[p.id]=round.scores[p.id]?.slice(0,round.holes).reduce((a,b)=>a+(b||0),0)||0})
+  const amount=round.games.strokePlay?.amount||0
+  if(amount>0){
+    const winner=[...pl].sort((a,b)=>totals[a.id]-totals[b.id])[0]
+    pl.forEach(p=>{if(p.id!==winner.id){const d=(totals[p.id]-totals[winner.id])*amount;payouts[p.id]-=d;payouts[winner.id]+=d}})
+  }
+  const totalPar=pars.slice(0,round.holes).reduce((a,b)=>a+b,0)
+  const ranked=[...pl].sort((a,b)=>totals[a.id]-totals[b.id])
+  return{payouts,totals,totalPar,ranked}
+}
+
 function calcAll(round){
   const n=nassau(round)
   const sr=skins(round),sp=sr.payouts||{}
   const mp=matchplay(round)
   const wf=wolf(round)
+  const spw=strokePlay(round)
   const sb=calcSideBets(round)
   const tot={}
   round.players.forEach(p=>{
-    tot[p.id]=(n[p.id]||0)+(sp[p.id]||0)+(mp[p.id]||0)+(wf[p.id]||0)+(sb.payouts[p.id]||0)
+    tot[p.id]=(n[p.id]||0)+(sp[p.id]||0)+(mp[p.id]||0)+(wf[p.id]||0)+(spw.payouts[p.id]||0)+(sb.payouts[p.id]||0)
   })
-  return{tot,nassau:n,skins:sr,matchPlay:mp,wolf:wf,sideBets:sb}
+  return{tot,nassau:n,skins:sr,matchPlay:mp,wolf:wf,strokePlay:spw,sideBets:sb}
 }
 
 function settle(players,net){
@@ -579,7 +594,7 @@ function mpStatus(round){
 function scCls(s,p){if(!s||!p)return '';const d=s-p;if(d<=-2)return 'eagle';if(d===-1)return 'birdie';if(d===1)return 'bogey';if(d>=2)return 'dbogey';return ''}
 
 // ── DRAFT ─────────────────────────────────────────────
-function newDraft(){return{course:'',location:'',playerIds:[],holes:18,games:{nassau:{enabled:false,amount:5,autoPress:false},skins:{enabled:false,amount:1,carryTies:true},matchPlay:{enabled:false,amount:10,teams:[]},wolf:{enabled:false,pointValue:1}},pars:Array(18).fill(4)}}
+function newDraft(){return{course:'',location:'',playerIds:[],holes:18,games:{strokePlay:{enabled:false,amount:0},nassau:{enabled:false,amount:5,autoPress:false},skins:{enabled:false,amount:1,carryTies:true},matchPlay:{enabled:false,amount:10,teams:[]},wolf:{enabled:false,pointValue:1}},pars:Array(18).fill(4)}}
 
 function mkRound(d){
   const D=db()
@@ -971,7 +986,13 @@ function pg_setup(){
     <div class="fg"><label class="flabel">$ per point</label><input class="finput finput-sm" id="wa" type="number" min="0.25" step="0.25" value="${g.wolf.pointValue}"></div>
     <div style="font-size:12px;color:var(--muted)">Regular: 1 pt each side &middot; Lone Wolf win: 2 pts each</div>
   </div>`:''
+  const spsub=g.strokePlay.enabled?`<div class="gsub">
+    <div class="fg"><label class="flabel">$ per stroke difference <span style="font-weight:400;color:var(--muted)">(0 = no bet)</span></label><input class="finput finput-sm" id="spa" type="number" min="0" step="0.5" value="${g.strokePlay.amount}"></div>
+    <div style="font-size:12px;color:var(--muted)">Low score wins. Set to 0 for pure score tracking.</div>
+  </div>`:''
   return`<div class="card"><div class="card-title">Choose Games</div>
+    <div class="tog-row"><div><div class="tname">🏌️ Classic</div><div class="tsub">Stroke play &middot; Low total score wins</div></div>
+      <label class="tog"><input type="checkbox" id="tsp" ${g.strokePlay.enabled?'checked':''}><span class="tog-sl"></span></label></div>${spsub}
     <div class="tog-row"><div><div class="tname">🏌️ Nassau</div><div class="tsub">Front 9 &middot; Back 9 &middot; Total 18</div></div>
       <label class="tog"><input type="checkbox" id="tn" ${g.nassau.enabled?'checked':''}><span class="tog-sl"></span></label></div>${nsub}
     <div class="tog-row"><div><div class="tname">💰 Skins</div><div class="tsub">Win holes outright to collect</div></div>
@@ -993,6 +1014,10 @@ function pg_scorecard(){
   const{players:pl,scores:sc,pars}=round,holes=round.holes||18
   const h=Math.min(S.hole||0,holes-1)
   const par=pars[h]||4
+  // pre-fill current hole scores with par if not yet entered
+  let _prefilled=false
+  pl.forEach(p=>{if(sc[p.id]&&sc[p.id][h]==null){sc[p.id][h]=par;_prefilled=true}})
+  if(_prefilled&&S.rid){const _upd={};pl.forEach(p=>{_upd[`scores.${p.id}`]=sc[p.id]});setTimeout(()=>fdb.collection('rounds').doc(S.rid).update(_upd),0)}
   const won=round.games.wolf?.enabled
   const sideBets=round.sideBets||{}
   const hbets=sideBets[h+1]||[]
@@ -1144,7 +1169,8 @@ function pg_results(){
     {key:'nassau',lbl:'🏌️ Nassau',p:res.nassau},
     {key:'skins',lbl:'💰 Skins',p:res.skins.payouts||{}},
     {key:'matchPlay',lbl:'🆚 Match Play',p:res.matchPlay},
-    {key:'wolf',lbl:'🐺 Wolf',p:res.wolf}
+    {key:'wolf',lbl:'🐺 Wolf',p:res.wolf},
+    {key:'strokePlay',lbl:'🏌️ Classic',p:res.strokePlay.payouts}
   ].filter(g=>round.games[g.key]?.enabled)
 
   const sbSummary=res.sideBets.summary||[]
@@ -1154,6 +1180,11 @@ function pg_results(){
   const bkr=games.map(g=>{const c=pl.map(p=>{const v=g.p?.[p.id]||0;return`<td class="${v>0?'mpos':v<0?'mneg':'mzro'}">${$$(v)}</td>`}).join('');return`<tr><td><strong>${g.lbl}</strong></td>${c}</tr>`}).join('')
   const sbRow=hasSB?`<tr><td><strong>💰 Side Bets</strong></td>${pl.map(p=>{const v=res.sideBets.payouts[p.id]||0;return`<td class="${v>0?'mpos':v<0?'mneg':'mzro'}">${$$(v)}</td>`}).join('')}</tr>`:''
   const tr=pl.map(p=>{const v=res.tot[p.id]||0;return`<td class="${v>0?'mpos':v<0?'mneg':'mzro'}"><strong>${$$(v)}</strong></td>`}).join('')
+
+  const medals=['🥇','🥈','🥉']
+  const spDetail=round.games.strokePlay?.enabled?`<div class="card"><div class="card-title">🏌️ Classic Leaderboard</div>
+    ${res.strokePlay.ranked.map((p,i)=>{const strokes=res.strokePlay.totals[p.id];const diff=strokes-(res.strokePlay.totalPar||0);const diffStr=diff===0?'E':diff>0?`+${diff}`:diff;return`<div class="list-item"><div style="display:flex;align-items:center;gap:10px"><div style="font-size:20px;width:28px">${medals[i]||`${i+1}.`}</div><div><div class="li-main">${p.name}</div><div class="li-sub">${strokes} strokes &nbsp;·&nbsp; <span style="font-weight:700;color:${diff<=0?'var(--green2)':'var(--red)'}">${diffStr}</span></div></div></div>${round.games.strokePlay.amount>0?`<div style="font-weight:700;color:${(res.strokePlay.payouts[p.id]||0)>=0?'var(--green2)':'var(--red)'}">${$$(res.strokePlay.payouts[p.id]||0)}</div>`:''}</div>`}).join('')}
+  </div>`:''
 
   const sd=round.games.skins?.enabled?`<div class="card"><div class="card-title">💰 Skins Detail</div>
     ${pl.map(p=>`<div class="list-item"><div class="li-main">${p.name}</div><span class="badge bo">${res.skins.won?.[p.id]||0} skins</span></div>`).join('')}
@@ -1171,7 +1202,7 @@ function pg_results(){
     ${pl.map(p=>{const v=res.tot[p.id]||0;return`<div class="res-item"><div class="res-name">${p.name}</div><div class="res-amt ${v>0?'mpos':v<0?'mneg':'mzro'}">${$$(v)}</div></div>`}).join('')}
   </div>
   ${(games.length>0||hasSB)?`<div class="card"><div class="card-title">Breakdown</div><div style="overflow-x:auto"><table class="bk-table"><tr><th>Game</th>${ph}</tr>${bkr}${sbRow}<tr style="background:var(--green-pale)"><td><strong>TOTAL</strong></td>${tr}</tr></table></div></div>`:''}
-  ${sd}${sbDetail}${sh}
+  ${spDetail}${sd}${sbDetail}${sh}
   <div class="btn-row"><button class="btn btn-secondary" data-nav="home">Done</button><button class="btn btn-outline" data-gsc="${round.id}">Edit Scores</button></div>`
 }
 
@@ -1367,6 +1398,7 @@ function bind(){
   document.querySelector('[data-sb]')?.addEventListener('click',()=>{S.step=1;ren()})
 
   // game toggles
+  document.getElementById('tsp')?.addEventListener('change',e=>{S.draft.games.strokePlay.enabled=e.target.checked;ren()})
   document.getElementById('tn')?.addEventListener('change',e=>{S.draft.games.nassau.enabled=e.target.checked;ren()})
   document.getElementById('ts')?.addEventListener('change',e=>{S.draft.games.skins.enabled=e.target.checked;ren()})
   document.getElementById('tm')?.addEventListener('change',e=>{S.draft.games.matchPlay.enabled=e.target.checked;ren()})
@@ -1384,7 +1416,7 @@ function bind(){
   // start round
   document.querySelector('[data-sg]')?.addEventListener('click',()=>{
     const d=S.draft
-    ;[['na','nassau','amount'],['sa','skins','amount'],['ma','matchPlay','amount'],['wa','wolf','pointValue']].forEach(([id,gk,fk])=>{const el=document.getElementById(id);if(el){const v=parseFloat(el.value);if(!isNaN(v)&&v>0)d.games[gk][fk]=v}})
+    ;[['spa','strokePlay','amount'],['na','nassau','amount'],['sa','skins','amount'],['ma','matchPlay','amount'],['wa','wolf','pointValue']].forEach(([id,gk,fk])=>{const el=document.getElementById(id);if(el){const v=parseFloat(el.value);if(!isNaN(v)&&v>=0)d.games[gk][fk]=v}})
     if(!Object.values(d.games).some(g=>g.enabled)){toast('Enable at least one game','error');return}
     // Paywall: free users get 1 round per week
     if(!S.user?.isPaid){
@@ -1538,7 +1570,17 @@ function bind(){
   }))
 
   // ── HOLE NAVIGATION ──
-  document.querySelectorAll('[data-go-hole]').forEach(el=>el.addEventListener('click',()=>{S.hole=parseInt(el.dataset.goHole);S.holeMenu=false;ren();scrollTo(0,0)}))
+  document.querySelectorAll('[data-go-hole]').forEach(el=>el.addEventListener('click',()=>{
+    const h=parseInt(el.dataset.goHole)
+    S.hole=h;S.holeMenu=false
+    if(S.round){
+      const par=S.round.pars[h]||4
+      let changed=false
+      S.round.players.forEach(p=>{if(S.round.scores[p.id]&&S.round.scores[p.id][h]==null){S.round.scores[p.id][h]=par;changed=true}})
+      if(changed){const _upd={};S.round.players.forEach(p=>{_upd[`scores.${p.id}`]=S.round.scores[p.id]});fdb.collection('rounds').doc(S.rid).update(_upd)}
+    }
+    ren();scrollTo(0,0)
+  }))
   document.querySelector('[data-open-hole-menu]')?.addEventListener('click',()=>{S.holeMenu=true;ren()})
   document.querySelectorAll('[data-close-hole-menu]').forEach(el=>el.addEventListener('click',()=>{S.holeMenu=false;ren()}))
   document.getElementById('hm-ov')?.addEventListener('click',e=>{if(e.target===document.getElementById('hm-ov')){S.holeMenu=false;ren()}})
