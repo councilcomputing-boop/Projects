@@ -578,7 +578,7 @@ function mpStatus(round){
 function scCls(s,p){if(!s||!p)return '';const d=s-p;if(d<=-2)return 'eagle';if(d===-1)return 'birdie';if(d===1)return 'bogey';if(d>=2)return 'dbogey';return ''}
 
 // ── DRAFT ─────────────────────────────────────────────
-function newDraft(){return{course:'',playerIds:[],holes:18,games:{nassau:{enabled:false,amount:5,autoPress:false},skins:{enabled:false,amount:1,carryTies:true},matchPlay:{enabled:false,amount:10,teams:[]},wolf:{enabled:false,pointValue:1}},pars:Array(18).fill(4)}}
+function newDraft(){return{course:'',location:'',playerIds:[],holes:18,games:{nassau:{enabled:false,amount:5,autoPress:false},skins:{enabled:false,amount:1,carryTies:true},matchPlay:{enabled:false,amount:10,teams:[]},wolf:{enabled:false,pointValue:1}},pars:Array(18).fill(4)}}
 
 function mkRound(d){
   const D=db()
@@ -590,11 +590,11 @@ function mkRound(d){
 }
 
 // ── AI COURSE FILL ────────────────────────────────────
-async function fillPars(course, holes){
+async function fillPars(course, holes, location=''){
   const resp=await fetch('/.netlify/functions/course',{
     method:'POST',
     headers:{'content-type':'application/json'},
-    body:JSON.stringify({course,holes})
+    body:JSON.stringify({course,holes,location})
   })
   if(!resp.ok){const e=await resp.text();throw new Error(e||resp.statusText)}
   const pars=await resp.json()
@@ -921,7 +921,8 @@ function pg_setup(){
       </div>
     </div>`:''
     return`${savedCourses}<div class="card"><div class="card-title">Round Info</div>
-      <div class="fg"><label class="flabel">Course Name</label><input class="finput" id="dc" value="${d.course}" placeholder="e.g. Pebble Beach, Oak Tree"></div>
+      <div class="fg"><label class="flabel">Course Name</label><input class="finput" id="dc" value="${d.course}" placeholder="e.g. Pebble Beach"></div>
+      <div class="fg"><label class="flabel">City & State <span style="font-weight:400;color:var(--muted)">(helps AI find the right course)</span></label><input class="finput" id="dloc" value="${d.location||''}" placeholder="e.g. Pebble Beach, CA"></div>
       <div class="fg"><label class="flabel">Holes</label><select class="finput" id="dh">
         <option value="9" ${d.holes===9?'selected':''}>9 Holes</option>
         <option value="18" ${d.holes===18?'selected':''}>18 Holes</option>
@@ -1336,11 +1337,12 @@ function bind(){
   document.querySelector('[data-aifill]')?.addEventListener('click',async()=>{
     if(!S.user?.isPaid){showPaywall();return}
     const course=document.getElementById('dc')?.value.trim()
+    const loc=document.getElementById('dloc')?.value.trim()
     const holes=parseInt(document.getElementById('dh')?.value)||18
     if(!course){toast('Enter a course name first','error');return}
-    S.draft.course=course;S.draft.holes=holes;S.aiLoading=true;ren()
+    S.draft.course=course;S.draft.location=loc||'';S.draft.holes=holes;S.aiLoading=true;ren()
     try{
-      const pars=await fillPars(course,holes)
+      const pars=await fillPars(course,holes,loc)
       S.draft.pars=pars
       S.aiLoading=false;ren()
     }catch(e){
