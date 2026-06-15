@@ -319,6 +319,42 @@ async function joinRound(code){
   }catch(e){toast('Could not join round','error')}
 }
 
+// ── ONLINE GROUPS ─────────────────────────────────────
+let unsubGroup=null
+async function createGroup(){
+  const g={id:uid(),code:genCode(),hostId:S.user.uid,members:[{uid:S.user.uid,name:S.user.displayName,handicap:0}],createdAt:firebase.firestore.FieldValue.serverTimestamp()}
+  await fdb.collection('groups').doc(g.id).set(g)
+  S.gid=g.id;S.group=g
+  subscribeGroup(g.id)
+  go('group-lobby')
+}
+function subscribeGroup(gid){
+  if(unsubGroup){unsubGroup();unsubGroup=null}
+  unsubGroup=fdb.collection('groups').doc(gid).onSnapshot(snap=>{if(snap.exists){S.group=snap.data();ren()}})
+}
+async function joinByCode(code){
+  // Try round first
+  try{
+    const rs=await fdb.collection('rounds').where('code','==',code).where('completed','==',false).limit(1).get()
+    if(!rs.empty){
+      const doc=rs.docs[0],rid=doc.id
+      await doc.ref.update({joinedUsers:firebase.firestore.FieldValue.arrayUnion(S.user.uid)})
+      S.round=doc.data();subscribeRound(rid);go('scorecard',{rid,hole:0,holeMenu:false});return
+    }
+  }catch(e){}
+  // Try group
+  try{
+    const gs=await fdb.collection('groups').where('code','==',code).get()
+    if(!gs.empty){
+      const g=gs.docs[0].data()
+      const already=g.members.some(m=>m.uid===S.user.uid)
+      if(!already)await fdb.collection('groups').doc(g.id).update({members:firebase.firestore.FieldValue.arrayUnion({uid:S.user.uid,name:S.user.displayName,handicap:0})})
+      S.gid=g.id;S.group=g;subscribeGroup(g.id);go('group-lobby');return
+    }
+  }catch(e){}
+  toast('Code not found — check and try again','error')
+}
+
 async function loadHistory(){
   if(!S.user)return
   try{
@@ -368,10 +404,11 @@ const BET_TYPES=[
 function betLabel(val){return BET_TYPES.find(t=>t.val===val)?.lbl||val}
 
 // ── STATE ─────────────────────────────────────────────
-let S={sc:'auth',user:null,rid:null,round:null,draft:null,step:1,betHole:null,aiLoading:false,editGroup:null,hole:0,holeMenu:false,authMode:'signin',joinCode:'',historyRounds:null}
+let S={sc:'auth',user:null,rid:null,round:null,draft:null,step:1,betHole:null,aiLoading:false,editGroup:null,hole:0,holeMenu:false,authMode:'signin',joinCode:'',historyRounds:null,gid:null,group:null}
 function go(sc,x){S={...S,sc,...(x||{})};ren();scrollTo(0,0)}
 function nav(sc){
   if(sc==='history')S.historyRounds=null
+  if(unsubGroup&&sc!=='group-lobby'){unsubGroup();unsubGroup=null;S.gid=null;S.group=null}
   S={...S,sc,rid:null,round:null,draft:null,step:1,betHole:null,hole:0,holeMenu:false}
   ren();scrollTo(0,0)
 }
@@ -544,7 +581,10 @@ function scCls(s,p){if(!s||!p)return '';const d=s-p;if(d<=-2)return 'eagle';if(d
 function newDraft(){return{course:'',playerIds:[],holes:18,games:{nassau:{enabled:false,amount:5,autoPress:false},skins:{enabled:false,amount:1,carryTies:true},matchPlay:{enabled:false,amount:10,teams:[]},wolf:{enabled:false,pointValue:1}},pars:Array(18).fill(4)}}
 
 function mkRound(d){
-  const D=db(),pl=d.playerIds.map(id=>D.players.find(p=>p.id===id)).filter(Boolean),sc={}
+  const D=db()
+  const local=d.playerIds.map(id=>D.players.find(p=>p.id===id)).filter(Boolean)
+  const extra=(d.extraPlayers||[]).filter(ep=>!local.some(lp=>lp.id===ep.id))
+  const pl=[...local,...extra],sc={}
   pl.forEach(p=>sc[p.id]=Array(18).fill(null))
   return{id:uid(),date:new Date().toISOString(),course:d.course||'Round',players:pl.map(p=>({id:p.id,name:p.name,handicap:p.handicap||0})),games:JSON.parse(JSON.stringify(d.games)),pars:d.pars,holes:d.holes||18,scores:sc,wolfDecisions:{},sideBets:{},completed:false,payouts:{}}
 }
@@ -630,9 +670,9 @@ function hdr(){
     const round=S.round,holes=round?.holes||18,h=Math.min(S.hole||0,holes-1)
     return`<div class="hdr"><button class="hdr-back" data-back="home">&#8249;</button><span class="hdr-title">Hole ${h+1} / ${holes}</span><button class="hdr-action" style="margin-right:4px" data-open-hole-menu>&#9776; Holes</button><button class="hdr-action" data-finish>Finish</button></div>`
   }
-  const titles={join:'Join Round',home:'Wager',players:'⚙️ Settings',setup:'🏌️ New Round',results:'🏆 Results',history:'📋 History',ledger:'💰 Ledger','round-detail':'📋 Round Detail',wolf:'🐺 Wolf'}
-  const back_map={join:'home',setup:'home',results:'home','round-detail':'history',wolf:'scorecard'}
-  const has_back=['join','setup','results','round-detail','wolf'].includes(S.sc)
+  const titles={join:'Enter Code',home:'Wager',players:'⚙️ Settings',setup:'🏌️ New Round',results:'🏆 Results',history:'📋 History',ledger:'💰 Ledger','round-detail':'📋 Round Detail',wolf:'🐺 Wolf','group-lobby':'👥 Round Lobby'}
+  const back_map={join:'home',setup:'home',results:'home','round-detail':'history',wolf:'scorecard','group-lobby':'home'}
+  const has_back=['join','setup','results','round-detail','wolf','group-lobby'].includes(S.sc)
   return`<div class="hdr">${has_back?`<button class="hdr-back" data-back="${back_map[S.sc]||'home'}">&#8249;</button>`:''}<span class="hdr-title">${titles[S.sc]||'Wager'}</span></div>`
 }
 
@@ -649,6 +689,7 @@ function scr(){
     case 'round-detail':return pg_rd()
     case 'ledger':return pg_ledger()
     case 'wolf':return pg_wolf()
+    case 'group-lobby':return pg_group_lobby()
     default:return pg_home()
   }
 }
@@ -673,8 +714,8 @@ function pg_auth(){
 // ── JOIN ──────────────────────────────────────────────
 function pg_join(){
   return`<div class="card" style="margin-top:8px">
-    <div class="card-title">Join a Round</div>
-    <p style="font-size:13px;color:var(--muted);margin-bottom:14px">Get the 5-letter code from whoever started the round</p>
+    <div class="card-title">Enter Code</div>
+    <p style="font-size:13px;color:var(--muted);margin-bottom:14px">Enter a 5-letter code to join a round or a group lobby</p>
     <div class="fg">
       <label class="flabel">Round Code</label>
       <input class="finput" id="join-code" placeholder="e.g. GX7K2" maxlength="5"
@@ -697,6 +738,7 @@ function pg_home(){
   const isPro=S.user?.isPaid
   const userBadge=`<div class="user-badge"><div class="user-avatar">${uinitial}</div><div><div class="user-name">${uname} ${isPro?'<span style="font-size:11px;background:var(--gold);color:#fff;border-radius:6px;padding:1px 6px;font-weight:700;vertical-align:middle">PRO</span>':''}</div><div class="user-email">${S.user?.email||''}</div></div><button class="signout-btn" data-signout>Sign out</button></div>`
   const banner=act?`<div class="act-banner"><div><div class="act-lbl">In progress</div><div class="act-title">${act.course}</div></div><button class="btn" data-gsc="${act.id}">Continue &#8594;</button></div>`:''
+  const groupBanner=S.group&&!act?`<div class="act-banner" style="background:rgba(255,255,255,.15)"><div><div class="act-lbl">Lobby active</div><div class="act-title">Code: ${S.group.code}</div></div><button class="btn" data-nav="group-lobby">Return &#8594;</button></div>`:''
   const rematch=last&&!act?`<button class="btn btn-gold" data-rematch style="margin-bottom:12px">🔁 Quick Rematch — ${last.course}</button>`:''
   const recent=rec.length?`<div class="card"><div class="card-title">Recent Rounds</div>${rec.map(r=>`<div class="hist-item" data-rd="${r.id}"><div class="hist-date">${dt(r.date||r.createdAt)}</div><div class="hist-course">${r.course}</div><div class="hist-tags">${Object.entries(r.games).filter(([,v])=>v.enabled).map(([k])=>k[0].toUpperCase()+k.slice(1)).join(' · ')}</div></div>`).join('')}</div>`:''
   const nop=!D.players.length?`<div class="card"><div class="empty"><div class="ei">👤</div><p>Add players to get started</p></div><button class="btn btn-secondary" data-nav="players">Add Players</button></div>`:''
@@ -704,12 +746,13 @@ function pg_home(){
   const isStandalone=window.navigator.standalone||window.matchMedia('(display-mode: standalone)').matches
   const dismissed=localStorage.getItem('install_dismissed')
   const installBanner=isIOS&&!isStandalone&&!dismissed?`<div class="install-banner"><div class="ib-icon">⛳</div><div class="ib-text"><div class="ib-title">Add Wager to Home Screen</div>Tap <strong>Share &#8593;</strong> then <strong>"Add to Home Screen"</strong> to install as an app</div><button class="ib-close" data-dismiss-install>&#10005;</button></div>`:''
-  return`${installBanner}${userBadge}${banner}
+  return`${installBanner}${userBadge}${banner}${groupBanner}
   <div class="hero"><h2>Ready to play?</h2><p>${D.players.length} players registered</p>
     <div class="btn-row" style="margin-top:14px">
       <button class="btn" data-start>+ Start Round</button>
       <button class="btn" style="background:rgba(255,255,255,.2);border:1.5px solid rgba(255,255,255,.35)" data-nav="join">Enter Code</button>
     </div>
+    <button class="btn" style="margin-top:8px;width:100%;background:rgba(255,255,255,.12);border:1.5px solid rgba(255,255,255,.25)" data-create-group>👥 Create Online Group</button>
   </div>
   ${rematch}
   <div class="stat-row">
@@ -768,6 +811,20 @@ function pg_players(){
   ${!eg?groupsList:''}
 
   <div style="font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.08em;padding:18px 4px 6px;text-transform:uppercase">Settings</div>
+  ${S.user?.isPaid?
+    `<div class="card" style="border:2px solid var(--green);display:flex;align-items:center;gap:12px;padding:14px 16px">
+      <div style="font-size:28px">⭐</div>
+      <div><div style="font-size:15px;font-weight:800">Wager Pro</div><div style="font-size:13px;color:var(--green2);font-weight:600">✓ Unlimited rounds &amp; AI course fill</div></div>
+    </div>`:
+    `<div class="card" style="border:2px solid var(--gold)">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
+        <div style="font-size:28px">⭐</div>
+        <div><div style="font-size:15px;font-weight:800">Upgrade to Pro</div><div style="font-size:12px;color:var(--muted)">$5 one-time — unlock everything</div></div>
+      </div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:12px;line-height:1.6">✓ Unlimited rounds &nbsp; ✓ AI course fill &nbsp; ✓ Full history</div>
+      <button class="btn btn-gold" data-upgrade>Upgrade Now — $5 →</button>
+    </div>`
+  }
 
   <div class="card"><div class="card-title">📲 Add to Home Screen</div>
     <div style="margin-bottom:14px">
@@ -809,6 +866,30 @@ function pg_players(){
     <a href="mailto:councilcomputing@gmail.com" style="font-size:13px;color:var(--green);font-weight:600;text-decoration:none">councilcomputing@gmail.com</a>
     <div style="font-size:11px;color:var(--muted);margin-top:4px">Questions or feedback? Reach out anytime.</div>
   </div>`
+}
+
+// ── GROUP LOBBY ───────────────────────────────────────
+function pg_group_lobby(){
+  const g=S.group
+  if(!g)return'<div style="text-align:center;padding:40px;color:var(--muted)">Loading…</div>'
+  const isHost=g.hostId===S.user?.uid
+  const members=g.members||[]
+  const D=db()
+  return`<div class="card">
+    <div class="card-title">Share this code</div>
+    <div style="text-align:center;padding:8px 0 16px">
+      <div style="font-size:42px;font-weight:900;letter-spacing:10px;color:var(--green2);font-family:monospace">${g.code}</div>
+      <button class="btn btn-secondary" style="margin-top:10px" data-copy-group-code="${g.code}">Copy Code</button>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">Players Joined (${members.length})</div>
+    ${members.map(m=>`<div class="list-item"><div><div class="li-main">${m.name}${m.uid===g.hostId?' <span style="font-size:10px;background:var(--green-pale);color:var(--green2);border-radius:4px;padding:1px 6px;font-weight:700">HOST</span>':''}</div><div class="li-sub">HCP ${m.handicap||0}</div></div>${!D.players.some(p=>p.id===m.uid||p.name===m.name)?`<button class="btn-xs btn-secondary" data-add-member='${JSON.stringify({uid:m.uid,name:m.name,handicap:m.handicap||0})}'>+ Roster</button>`:''}</div>`).join('')}
+    <div style="font-size:12px;color:var(--muted);margin-top:10px;text-align:center">⏳ Waiting for others to join with code <strong>${g.code}</strong></div>
+  </div>
+  ${isHost?`
+  <button class="btn btn-primary" data-start-group ${members.length<2?'disabled style="opacity:.5"':''}>Start Round with ${members.length} Players →</button>
+  `:`<div class="card" style="text-align:center;padding:16px;color:var(--muted);font-size:13px">Waiting for the host to start the round…</div>`}`
 }
 
 // ── SETUP ─────────────────────────────────────────────
@@ -1414,9 +1495,34 @@ function bind(){
   // ── JOIN ──
   document.querySelector('[data-join-submit]')?.addEventListener('click',()=>{
     const code=document.getElementById('join-code')?.value.trim().toUpperCase()
-    if(code.length!==5){toast('Enter the 5-letter round code','error');return}
-    S.joinCode=code;joinRound(code)
+    if(code.length!==5){toast('Enter a 5-letter code','error');return}
+    S.joinCode=code;joinByCode(code)
   })
+
+  // ── UPGRADE ──
+  document.querySelector('[data-upgrade]')?.addEventListener('click',()=>showPaywall())
+
+  // ── GROUP LOBBY ──
+  document.querySelector('[data-create-group]')?.addEventListener('click',()=>createGroup())
+  document.querySelector('[data-start-group]')?.addEventListener('click',()=>{
+    const g=S.group;if(!g)return
+    const d=newDraft()
+    d.extraPlayers=g.members.map(m=>({id:m.uid,name:m.name,handicap:m.handicap||0}))
+    d.playerIds=g.members.map(m=>m.uid)
+    S.draft=d;S.step=1;go('setup')
+  })
+  document.querySelector('[data-copy-group-code]')?.addEventListener('click',e=>{
+    const code=e.currentTarget.dataset.copyGroupCode
+    navigator.clipboard?.writeText(code).then(()=>toast(`Code ${code} copied!`,'success')).catch(()=>{
+      const ta=document.createElement('textarea');ta.value=code;document.body.appendChild(ta);ta.select();document.execCommand('copy');ta.remove();toast(`Code ${code} copied!`,'success')
+    })
+  })
+  document.querySelectorAll('[data-add-member]').forEach(el=>el.addEventListener('click',()=>{
+    const m=JSON.parse(el.dataset.addMember),D=db()
+    if(D.players.some(p=>p.id===m.uid||p.name===m.name)){toast('Already in roster','info');return}
+    D.players.push({id:m.uid,name:m.name,handicap:m.handicap||0});save(D)
+    toast(`${m.name} added to roster`,'success');ren()
+  }))
 
   // ── COPY CODE ──
   document.querySelectorAll('[data-share-code]').forEach(el=>el.addEventListener('click',()=>{
