@@ -790,6 +790,22 @@ function pg_home(){
 // ── PLAYERS ───────────────────────────────────────────
 function pg_friends(){
   const D=db(),friends=S.friends||[]
+  const done=S.historyRounds||D.rounds.filter(r=>r.completed)
+
+  // build leaderboard across all known people (friends + guests)
+  const allPeople=[...friends.map(f=>({id:f.uid,name:f.name})),...D.players.map(p=>({id:p.id,name:p.name}))]
+  const net={};allPeople.forEach(p=>net[p.id]=0)
+  const rounds={};allPeople.forEach(p=>rounds[p.id]=0)
+  done.forEach(r=>{
+    const res=calcAll(r)
+    r.players.forEach(p=>{if(net[p.id]!==undefined){net[p.id]+=(res.tot[p.id]||0);rounds[p.id]++}})
+  })
+  const ranked=allPeople.filter(p=>rounds[p.id]>0).sort((a,b)=>(net[b.id]||0)-(net[a.id]||0))
+  const medals=['🥇','🥈','🥉']
+  const leaderboard=ranked.length?`<div class="card"><div class="card-title">🏆 Leaderboard</div>
+    ${ranked.map((p,i)=>{const v=net[p.id]||0;return`<div class="res-item"><div><div class="res-name">${medals[i]||`${i+1}.`} ${p.name}</div><div class="li-sub">${rounds[p.id]} round${rounds[p.id]!==1?'s':''}</div></div><div class="res-amt ${v>0?'mpos':v<0?'mneg':'mzro'}">${$$(v)}</div></div>`}).join('')}
+  </div>`:''
+
   const friendsList=friends.length?friends.map(f=>`<div class="list-item">
     <div><div class="li-main">${f.name}</div><div class="li-sub">${f.email}${f.venmo?` · @${f.venmo}`:''}${f.cashapp?` · $${f.cashapp}`:''}</div></div>
     <button class="btn-xs btn-danger" data-delf="${f.uid}">Remove</button>
@@ -801,6 +817,7 @@ function pg_friends(){
   </div>`).join(''):`<div style="font-size:13px;color:var(--muted);padding:4px 0">No guests yet</div>`
 
   return`
+  ${leaderboard}
   <div style="font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.08em;padding:10px 4px 6px;text-transform:uppercase">Friends on Wager</div>
   <div class="card"><div class="card-title">Add Friend by Email</div>
     <div class="fg"><label class="flabel">Their Email</label><input class="finput" id="fe" type="email" placeholder="friend@example.com"></div>
