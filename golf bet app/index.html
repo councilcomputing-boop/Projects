@@ -800,10 +800,16 @@ function pg_friends(){
     const res=calcAll(r)
     r.players.forEach(p=>{if(net[p.id]!==undefined){net[p.id]+=(res.tot[p.id]||0);rounds[p.id]++}})
   })
-  const ranked=allPeople.filter(p=>rounds[p.id]>0).sort((a,b)=>(net[b.id]||0)-(net[a.id]||0))
+  const active=allPeople.filter(p=>rounds[p.id]>0)
   const medals=['🥇','🥈','🥉']
-  const leaderboard=ranked.length?`<div class="card"><div class="card-title">🏆 Leaderboard</div>
-    ${ranked.map((p,i)=>{const v=net[p.id]||0;return`<div class="res-item"><div><div class="res-name">${medals[i]||`${i+1}.`} ${p.name}</div><div class="li-sub">${rounds[p.id]} round${rounds[p.id]!==1?'s':''}</div></div><div class="res-amt ${v>0?'mpos':v<0?'mneg':'mzro'}">${$$(v)}</div></div>`}).join('')}
+  const byTotal=[...active].sort((a,b)=>(net[b.id]||0)-(net[a.id]||0))
+  const byAvg=[...active].sort((a,b)=>(net[b.id]/rounds[b.id])-(net[a.id]/rounds[a.id]))
+  const leaderboard=active.length?`<div class="card"><div class="card-title">🏆 Leaderboard</div>
+    <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Total Earned</div>
+    ${byTotal.map((p,i)=>{const v=net[p.id]||0;return`<div class="res-item"><div><div class="res-name">${medals[i]||`${i+1}.`} ${p.name}</div><div class="li-sub">${rounds[p.id]} round${rounds[p.id]!==1?'s':''}</div></div><div class="res-amt ${v>0?'mpos':v<0?'mneg':'mzro'}">${$$(v)}</div></div>`}).join('')}
+    <div style="border-top:1px solid var(--border);margin:12px 0 8px"></div>
+    <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Per Round Average</div>
+    ${byAvg.map((p,i)=>{const avg=net[p.id]/rounds[p.id];return`<div class="res-item"><div><div class="res-name">${medals[i]||`${i+1}.`} ${p.name}</div><div class="li-sub">${rounds[p.id]} round${rounds[p.id]!==1?'s':''}</div></div><div class="res-amt ${avg>0?'mpos':avg<0?'mneg':'mzro'}">${$$(avg)}/rd</div></div>`}).join('')}
   </div>`:''
 
   const friendsList=friends.length?friends.map(f=>`<div class="list-item">
