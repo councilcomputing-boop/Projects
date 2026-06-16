@@ -225,6 +225,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .auth-sub{text-align:center;font-size:14px;color:var(--muted);margin-bottom:28px}
 .auth-switch{text-align:center;font-size:14px;color:var(--muted);margin-top:16px}
 .auth-switch button{background:none;border:none;color:var(--green);font-weight:700;font-size:14px;cursor:pointer;padding:0;text-decoration:underline}
+.link-btn{background:none;border:none;color:var(--muted);font-size:13px;cursor:pointer;padding:0;text-decoration:underline}
 
 /* Session code */
 .session-code-bar{background:var(--green);color:#fff;border-radius:var(--r);padding:14px 18px;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between}
@@ -723,7 +724,8 @@ function pg_auth(){
     <div class="card">
       ${up?`<div class="fg"><label class="flabel">Your Name</label><input class="finput" id="auth-name" placeholder="e.g. Hayes" autocomplete="name"></div>`:''}
       <div class="fg"><label class="flabel">Email</label><input class="finput" id="auth-email" type="email" placeholder="you@example.com" autocomplete="email"></div>
-      <div class="fg" style="margin-bottom:16px"><label class="flabel">Password</label><input class="finput" id="auth-pass" type="password" placeholder="Password" autocomplete="${up?'new-password':'current-password'}"></div>
+      <div class="fg" style="margin-bottom:${up?'16':'8'}px"><label class="flabel">Password</label><input class="finput" id="auth-pass" type="password" placeholder="Password" autocomplete="${up?'new-password':'current-password'}"></div>
+      ${up?'':' <div style="text-align:right;margin-bottom:14px"><button class="link-btn" data-forgot-pw>Forgot password?</button></div>'}
       <button class="btn btn-primary" data-auth-submit>${up?'Create Account':'Sign In'}</button>
     </div>
     <div class="auth-switch">${up?'Already have an account?':'New to Wager?'} <button data-auth-toggle>${up?'Sign in':'Create account'}</button></div>
@@ -1493,6 +1495,12 @@ function bind(){
 
   // ── AUTH ──
   document.querySelector('[data-auth-toggle]')?.addEventListener('click',()=>{S.authMode=S.authMode==='signin'?'signup':'signin';ren()})
+  document.querySelector('[data-forgot-pw]')?.addEventListener('click',async()=>{
+    const email=document.getElementById('auth-email')?.value.trim()
+    if(!email){toast('Enter your email address first','error');return}
+    try{await auth.sendPasswordResetEmail(email);toast('Reset email sent — check your inbox')}
+    catch(e){toast(e.code==='auth/user-not-found'?'No account with that email':'Could not send reset email','error')}
+  })
   document.querySelector('[data-auth-submit]')?.addEventListener('click',async()=>{
     const email=document.getElementById('auth-email')?.value.trim()
     const pass=document.getElementById('auth-pass')?.value
