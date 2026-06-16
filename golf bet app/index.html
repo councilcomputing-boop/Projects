@@ -268,6 +268,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 const KEY='golfbets_v3'
 function db(){try{const r=localStorage.getItem(KEY);const d=r?JSON.parse(r):{};if(!d.players)d.players=[];if(!d.rounds)d.rounds=[];if(!d.courses)d.courses=[];if(!d.groups)d.groups=[];return d}catch(e){return{players:[],rounds:[],courses:[],groups:[]}}}
 function save(d){localStorage.setItem(KEY,JSON.stringify(d))}
+function isPro(){return S.user?.isPaid||(S.user?.proExpiry&&new Date(S.user.proExpiry)>new Date())}
+// capture referral code from URL before any navigation clears it
+;(()=>{const r=new URLSearchParams(location.search).get('ref');if(r)localStorage.setItem('wager_ref',r)})()
 function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,5)}
 function $$(n){if(n==null||isNaN(n))return'$0';const a=Math.abs(n);const s=a%1===0?a.toFixed(0):a.toFixed(2);return(n<0?'-':'')+'$'+s}
 function pname(pid){
@@ -760,8 +763,8 @@ function pg_home(){
   const rec=done.slice(0,3)
   const uname=S.user?.displayName||S.user?.email?.split('@')[0]||'Player'
   const uinitial=uname[0].toUpperCase()
-  const isPro=S.user?.isPaid
-  const userBadge=`<div class="user-badge"><div class="user-avatar">${uinitial}</div><div><div class="user-name">${uname} ${isPro?'<span style="font-size:11px;background:var(--gold);color:#fff;border-radius:6px;padding:1px 6px;font-weight:700;vertical-align:middle">PRO</span>':''}</div><div class="user-email">${S.user?.email||''}</div></div><button class="signout-btn" data-signout>Sign out</button></div>`
+  const _isPro=isPro()
+  const userBadge=`<div class="user-badge"><div class="user-avatar">${uinitial}</div><div><div class="user-name">${uname} ${_isPro?'<span style="font-size:11px;background:var(--gold);color:#fff;border-radius:6px;padding:1px 6px;font-weight:700;vertical-align:middle">PRO</span>':''}</div><div class="user-email">${S.user?.email||''}</div></div><button class="signout-btn" data-signout>Sign out</button></div>`
   const banner=act?`<div class="act-banner"><div><div class="act-lbl">In progress</div><div class="act-title">${act.course}</div></div><button class="btn" data-gsc="${act.id}">Continue &#8594;</button></div>`:''
   const groupBanner=S.group&&!act?`<div class="act-banner" style="background:rgba(255,255,255,.15)"><div><div class="act-lbl">Lobby active</div><div class="act-title">Code: ${S.group.code}</div></div><button class="btn" data-nav="group-lobby">Return &#8594;</button></div>`:''
   const rematch=last&&!act?`<button class="btn btn-gold" data-rematch style="margin-bottom:12px">🔁 Quick Rematch — ${last.course}</button>`:''
@@ -824,6 +827,12 @@ function pg_friends(){
 
   return`
   ${leaderboard}
+  <div class="card" style="background:linear-gradient(135deg,var(--green-pale),var(--gold-pale));border:1.5px solid var(--gold)">
+    <div style="font-size:16px;font-weight:800;margin-bottom:4px">🎁 Refer a Friend</div>
+    <div style="font-size:13px;color:var(--muted);margin-bottom:12px;line-height:1.5">You both get <strong>1 free week of Pro</strong> when they sign up using your link</div>
+    <button class="btn btn-gold" data-refer>Share My Referral Link</button>
+  </div>
+
   <div style="font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.08em;padding:10px 4px 6px;text-transform:uppercase">Friends on Wager</div>
   <div class="card"><div class="card-title">Add Friend by Code</div>
     <div style="font-size:12px;color:var(--muted);margin-bottom:10px">Ask your friend for their 6-letter code from their Settings tab</div>
@@ -892,7 +901,7 @@ function pg_players(){
   <div style="height:8px"></div>
 
   <div style="font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.08em;padding:18px 4px 6px;text-transform:uppercase">Settings</div>
-  ${S.user?.isPaid?
+  ${isPro()?
     `<div class="card" style="border:2px solid var(--green);display:flex;align-items:center;gap:12px;padding:14px 16px">
       <div style="font-size:28px">⭐</div>
       <div><div style="font-size:15px;font-weight:800">Wager Pro</div><div style="font-size:13px;color:var(--green2);font-weight:600">✓ Unlimited rounds &amp; AI course fill</div></div>
@@ -1437,7 +1446,7 @@ function bind(){
 
   // AI auto-fill pars
   document.querySelector('[data-aifill]')?.addEventListener('click',async()=>{
-    if(!S.user?.isPaid){showPaywall();return}
+    if(!isPro()){showPaywall();return}
     const course=document.getElementById('dc')?.value.trim()
     const loc=document.getElementById('dloc')?.value.trim()
     const holes=parseInt(document.getElementById('dh')?.value)||18
@@ -1480,6 +1489,14 @@ function bind(){
       await fdb.collection('users').doc(S.user.uid).update({friends:S.friends})
       toast(`${f.name} added!`);ren()
     }catch(e){toast('Could not add friend','error');if(btn)btn.textContent='Add Friend'}
+  })
+  document.querySelector('[data-refer]')?.addEventListener('click',()=>{
+    const fc=S.user?.friendCode;if(!fc)return
+    const url=`https://wagergolf.app/?ref=${fc}`
+    const msg=`Join me on Wager — the best golf betting app! Sign up with my link and we both get a free week of Pro: ${url}`
+    if(navigator.share){navigator.share({title:'Wager — Golf Bets',text:msg,url}).catch(()=>{})}
+    else if(navigator.clipboard){navigator.clipboard.writeText(url).then(()=>toast('Referral link copied!'))}
+    else{const t=document.createElement('textarea');t.value=url;document.body.appendChild(t);t.select();document.execCommand('copy');document.body.removeChild(t);toast('Referral link copied!')}
   })
   document.querySelectorAll('[data-copy-fc]').forEach(el=>el.addEventListener('click',()=>{
     const fc=el.dataset.copyFc;if(!fc)return
@@ -1534,7 +1551,7 @@ function bind(){
     ;[['spa','strokePlay','amount'],['na','nassau','amount'],['sa','skins','amount'],['ma','matchPlay','amount'],['wa','wolf','pointValue']].forEach(([id,gk,fk])=>{const el=document.getElementById(id);if(el){const v=parseFloat(el.value);if(!isNaN(v)&&v>=0)d.games[gk][fk]=v}})
     if(!Object.values(d.games).some(g=>g.enabled)){toast('Enable at least one game','error');return}
     // Paywall: free users get 1 round per week
-    if(!S.user?.isPaid){
+    if(!isPro()){
       const wk=getWeekKey(),same=S.user?.weekKey===wk,count=same?(S.user?.weekRounds||0):0
       if(count>=1){showPaywall();return}
       const newCount=count+1
@@ -1627,8 +1644,21 @@ function bind(){
         const cred=await auth.createUserWithEmailAndPassword(email,pass)
         await cred.user.updateProfile({displayName:name})
         const fc=genCode()+genCode()[0]  // 6-char friend code
-        const ud={name,email,friendCode:fc};if(venmo)ud.venmo=venmo;if(cashapp)ud.cashapp=cashapp
+        const refCode=localStorage.getItem('wager_ref')
+        const proExpiry=refCode?new Date(Date.now()+7*24*60*60*1000).toISOString():''
+        const ud={name,email,friendCode:fc};if(venmo)ud.venmo=venmo;if(cashapp)ud.cashapp=cashapp;if(proExpiry)ud.proExpiry=proExpiry
         await fdb.collection('users').doc(cred.user.uid).set(ud)
+        // credit the referrer
+        if(refCode){
+          try{
+            const refSnap=await fdb.collection('users').where('friendCode','==',refCode).limit(1).get()
+            if(!refSnap.empty){
+              const refUID=refSnap.docs[0].id
+              await fdb.collection('referralCredits').doc(refUID).set({weeks:firebase.firestore.FieldValue.increment(1)},{merge:true})
+            }
+          }catch(e){}
+          localStorage.removeItem('wager_ref')
+        }
       }else{
         await auth.signInWithEmailAndPassword(email,pass)
       }
@@ -1759,8 +1789,21 @@ auth.onAuthStateChanged(async user=>{
     // Load paid status + weekly round count from Firestore
     try{
       const doc=await fdb.collection('users').doc(user.uid).get()
-      if(doc.exists){const d=doc.data();S.user.isPaid=d.isPaid||false;S.user.weekRounds=d.weekRounds||0;S.user.weekKey=d.weekKey||'';S.user.venmo=d.venmo||'';S.user.cashapp=d.cashapp||'';S.user.friendCode=d.friendCode||'';S.friends=d.friends||[]}
+      if(doc.exists){const d=doc.data();S.user.isPaid=d.isPaid||false;S.user.proExpiry=d.proExpiry||'';S.user.weekRounds=d.weekRounds||0;S.user.weekKey=d.weekKey||'';S.user.venmo=d.venmo||'';S.user.cashapp=d.cashapp||'';S.user.friendCode=d.friendCode||'';S.friends=d.friends||[]}
       if(!S.user.friendCode){const fc=genCode()+genCode()[0];S.user.friendCode=fc;fdb.collection('users').doc(user.uid).set({friendCode:fc},{merge:true})}
+      // claim any pending referral credits
+      try{
+        const credit=await fdb.collection('referralCredits').doc(user.uid).get()
+        if(credit.exists){
+          const weeks=credit.data().weeks||1
+          const base=S.user.proExpiry&&new Date(S.user.proExpiry)>new Date()?new Date(S.user.proExpiry):new Date()
+          const newExpiry=new Date(base.getTime()+weeks*7*24*60*60*1000).toISOString()
+          S.user.proExpiry=newExpiry
+          await fdb.collection('users').doc(user.uid).set({proExpiry:newExpiry},{merge:true})
+          await fdb.collection('referralCredits').doc(user.uid).delete()
+          toast('🎁 You got a free week of Pro from a referral!')
+        }
+      }catch(e){}
     }catch(e){console.warn('Could not load user doc:',e)}
     if(S.sc==='auth')nav('home')
     // Check if returning from Stripe payment
