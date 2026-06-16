@@ -1459,14 +1459,14 @@ function bind(){
   }))
 
   // finish round
-  document.querySelector('[data-finish]')?.addEventListener('click',()=>{
+  document.querySelectorAll('[data-finish]').forEach(el=>el.addEventListener('click',()=>{
     const r=S.round;if(!r)return
     const res=calcAll(r);r.payouts=res.tot;r.completed=true
     fdb.collection('rounds').doc(S.rid).update({completed:true,payouts:r.payouts})
     if(unsubRound){unsubRound();unsubRound=null}
     S.historyRounds=null  // force reload
     go('results',{rid:S.rid})
-  })
+  }))
 
   // wolf
   document.querySelector('[data-gwolf]')?.addEventListener('click',()=>go('wolf',{rid:S.rid}))
