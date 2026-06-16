@@ -813,9 +813,9 @@ function pg_friends(){
   </div>`:''
 
   const friendsList=friends.length?friends.map(f=>`<div class="list-item">
-    <div><div class="li-main">${f.name}</div><div class="li-sub">${f.email}${f.venmo?` · @${f.venmo}`:''}${f.cashapp?` · $${f.cashapp}`:''}</div></div>
+    <div><div class="li-main">${f.name}</div><div class="li-sub">${f.friendCode||f.email||''}${f.venmo?` · @${f.venmo}`:''}${f.cashapp?` · $${f.cashapp}`:''}</div></div>
     <button class="btn-xs btn-danger" data-delf="${f.uid}">Remove</button>
-  </div>`).join(''):`<div style="font-size:13px;color:var(--muted);padding:4px 0">No friends added yet. Add them by email below.</div>`
+  </div>`).join(''):`<div style="font-size:13px;color:var(--muted);padding:4px 0">No friends added yet. Add them by code below.</div>`
 
   const guestList=D.players.length?D.players.map(p=>`<div class="list-item">
     <div><div class="li-main">${p.name}</div><div class="li-sub">HCP ${p.handicap||0}${p.venmo?` · @${p.venmo}`:''}${p.cashapp?` · $${p.cashapp}`:''}</div></div>
@@ -825,8 +825,9 @@ function pg_friends(){
   return`
   ${leaderboard}
   <div style="font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.08em;padding:10px 4px 6px;text-transform:uppercase">Friends on Wager</div>
-  <div class="card"><div class="card-title">Add Friend by Email</div>
-    <div class="fg"><label class="flabel">Their Email</label><input class="finput" id="fe" type="email" placeholder="friend@example.com"></div>
+  <div class="card"><div class="card-title">Add Friend by Code</div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:10px">Ask your friend for their 6-letter code from their Settings tab</div>
+    <div class="fg"><input class="finput" id="fe" placeholder="e.g. GX7K2A" maxlength="6" style="text-transform:uppercase;letter-spacing:4px;font-size:22px;font-weight:900;text-align:center"></div>
     <button class="btn btn-primary" data-addf>Add Friend</button>
   </div>
   <div class="card"><div class="card-title">Friends (${friends.length})</div>${friendsList}</div>
@@ -876,7 +877,16 @@ function pg_players(){
     <button class="btn btn-secondary" data-newg>+ New Group</button>
   </div>`
 
+  const fc=S.user?.friendCode||''
   return`
+  <div class="card" style="background:var(--green-pale);border:1.5px solid var(--green)">
+    <div style="font-size:11px;font-weight:700;color:var(--green2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Your Friend Code</div>
+    <div style="display:flex;align-items:center;justify-content:space-between">
+      <div style="font-size:32px;font-weight:900;letter-spacing:6px;font-family:monospace;color:var(--green2)">${fc||'...'}</div>
+      <button class="btn btn-secondary" data-copy-fc="${fc}">Copy</button>
+    </div>
+    <div style="font-size:12px;color:var(--muted);margin-top:6px">Share this with friends so they can add you</div>
+  </div>
   ${groupEditor}
   ${!eg?groupsList:''}
   <div style="height:8px"></div>
@@ -1456,21 +1466,26 @@ function bind(){
 
   // friends
   document.querySelector('[data-addf]')?.addEventListener('click',async()=>{
-    const email=document.getElementById('fe')?.value.trim().toLowerCase()
-    if(!email){toast('Enter an email address','error');return}
-    if(email===S.user?.email){toast("That's your own email","error");return}
-    if((S.friends||[]).some(f=>f.email===email)){toast('Already a friend','error');return}
+    const code=document.getElementById('fe')?.value.trim().toUpperCase()
+    if(!code||code.length<4){toast('Enter a friend code','error');return}
+    if(code===S.user?.friendCode){toast("That's your own code","error");return}
+    if((S.friends||[]).some(f=>f.friendCode===code)){toast('Already a friend','error');return}
     const btn=document.querySelector('[data-addf]');if(btn)btn.textContent='Searching…'
     try{
-      const snap=await fdb.collection('users').where('email','==',email).limit(1).get()
-      if(snap.empty){toast('No Wager account found with that email','error');if(btn)btn.textContent='Add Friend';return}
+      const snap=await fdb.collection('users').where('friendCode','==',code).limit(1).get()
+      if(snap.empty){toast('No Wager account found with that code','error');if(btn)btn.textContent='Add Friend';return}
       const doc=snap.docs[0],d=doc.data()
-      const f={uid:doc.id,name:d.name||email.split('@')[0],email,handicap:d.handicap||0,venmo:d.venmo||'',cashapp:d.cashapp||''}
+      const f={uid:doc.id,name:d.name||'Friend',email:d.email||'',friendCode:code,handicap:d.handicap||0,venmo:d.venmo||'',cashapp:d.cashapp||''}
       S.friends=[...(S.friends||[]),f]
       await fdb.collection('users').doc(S.user.uid).update({friends:S.friends})
-      toast(`${f.name} added as a friend!`);ren()
+      toast(`${f.name} added!`);ren()
     }catch(e){toast('Could not add friend','error');if(btn)btn.textContent='Add Friend'}
   })
+  document.querySelectorAll('[data-copy-fc]').forEach(el=>el.addEventListener('click',()=>{
+    const fc=el.dataset.copyFc;if(!fc)return
+    if(navigator.clipboard){navigator.clipboard.writeText(fc).then(()=>toast('Friend code copied!'))}
+    else{const t=document.createElement('textarea');t.value=fc;document.body.appendChild(t);t.select();document.execCommand('copy');document.body.removeChild(t);toast('Friend code copied!')}
+  }))
   document.querySelectorAll('[data-delf]').forEach(el=>el.addEventListener('click',()=>{
     dialog('Remove this friend?',async()=>{
       S.friends=(S.friends||[]).filter(f=>f.uid!==el.dataset.delf)
@@ -1611,7 +1626,8 @@ function bind(){
         const cashapp=document.getElementById('auth-cashapp')?.value.trim().replace(/^\$/,'')
         const cred=await auth.createUserWithEmailAndPassword(email,pass)
         await cred.user.updateProfile({displayName:name})
-        const ud={name,email};if(venmo)ud.venmo=venmo;if(cashapp)ud.cashapp=cashapp
+        const fc=genCode()+genCode()[0]  // 6-char friend code
+        const ud={name,email,friendCode:fc};if(venmo)ud.venmo=venmo;if(cashapp)ud.cashapp=cashapp
         await fdb.collection('users').doc(cred.user.uid).set(ud)
       }else{
         await auth.signInWithEmailAndPassword(email,pass)
@@ -1743,7 +1759,8 @@ auth.onAuthStateChanged(async user=>{
     // Load paid status + weekly round count from Firestore
     try{
       const doc=await fdb.collection('users').doc(user.uid).get()
-      if(doc.exists){const d=doc.data();S.user.isPaid=d.isPaid||false;S.user.weekRounds=d.weekRounds||0;S.user.weekKey=d.weekKey||'';S.user.venmo=d.venmo||'';S.user.cashapp=d.cashapp||'';S.friends=d.friends||[]}
+      if(doc.exists){const d=doc.data();S.user.isPaid=d.isPaid||false;S.user.weekRounds=d.weekRounds||0;S.user.weekKey=d.weekKey||'';S.user.venmo=d.venmo||'';S.user.cashapp=d.cashapp||'';S.user.friendCode=d.friendCode||'';S.friends=d.friends||[]}
+      if(!S.user.friendCode){const fc=genCode()+genCode()[0];S.user.friendCode=fc;fdb.collection('users').doc(user.uid).set({friendCode:fc},{merge:true})}
     }catch(e){console.warn('Could not load user doc:',e)}
     if(S.sc==='auth')nav('home')
     // Check if returning from Stripe payment
