@@ -413,7 +413,7 @@ const BET_TYPES=[
 function betLabel(val){return BET_TYPES.find(t=>t.val===val)?.lbl||val}
 
 // ── STATE ─────────────────────────────────────────────
-let S={sc:'auth',user:null,rid:null,round:null,draft:null,step:1,betHole:null,aiLoading:false,editGroup:null,hole:0,holeMenu:false,authMode:'signin',joinCode:'',historyRounds:null,gid:null,group:null,friends:[],betFormOpen:false}
+let S={sc:'auth',user:null,rid:null,round:null,draft:null,step:1,betHole:null,aiLoading:false,editGroup:null,hole:0,holeMenu:false,authMode:'signin',joinCode:'',historyRounds:null,gid:null,group:null,friends:[],betFormOpen:false,voiceListening:false}
 function go(sc,x){S={...S,sc,...(x||{})};ren();scrollTo(0,0)}
 function nav(sc){
   if(sc==='history')S.historyRounds=null
@@ -600,6 +600,29 @@ function mpStatus(round){
 }
 
 function scCls(s,p){if(!s||!p)return '';const d=s-p;if(d<=-2)return 'eagle';if(d===-1)return 'birdie';if(d===1)return 'bogey';if(d>=2)return 'dbogey';return ''}
+
+function parseVoice(text,players,pars,hole){
+  text=text.toLowerCase().trim()
+  if(/\bnext hole\b/.test(text))return{action:'nextHole'}
+  const hm=text.match(/\b(?:go to |jump to |)hole (\d+)\b/)
+  if(hm)return{action:'goHole',hole:parseInt(hm[1])}
+  const par=pars[hole]||4,results=[]
+  for(const p of players){
+    const first=p.name.toLowerCase().split(/\s+/)[0]
+    const pos=text.indexOf(first);if(pos===-1)continue
+    const after=text.slice(pos+first.length)
+    const nm=after.match(/\b(\d+)\b/)
+    if(nm){results.push({pid:p.id,score:parseInt(nm[1])});continue}
+    if(/\beagle\b/.test(after))results.push({pid:p.id,score:par-2})
+    else if(/\birdie\b/.test(after))results.push({pid:p.id,score:par-1})
+    else if(/\bpar\b/.test(after))results.push({pid:p.id,score:par})
+    else if(/\bbogey\b/.test(after))results.push({pid:p.id,score:par+1})
+    else if(/\bdouble\b/.test(after))results.push({pid:p.id,score:par+2})
+    else if(/\btriple\b/.test(after))results.push({pid:p.id,score:par+3})
+  }
+  if(results.length)return{action:'scores',results}
+  return null
+}
 
 // ── DRAFT ─────────────────────────────────────────────
 function newDraft(){return{course:'',location:'',playerIds:[],holes:18,games:{strokePlay:{enabled:false,amount:0},nassau:{enabled:false,amount:5,autoPress:false},skins:{enabled:false,amount:1,carryTies:true},matchPlay:{enabled:false,amount:10,teams:[]},wolf:{enabled:false,pointValue:1}},pars:Array(18).fill(4)}}
@@ -1174,7 +1197,8 @@ function pg_scorecard(){
       </div>
     </div>
     <div class="hh-players">${playerRows}</div>
-    <div class="btn-row" style="margin-top:16px">${prevBtn}${nextBtn}</div>
+    ${isPro()?`<button class="btn ${S.voiceListening?'btn-danger':'btn-outline'}" data-voice style="width:100%;margin:12px 0 0;font-size:15px">${S.voiceListening?'🔴 Listening…':'🎤 Voice Score'}</button>`:`<button class="btn btn-outline" data-voice style="width:100%;margin:12px 0 0;font-size:15px;opacity:.55">🎤 Voice Score <span style="font-size:11px;background:var(--gold);color:#fff;border-radius:8px;padding:1px 7px;margin-left:4px">PRO</span></button>`}
+    <div class="btn-row" style="margin-top:12px">${prevBtn}${nextBtn}</div>
   </div>
   <div class="card" style="padding:12px 16px">
     <div style="display:flex;align-items:center;justify-content:space-between">
@@ -1734,6 +1758,50 @@ function bind(){
     })
   }))
 
+  // ── VOICE SCORING ──
+  document.querySelector('[data-voice]')?.addEventListener('click',()=>{
+    if(!isPro()){showPaywall();return}
+    const SR=window.SpeechRecognition||window.webkitSpeechRecognition
+    if(!SR){toast('Voice not supported in this browser','error');return}
+    if(S.voiceListening)return
+    const rec=new SR();rec.lang='en-US';rec.interimResults=false;rec.maxAlternatives=3
+    S.voiceListening=true;ren()
+    rec.onresult=e=>{
+      S.voiceListening=false
+      const round=S.round;if(!round){ren();return}
+      const texts=Array.from(e.results[0]).map(r=>r.transcript)
+      let handled=false
+      for(const text of texts){
+        const cmd=parseVoice(text,round.players,round.pars,S.hole||0);if(!cmd)continue
+        if(cmd.action==='nextHole'){
+          const holes=round.holes||18
+          if((S.hole||0)<holes-1){S.hole=(S.hole||0)+1;ren()}
+          else toast('Already on the last hole')
+          handled=true;break
+        }
+        if(cmd.action==='goHole'){
+          S.hole=Math.max(0,Math.min(cmd.hole-1,(round.holes||18)-1));ren()
+          handled=true;break
+        }
+        if(cmd.action==='scores'){
+          const h=S.hole||0,_upd={}
+          cmd.results.forEach(r=>{
+            if(!round.scores[r.pid])round.scores[r.pid]=[]
+            round.scores[r.pid][h]=r.score
+            _upd[`scores.${r.pid}`]=round.scores[r.pid]
+          })
+          if(S.rid)fdb.collection('rounds').doc(S.rid).update(_upd)
+          toast('✓ '+cmd.results.map(r=>{const p=round.players.find(x=>x.id===r.pid);return`${p?.name.split(' ')[0]} → ${r.score}`}).join(', '))
+          ren();handled=true;break
+        }
+      }
+      if(!handled){toast("Didn't catch that — try again",'error');ren()}
+    }
+    rec.onerror=e=>{S.voiceListening=false;ren();if(e.error==='no-speech')toast('No speech detected');else toast('Mic error','error')}
+    rec.onend=()=>{S.voiceListening=false;ren()}
+    rec.start()
+  })
+
   // ── HOLE NAVIGATION ──
   document.querySelectorAll('[data-go-hole]').forEach(el=>el.addEventListener('click',()=>{
     const h=parseInt(el.dataset.goHole)
@@ -1836,13 +1904,13 @@ ren()
   // generate app icon via canvas
   function rr(ctx,x,y,w,h,r){if(ctx.roundRect){ctx.beginPath();ctx.roundRect(x,y,w,h,r);return}ctx.beginPath();ctx.moveTo(x+r,y);ctx.lineTo(x+w-r,y);ctx.quadraticCurveTo(x+w,y,x+w,y+r);ctx.lineTo(x+w,y+h-r);ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);ctx.lineTo(x+r,y+h);ctx.quadraticCurveTo(x,y+h,x,y+h-r);ctx.lineTo(x,y+r);ctx.quadraticCurveTo(x,y,x+r,y)}
 
-  // Logo A — Bold W on green (clean wordmark)
+  // Logo A2 — Gold W on dark green, white accent dot
   function makeIconA(sz){
     const c=document.createElement('canvas');c.width=c.height=sz;const x=c.getContext('2d')
-    x.fillStyle='#163d26';rr(x,0,0,sz,sz,sz*.22);x.fill()
-    x.fillStyle='#fff';x.font=`900 ${sz*.66}px Georgia,serif`;x.textAlign='center';x.textBaseline='middle'
+    x.fillStyle='#12331a';rr(x,0,0,sz,sz,sz*.22);x.fill()
+    x.fillStyle='#f0b429';x.font=`900 ${sz*.66}px Georgia,serif`;x.textAlign='center';x.textBaseline='middle'
     x.fillText('W',sz/2,sz*.49)
-    x.fillStyle='#f0b429';x.beginPath();x.arc(sz*.74,sz*.74,sz*.095,0,Math.PI*2);x.fill()
+    x.fillStyle='rgba(255,255,255,.85)';x.beginPath();x.arc(sz*.76,sz*.76,sz*.07,0,Math.PI*2);x.fill()
     return c.toDataURL('image/png')
   }
 
