@@ -669,6 +669,7 @@ function showPaywall(){
       <div style="background:var(--green-pale);border-radius:10px;padding:12px 14px;margin-bottom:16px;text-align:left">
         <div style="font-size:13px;font-weight:700;color:var(--green2);margin-bottom:5px">✓ Unlimited rounds</div>
         <div style="font-size:13px;font-weight:700;color:var(--green2);margin-bottom:5px">✓ AI course fill for everyone</div>
+        <div style="font-size:13px;font-weight:700;color:var(--green2);margin-bottom:5px">✓ 🎤 Voice scoring — just say the score</div>
         <div style="font-size:13px;font-weight:700;color:var(--green2)">✓ Full history &amp; ledger</div>
       </div>
       <div style="font-size:26px;font-weight:900">$5 <span style="font-size:13px;font-weight:400;color:var(--muted)">one-time</span></div>
@@ -929,14 +930,14 @@ function pg_players(){
   ${isPro()?
     `<div class="card" style="border:2px solid var(--green);display:flex;align-items:center;gap:12px;padding:14px 16px">
       <div style="font-size:28px">⭐</div>
-      <div><div style="font-size:15px;font-weight:800">Wager Pro</div><div style="font-size:13px;color:var(--green2);font-weight:600">✓ Unlimited rounds &amp; AI course fill</div></div>
+      <div><div style="font-size:15px;font-weight:800">Wager Pro</div><div style="font-size:13px;color:var(--green2);font-weight:600">✓ Unlimited rounds · AI fill · Voice scoring</div></div>
     </div>`:
     `<div class="card" style="border:2px solid var(--gold)">
       <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
         <div style="font-size:28px">⭐</div>
         <div><div style="font-size:15px;font-weight:800">Upgrade to Pro</div><div style="font-size:12px;color:var(--muted)">$5 one-time — unlock everything</div></div>
       </div>
-      <div style="font-size:12px;color:var(--muted);margin-bottom:12px;line-height:1.6">✓ Unlimited rounds &nbsp; ✓ AI course fill &nbsp; ✓ Full history</div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:12px;line-height:1.6">✓ Unlimited rounds &nbsp; ✓ AI course fill &nbsp; ✓ Voice scoring &nbsp; ✓ Full history</div>
       <button class="btn btn-gold" data-upgrade>Upgrade Now — $5 →</button>
     </div>`
   }
@@ -1958,7 +1959,7 @@ ren()
   document.head.appendChild(fv)
 
   // web app manifest
-  const manifest={name:'Wager',short_name:'Wager',description:'Golf betting with your group',start_url:'.',display:'standalone',background_color:'#1a5c38',theme_color:'#1a5c38',orientation:'portrait',icons:[{src:icon192,sizes:'192x192',type:'image/png'},{src:icon512,sizes:'512x512',type:'image/png'}]}
+  const manifest={name:'Wager',short_name:'Wager',description:'Golf betting, scoring, and money tracking for your group',start_url:'.',display:'standalone',background_color:'#1a5c38',theme_color:'#1a5c38',orientation:'portrait',icons:[{src:icon192,sizes:'192x192',type:'image/png'},{src:icon512,sizes:'512x512',type:'image/png'}]}
   const ml=document.createElement('link');ml.rel='manifest';ml.href='data:application/manifest+json,'+encodeURIComponent(JSON.stringify(manifest))
   document.head.appendChild(ml)
 
