@@ -917,15 +917,6 @@ function pg_players(){
     </div>`
   }
 
-  <div class="card"><div class="card-title">🎨 App Icon</div>
-    <div style="font-size:13px;color:var(--muted);margin-bottom:12px">Choose your Wager icon style</div>
-    <div style="display:flex;gap:12px;justify-content:center" id="logo-picker">
-      ${['A','B','C'].map(k=>`<div style="text-align:center;cursor:pointer" data-pick-logo="${k}">
-        <canvas id="prev-${k}" width="72" height="72" style="border-radius:16px;border:3px solid ${_logoKey===k?'var(--green2)':'var(--border)'};display:block"></canvas>
-        <div style="font-size:11px;margin-top:5px;font-weight:700;color:${_logoKey===k?'var(--green2)':'var(--muted)'}">${k==='A'?'Bold W':k==='B'?'Ball':' Flag'}${_logoKey===k?' ✓':''}</div>
-      </div>`).join('')}
-    </div>
-  </div>
   <div class="card"><div class="card-title">📲 Add to Home Screen</div>
     <div style="margin-bottom:14px">
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
@@ -1494,10 +1485,10 @@ function bind(){
     if((S.friends||[]).some(f=>f.friendCode===code)){toast('Already a friend','error');return}
     const btn=document.querySelector('[data-addf]');if(btn)btn.textContent='Searching…'
     try{
-      const snap=await fdb.collection('users').where('friendCode','==',code).limit(1).get()
-      if(snap.empty){toast('No Wager account found with that code','error');if(btn)btn.textContent='Add Friend';return}
-      const doc=snap.docs[0],d=doc.data()
-      const f={uid:doc.id,name:d.name||'Friend',email:d.email||'',friendCode:code,handicap:d.handicap||0,venmo:d.venmo||'',cashapp:d.cashapp||''}
+      const snap=await fdb.collection('friendCodes').doc(code).get()
+      if(!snap.exists){toast('No Wager account found with that code','error');if(btn)btn.textContent='Add Friend';return}
+      const d=snap.data()
+      const f={uid:d.uid,name:d.name||'Friend',friendCode:code,handicap:d.handicap||0,venmo:d.venmo||'',cashapp:d.cashapp||''}
       S.friends=[...(S.friends||[]),f]
       await fdb.collection('users').doc(S.user.uid).update({friends:S.friends})
       toast(`${f.name} added!`);ren()
@@ -1661,12 +1652,15 @@ function bind(){
         const proExpiry=refCode?new Date(Date.now()+7*24*60*60*1000).toISOString():''
         const ud={name,email,friendCode:fc};if(venmo)ud.venmo=venmo;if(cashapp)ud.cashapp=cashapp;if(proExpiry)ud.proExpiry=proExpiry
         await fdb.collection('users').doc(cred.user.uid).set(ud)
+        // write lookup doc so friends can find this user by code
+        const lcd={uid:cred.user.uid,name};if(venmo)lcd.venmo=venmo;if(cashapp)lcd.cashapp=cashapp
+        await fdb.collection('friendCodes').doc(fc).set(lcd)
         // credit the referrer
         if(refCode){
           try{
-            const refSnap=await fdb.collection('users').where('friendCode','==',refCode).limit(1).get()
-            if(!refSnap.empty){
-              const refUID=refSnap.docs[0].id
+            const refDoc=await fdb.collection('friendCodes').doc(refCode).get()
+            if(refDoc.exists){
+              const refUID=refDoc.data().uid
               await fdb.collection('referralCredits').doc(refUID).set({weeks:firebase.firestore.FieldValue.increment(1)},{merge:true})
             }
           }catch(e){}
@@ -1708,20 +1702,6 @@ function bind(){
 
   // ── UPGRADE ──
   document.querySelector('[data-upgrade]')?.addEventListener('click',()=>showPaywall())
-
-  // logo picker — render previews then handle selection
-  ;['A','B','C'].forEach(k=>{
-    const cv=document.getElementById(`prev-${k}`);if(!cv)return
-    const fn=k==='A'?makeIconA:k==='B'?makeIconB:makeIconC
-    const img=new Image();img.onload=()=>{const ctx=cv.getContext('2d');ctx.drawImage(img,0,0,72,72)};img.src=fn(72)
-  })
-  document.querySelectorAll('[data-pick-logo]').forEach(el=>el.addEventListener('click',()=>{
-    _logoKey=el.dataset.pickLogo;localStorage.setItem('wager_logo',_logoKey)
-    // re-generate and update icons
-    const icon=makeIcon(512)
-    document.querySelector('link[rel="apple-touch-icon"]')?.setAttribute('href',icon)
-    ren()
-  }))
 
   // ── GROUP LOBBY ──
   document.querySelector('[data-create-group]')?.addEventListener('click',()=>createGroup())
@@ -1819,7 +1799,9 @@ auth.onAuthStateChanged(async user=>{
     try{
       const doc=await fdb.collection('users').doc(user.uid).get()
       if(doc.exists){const d=doc.data();S.user.isPaid=d.isPaid||false;S.user.proExpiry=d.proExpiry||'';S.user.weekRounds=d.weekRounds||0;S.user.weekKey=d.weekKey||'';S.user.venmo=d.venmo||'';S.user.cashapp=d.cashapp||'';S.user.friendCode=d.friendCode||'';S.friends=d.friends||[]}
-      if(!S.user.friendCode){const fc=genCode()+genCode()[0];S.user.friendCode=fc;fdb.collection('users').doc(user.uid).set({friendCode:fc},{merge:true})}
+      if(!S.user.friendCode){const fc=genCode()+genCode()[0];S.user.friendCode=fc;fdb.collection('users').doc(user.uid).set({friendCode:fc},{merge:true});fdb.collection('friendCodes').doc(fc).set({uid:user.uid,name:S.user.displayName,venmo:S.user.venmo||'',cashapp:S.user.cashapp||''})}
+      // keep friendCodes lookup doc in sync (venmo/cashapp may have updated)
+      else{fdb.collection('friendCodes').doc(S.user.friendCode).set({uid:user.uid,name:S.user.displayName,venmo:S.user.venmo||'',cashapp:S.user.cashapp||''},{merge:true})}
       // claim any pending referral credits
       try{
         const credit=await fdb.collection('referralCredits').doc(user.uid).get()
