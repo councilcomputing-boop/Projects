@@ -320,7 +320,7 @@
             <div class="stat s-a"><div class="stat-lbl">Approved</div><div class="stat-val" id="asStat">—</div><div class="stat-sub" id="asAmt"></div></div>
             <div class="stat s-n"><div class="stat-lbl">Not Approved</div><div class="stat-val" id="naStat">—</div><div class="stat-sub" id="naAmt"></div></div>
             <div class="stat s-p"><div class="stat-lbl">Pending Review</div><div class="stat-val" id="pStat">—</div><div class="stat-sub" id="pAmt"></div></div>
-            <div class="stat s-e"><div class="stat-lbl">Expiring Soon</div><div class="stat-val" id="eStat">—</div><div class="stat-sub" id="eSub">Within 30 days</div></div>
+            <div class="stat s-e"><div class="stat-lbl">Work on Hand Low</div><div class="stat-val" id="eStat">—</div><div class="stat-sub" id="eSub">Needs attention</div></div>
         </div>
 
         <div class="toolbar">
@@ -345,6 +345,9 @@
             <select class="flt" id="fltPrincipal" onchange="renderBonds()">
                 <option value="">All Principals</option>
             </select>
+            <select class="flt" id="fltSurety" onchange="renderBonds()">
+                <option value="">All Sureties</option>
+            </select>
             <button class="btn btn-secondary" onclick="openReport()" style="white-space:nowrap;">&#128196; Report</button>
         </div>
 
@@ -352,15 +355,15 @@
             <div class="twrap">
                 <table>
                     <thead><tr>
-                        <th id="th-bond_number"  onclick="sort('bond_number')">Bond #</th>
-                        <th id="th-principal"    onclick="sort('principal')">Principal</th>
-                        <th id="th-obligee"      onclick="sort('obligee')">Obligee</th>
-                        <th id="th-bond_type"    onclick="sort('bond_type')">Bond Type</th>
-                        <th id="th-bid_date"        onclick="sort('bid_date')">Bid Date</th>
-                        <th id="th-expiration_date" onclick="sort('expiration_date')">Expires</th>
-                        <th id="th-surety"          onclick="sort('surety')">Surety</th>
-                        <th id="th-bond_amount"     onclick="sort('bond_amount')">Amount</th>
-                        <th id="th-status"          onclick="sort('status')">Status</th>
+                        <th id="th-bond_number" onclick="sort('bond_number')">Bond #</th>
+                        <th id="th-principal"   onclick="sort('principal')">Principal</th>
+                        <th id="th-obligee"     onclick="sort('obligee')">Obligee</th>
+                        <th id="th-project"     onclick="sort('project')">Project</th>
+                        <th id="th-bond_type"   onclick="sort('bond_type')">Bond Type</th>
+                        <th id="th-bid_date"    onclick="sort('bid_date')">Bid Date</th>
+                        <th id="th-surety"      onclick="sort('surety')">Surety</th>
+                        <th id="th-bond_amount" onclick="sort('bond_amount')">Amount</th>
+                        <th id="th-status"      onclick="sort('status')">Status</th>
                         <th>Actions</th>
                     </tr></thead>
                     <tbody id="tbody"></tbody>
@@ -420,21 +423,36 @@
                 <div class="fsect">Bond Information</div>
                 <div class="fgrp"><label class="flbl">Bond Number</label><div style="display:flex;gap:8px;align-items:center;"><input type="text" class="fc" id="fNum" style="flex:1;"><button type="button" class="btn btn-secondary" style="white-space:nowrap;padding:6px 10px;font-size:13px;" onclick="document.getElementById('fNum').value='N/A'">N/A</button></div></div>
                 <div class="fgrp"><label class="flbl">Bond Type <span class="req">*</span></label>
-                    <select class="fc" id="fType" required><option value="">Select...</option><option>Bid Bond</option><option>Final Bond</option><option>License Bond</option><option>Maintenance Bond</option><option>Other</option></select>
+                    <select class="fc" id="fType" required onchange="onBondTypeChange()"><option value="">Select...</option><option>Bid Bond</option><option>Final Bond</option><option>License Bond</option><option>Maintenance Bond</option><option>Other</option></select>
                 </div>
                 <div class="fgrp"><label class="flbl">Bond Amount ($)</label><input type="number" class="fc" id="fAmt" min="0" step="0.01"></div>
                 <div class="fgrp"><label class="flbl">Bid Date</label><input type="date" class="fc" id="fBidDate"></div>
-                <div class="fgrp"><label class="flbl">Expiration Date</label><input type="date" class="fc" id="fExpDate"></div>
+                <div class="fgrp" id="bidPctRow" style="display:none;"><label class="flbl">Bid Bond %</label>
+                    <select class="fc" id="fBidPct" onchange="onBidPctChange()">
+                        <option value="">Select %</option>
+                        <option value="5">5%</option>
+                        <option value="10">10%</option>
+                        <option value="20">20%</option>
+                        <option value="custom">Custom…</option>
+                    </select>
+                </div>
+                <div class="fgrp" id="bidPctCustomRow" style="display:none;"><label class="flbl">Custom Bid Bond %</label><input type="number" class="fc" id="fBidPctCustom" min="0" max="100" step="0.1" placeholder="e.g. 15"></div>
                 <div class="fsect">Parties</div>
                 <div class="fgrp full"><label class="flbl">Principal (Contractor / Applicant) <span class="req">*</span></label><input type="text" class="fc" id="fPrincipal" placeholder="Name of contractor or entity requesting the bond" required></div>
                 <div class="fgrp full"><label class="flbl">Obligee (Requiring Party) <span class="req">*</span></label><input type="text" class="fc" id="fObligee" placeholder="Entity requiring the bond" required></div>
                 <div class="fgrp full"><label class="flbl">Surety (Bonding Company) <span class="req">*</span></label><input type="text" class="fc" id="fSurety" placeholder="e.g., Travelers, Liberty Mutual" required></div>
+                <div class="fsect">Project</div>
+                <div class="fgrp full"><label class="flbl">Project Name</label><input type="text" class="fc" id="fProject" placeholder="Project or job name"></div>
+                <div class="fgrp full"><label class="flbl">Project Description</label><textarea class="fc" id="fProjectDesc" placeholder="Description of the project or work..."></textarea></div>
                 <div class="fsect">Decision</div>
                 <div class="fgrp"><label class="flbl">Status <span class="req">*</span></label>
                     <select class="fc" id="fStatus" required><option value="">Select...</option><option>Pending</option><option>Approved</option><option>Not Approved</option></select>
                 </div>
                 <div class="fgrp"><label class="flbl">Decision Date</label><input type="date" class="fc" id="fDecDate"></div>
                 <div class="fgrp full"><label class="flbl">Notes / Reason</label><textarea class="fc" id="fNotes" placeholder="Reason for approval or denial, conditions, notes..."></textarea></div>
+                <div class="fsect">Work on Hand</div>
+                <div class="fgrp full"><label class="flbl">Work on Hand Notes</label><textarea class="fc" id="fWorkOnHand" placeholder="Current work on hand — projects in progress, capacity notes..."></textarea></div>
+                <div class="fgrp full"><label style="display:flex;align-items:center;gap:10px;cursor:pointer;margin-top:2px;"><input type="checkbox" id="fWohLow" style="width:17px;height:17px;accent-color:var(--red);flex-shrink:0;"> <span style="font-size:14px;font-weight:500;color:var(--red);">Mark Work on Hand as Low</span></label></div>
             </form>
         </div>
         <div class="modal-ftr">
@@ -454,6 +472,7 @@
         <div class="modal-body" id="viewBody"></div>
         <div class="modal-ftr">
             <button class="btn btn-secondary" onclick="closeModal('viewModal')">Close</button>
+            <button class="btn btn-secondary" id="viewFinalBtn" style="display:none;border-color:#1565c0;color:#1565c0;">&#128196; Create Final Bond</button>
             <button class="btn btn-primary"   id="viewEditBtn">Edit Bond</button>
         </div>
     </div>
@@ -479,8 +498,8 @@
 <div class="overlay" id="reportModal">
     <div class="modal modal-sm">
         <div class="modal-hdr"><div class="modal-ttl">&#128196; Generate Bond Report</div><button class="modal-cls" onclick="closeModal('reportModal')">&times;</button></div>
-        <div class="modal-body">
-            <div style="font-size:13px;color:var(--gray-600);margin-bottom:16px;">Choose filters then click Download. Leave fields blank to include everything.</div>
+        <div class="modal-body" style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+            <div style="grid-column:1/-1;font-size:13px;color:var(--gray-600);">Choose filters then click Download. Leave fields blank to include everything.</div>
             <div class="fgrp">
                 <label class="flbl">Status</label>
                 <select class="fc" id="rStatus">
@@ -488,6 +507,17 @@
                     <option value="Pending">Pending</option>
                     <option value="Approved">Approved</option>
                     <option value="Not Approved">Not Approved</option>
+                </select>
+            </div>
+            <div class="fgrp">
+                <label class="flbl">Bond Type</label>
+                <select class="fc" id="rType">
+                    <option value="">All Bond Types</option>
+                    <option value="Bid Bond">Bid Bond</option>
+                    <option value="Final Bond">Final Bond</option>
+                    <option value="License Bond">License Bond</option>
+                    <option value="Maintenance Bond">Maintenance Bond</option>
+                    <option value="Other">Other</option>
                 </select>
             </div>
             <div class="fgrp">
@@ -539,9 +569,10 @@ let activeTab = 'bonds';
 
 const LABELS = {
     bond_number:'Bond #', bond_type:'Bond Type', principal:'Principal',
-    obligee:'Obligee', surety:'Surety', bond_amount:'Amount',
+    obligee:'Obligee', project:'Project', project_description:'Project Description',
+    surety:'Surety', bond_amount:'Amount', bid_bond_percent:'Bid Bond %',
     bid_date:'Bid Date', expiration_date:'Expiration Date', decision_date:'Decision Date',
-    status:'Status', notes:'Notes',
+    status:'Status', notes:'Notes', work_on_hand:'Work on Hand', work_on_hand_low:'Work on Hand Low',
 };
 
 // ── API ────────────────────────────────────────────────────────────────
@@ -581,6 +612,12 @@ function populatePrincipalFilter() {
     const principals = [...new Set(bonds.map(b=>b.principal).filter(Boolean))].sort();
     sel.innerHTML = '<option value="">All Principals</option>' +
         principals.map(p=>`<option value="${esc(p)}"${p===cur?' selected':''}>${esc(p)}</option>`).join('');
+
+    const surSel = document.getElementById('fltSurety');
+    const surCur = surSel.value;
+    const sureties = [...new Set(bonds.map(b=>b.surety).filter(Boolean))].sort();
+    surSel.innerHTML = '<option value="">All Sureties</option>' +
+        sureties.map(s=>`<option value="${esc(s)}"${s===surCur?' selected':''}>${esc(s)}</option>`).join('');
 }
 
 function expStyle(dateStr) {
@@ -593,15 +630,16 @@ function expStyle(dateStr) {
 }
 
 function renderBonds() {
-    const q  = document.getElementById('srch').value.toLowerCase();
-    const sf = document.getElementById('fltStatus').value;
-    const tf = document.getElementById('fltType').value;
-    const pf = document.getElementById('fltPrincipal').value;
+    const q   = document.getElementById('srch').value.toLowerCase();
+    const sf  = document.getElementById('fltStatus').value;
+    const tf  = document.getElementById('fltType').value;
+    const pf  = document.getElementById('fltPrincipal').value;
+    const suf = document.getElementById('fltSurety').value;
 
     let rows = bonds.filter(b => {
-        const hit = !q || [b.bond_number,b.principal,b.obligee,b.surety,b.bond_type]
+        const hit = !q || [b.bond_number,b.principal,b.obligee,b.surety,b.bond_type,b.project]
             .some(v=>(v||'').toLowerCase().includes(q));
-        return hit && (!sf||b.status===sf) && (!tf||b.bond_type===tf) && (!pf||b.principal===pf);
+        return hit && (!sf||b.status===sf) && (!tf||b.bond_type===tf) && (!pf||b.principal===pf) && (!suf||b.surety===suf);
     });
 
     rows.sort((a,b)=>{
@@ -619,22 +657,28 @@ function renderBonds() {
     if(!rows.length){ tbody.innerHTML=''; empty.style.display=''; }
     else {
         empty.style.display='none';
-        tbody.innerHTML=rows.map(b=>`<tr>
-            <td><div class="bond-num">${esc(b.bond_number)}</div><div class="meta">Added by ${esc(b.created_by)} &middot; ${b.created_at}</div></td>
-            <td><span class="principal">${esc(b.principal)}</span></td>
+        tbody.innerHTML=rows.map(b=>{
+            const amt = b.bond_amount ? '$'+(+b.bond_amount).toLocaleString('en-US',{maximumFractionDigits:0}) : '&mdash;';
+            const amtSub = (b.bond_type==='Bid Bond'&&b.bid_bond_percent&&b.bond_amount)
+                ? `<div class="meta">${b.bid_bond_percent}% = $${(b.bond_amount*b.bid_bond_percent/100).toLocaleString('en-US',{maximumFractionDigits:0})}</div>` : '';
+            const wohBadge = b.work_on_hand_low ? ' <span style="background:#ffebee;color:#c62828;border-radius:10px;padding:1px 6px;font-size:10px;font-weight:700;vertical-align:middle;">LOW</span>' : '';
+            return `<tr>
+            <td><div class="bond-num">${esc(b.bond_number||'N/A')}</div><div class="meta">Added by ${esc(b.created_by)} &middot; ${b.created_at}</div></td>
+            <td><span class="principal">${esc(b.principal)}</span>${wohBadge}</td>
             <td>${esc(b.obligee)}</td>
+            <td>${esc(b.project)||'&mdash;'}</td>
             <td>${esc(b.bond_type)}</td>
             <td>${fmtDate(b.bid_date)}</td>
-            <td>${b.expiration_date ? '<span style="'+expStyle(b.expiration_date)+'">'+fmtDate(b.expiration_date)+'</span>' : '&mdash;'}</td>
             <td>${esc(b.surety)}</td>
-            <td>${b.bond_amount?'$'+(+b.bond_amount).toLocaleString('en-US',{maximumFractionDigits:0}):'&mdash;'}</td>
+            <td>${amt}${amtSub}</td>
             <td>${badge(b.status)}</td>
             <td><div class="row-acts">
                 <button class="btn btn-secondary btn-sm" onclick="openView(${b.id})">View</button>
                 <button class="btn btn-secondary btn-sm" onclick="openEdit(${b.id})">Edit</button>
-                <button class="btn btn-danger btn-sm"    onclick="openDel(${b.id})">Delete</button>
+                ${b.bond_type==='Bid Bond'?`<button class="btn btn-secondary btn-sm" onclick="createFinalBond(${b.id})" style="color:#1565c0;border-color:#1565c0;">Final</button>`:''}
+                <button class="btn btn-danger btn-sm" onclick="openDel(${b.id})">Delete</button>
             </div></td>
-        </tr>`).join('');
+        </tr>`;}).join('');
     }
 
     document.getElementById('rowCount').textContent=`Showing ${rows.length} of ${bonds.length} bond${bonds.length!==1?'s':''}`;
@@ -647,16 +691,14 @@ function updateStats() {
     const app=bonds.filter(b=>b.status==='Approved');
     const na=bonds.filter(b=>b.status==='Not Approved');
     const pend=bonds.filter(b=>b.status==='Pending');
-    const today=new Date().toISOString().split('T')[0];
-    const in30=new Date(Date.now()+30*24*60*60*1000).toISOString().split('T')[0];
-    const expiring=bonds.filter(b=>b.expiration_date&&b.expiration_date>=today&&b.expiration_date<=in30);
+    const wohLow=bonds.filter(b=>b.work_on_hand_low);
     const sum=arr=>arr.reduce((s,b)=>s+(+b.bond_amount||0),0);
     const fmt=n=>n?'$'+n.toLocaleString('en-US',{notation:'compact',maximumFractionDigits:1})+' total':'';
     document.getElementById('sStat').textContent=bonds.length;
     document.getElementById('asStat').textContent=app.length;
     document.getElementById('naStat').textContent=na.length;
     document.getElementById('pStat').textContent=pend.length;
-    document.getElementById('eStat').textContent=expiring.length;
+    document.getElementById('eStat').textContent=wohLow.length;
     document.getElementById('sAmt').textContent=fmt(sum(bonds));
     document.getElementById('asAmt').textContent=fmt(sum(app));
     document.getElementById('naAmt').textContent=fmt(sum(na));
@@ -673,24 +715,54 @@ function sort(field) {
 function openView(id) {
     const b = bonds.find(x=>x.id===id);
     if (!b) return;
-    document.getElementById('viewTitle').textContent = 'Bond — ' + b.bond_number;
+    document.getElementById('viewTitle').textContent = 'Bond — ' + (b.bond_number||'N/A');
+
+    let bidPctHtml = '';
+    if (b.bond_type==='Bid Bond' && b.bid_bond_percent) {
+        const pctAmt = b.bond_amount ? ' = $'+(b.bond_amount*b.bid_bond_percent/100).toLocaleString('en-US',{maximumFractionDigits:0}) : '';
+        bidPctHtml = dv('Bid Bond %', b.bid_bond_percent+'%'+pctAmt);
+    }
+
+    const projectHtml = (b.project||b.project_description) ? `
+        <div class="fsect">Project</div>
+        ${b.project?dv('Project Name',b.project,true):''}
+        ${b.project_description?`<div class="fgrp full"><div class="flbl">Project Description</div><div style="font-size:14px;white-space:pre-wrap;line-height:1.55;margin-top:2px;">${esc(b.project_description)}</div></div>`:''}
+    ` : '';
+
+    const lowBadge = b.work_on_hand_low
+        ? '<span style="background:#ffebee;color:#c62828;border-radius:20px;padding:3px 10px;font-size:11px;font-weight:700;">LOW</span>'
+        : '<span style="background:#e8f5e9;color:#2e7d32;border-radius:20px;padding:3px 10px;font-size:11px;font-weight:700;">NORMAL</span>';
+    const wohHtml = `
+        <div class="fsect">Work on Hand</div>
+        <div class="fgrp"><div class="flbl">Status</div><div style="margin-top:4px;">${lowBadge}</div></div>
+        ${b.work_on_hand?`<div class="fgrp full"><div class="flbl">Notes</div><div style="font-size:14px;white-space:pre-wrap;line-height:1.55;margin-top:2px;">${esc(b.work_on_hand)}</div></div>`:''}
+    `;
+
     document.getElementById('viewBody').innerHTML = `
         <div class="fg" style="row-gap:16px;">
             <div class="fsect">Bond Information</div>
-            ${dv('Bond Number',b.bond_number)} ${dv('Bond Type',b.bond_type)}
+            ${dv('Bond Number',b.bond_number||'N/A')} ${dv('Bond Type',b.bond_type)}
             ${dv('Bond Amount',b.bond_amount?'$'+(+b.bond_amount).toLocaleString('en-US'):'')} ${dv('Bid Date',fmtDate(b.bid_date))}
-            ${dv('Expiration Date',fmtDate(b.expiration_date))}
+            ${bidPctHtml}
             <div class="fsect">Parties</div>
-            ${dv('Principal',b.principal,true)} ${dv('Obligee',b.obligee,true)} ${dv('Surety',b.surety,true)}
+            ${dv('Principal',b.principal,true)} ${dv('Obligee',b.obligee,true)}
+            ${projectHtml}
+            ${dv('Surety',b.surety,true)}
             <div class="fsect">Decision</div>
             <div class="fgrp"><div class="flbl">Status</div><div style="margin-top:2px;">${badge(b.status)}</div></div>
             ${dv('Decision Date',fmtDate(b.decision_date))}
             ${b.notes?`<div class="fgrp full"><div class="flbl">Notes</div><div style="font-size:14px;white-space:pre-wrap;line-height:1.55;margin-top:2px;">${esc(b.notes)}</div></div>`:''}
+            ${wohHtml}
             <div class="fsect">Record Info</div>
             ${dv('Added By',b.created_by)} ${dv('Added At',b.created_at)}
             ${b.updated_by?dv('Last Updated By',b.updated_by):''}
             ${b.updated_at?dv('Last Updated At',b.updated_at):''}
         </div>`;
+
+    const finalBtn = document.getElementById('viewFinalBtn');
+    finalBtn.style.display = b.bond_type==='Bid Bond' ? '' : 'none';
+    finalBtn.onclick = () => createFinalBond(id);
+
     document.getElementById('viewEditBtn').onclick=()=>{closeModal('viewModal');openEdit(id);};
     open_('viewModal');
 }
@@ -706,6 +778,9 @@ function openAdd() {
     document.getElementById('bondForm').reset();
     document.getElementById('fStatus').value='Pending';
     document.getElementById('formError').style.display='none';
+    document.getElementById('bidPctRow').style.display='none';
+    document.getElementById('bidPctCustomRow').style.display='none';
+    document.getElementById('fWohLow').checked=false;
     open_('bondModal');
 }
 
@@ -715,17 +790,40 @@ function openEdit(id) {
     editId=id;
     document.getElementById('modalTitle').textContent='Edit Bond';
     document.getElementById('formError').style.display='none';
-    document.getElementById('fNum').value     = b.bond_number   ||'';
-    document.getElementById('fType').value    = b.bond_type     ||'';
-    document.getElementById('fAmt').value     = b.bond_amount   ||'';
-    document.getElementById('fBidDate').value  = b.bid_date        ||'';
-    document.getElementById('fExpDate').value  = b.expiration_date ||'';
-    document.getElementById('fPrincipal').value= b.principal       ||'';
-    document.getElementById('fObligee').value = b.obligee       ||'';
-    document.getElementById('fSurety').value  = b.surety        ||'';
-    document.getElementById('fStatus').value  = b.status        ||'';
-    document.getElementById('fDecDate').value = b.decision_date ||'';
-    document.getElementById('fNotes').value   = b.notes         ||'';
+    document.getElementById('fNum').value        = b.bond_number        ||'';
+    document.getElementById('fType').value       = b.bond_type          ||'';
+    document.getElementById('fAmt').value        = b.bond_amount        ||'';
+    document.getElementById('fBidDate').value    = b.bid_date           ||'';
+    document.getElementById('fPrincipal').value  = b.principal          ||'';
+    document.getElementById('fObligee').value    = b.obligee            ||'';
+    document.getElementById('fProject').value    = b.project            ||'';
+    document.getElementById('fProjectDesc').value= b.project_description||'';
+    document.getElementById('fSurety').value     = b.surety             ||'';
+    document.getElementById('fStatus').value     = b.status             ||'';
+    document.getElementById('fDecDate').value    = b.decision_date      ||'';
+    document.getElementById('fNotes').value      = b.notes              ||'';
+    document.getElementById('fWorkOnHand').value = b.work_on_hand       ||'';
+    document.getElementById('fWohLow').checked   = b.work_on_hand_low   ||false;
+
+    // Bid bond percent
+    const isBid = b.bond_type==='Bid Bond';
+    document.getElementById('bidPctRow').style.display = isBid ? '' : 'none';
+    if (isBid && b.bid_bond_percent) {
+        const pct = +b.bid_bond_percent;
+        if ([5,10,20].includes(pct)) {
+            document.getElementById('fBidPct').value = String(pct);
+            document.getElementById('bidPctCustomRow').style.display='none';
+            document.getElementById('fBidPctCustom').value='';
+        } else {
+            document.getElementById('fBidPct').value='custom';
+            document.getElementById('bidPctCustomRow').style.display='';
+            document.getElementById('fBidPctCustom').value=b.bid_bond_percent;
+        }
+    } else {
+        document.getElementById('fBidPct').value='';
+        document.getElementById('bidPctCustomRow').style.display='none';
+        document.getElementById('fBidPctCustom').value='';
+    }
     open_('bondModal');
 }
 
@@ -734,18 +832,29 @@ async function saveBond(e) {
     const btn = document.getElementById('saveBondBtn');
     btn.disabled = true;
     btn.innerHTML = '<span class="spinner"></span>Saving...';
+    const bondType = document.getElementById('fType').value;
+    let bidBondPct = null;
+    if (bondType==='Bid Bond') {
+        const pctSel = document.getElementById('fBidPct').value;
+        if (pctSel==='custom') bidBondPct = parseFloat(document.getElementById('fBidPctCustom').value)||null;
+        else if (pctSel) bidBondPct = parseFloat(pctSel);
+    }
     const body = {
-        bond_number:   document.getElementById('fNum').value.trim(),
-        bond_type:     document.getElementById('fType').value,
-        bond_amount:   document.getElementById('fAmt').value||null,
-        bid_date:        document.getElementById('fBidDate').value||null,
-        expiration_date: document.getElementById('fExpDate').value||null,
-        principal:     document.getElementById('fPrincipal').value.trim(),
-        obligee:       document.getElementById('fObligee').value.trim(),
-        surety:        document.getElementById('fSurety').value.trim(),
-        status:        document.getElementById('fStatus').value,
-        decision_date: document.getElementById('fDecDate').value||null,
-        notes:         document.getElementById('fNotes').value.trim(),
+        bond_number:         document.getElementById('fNum').value.trim(),
+        bond_type:           bondType,
+        bond_amount:         document.getElementById('fAmt').value||null,
+        bid_bond_percent:    bidBondPct,
+        bid_date:            document.getElementById('fBidDate').value||null,
+        principal:           document.getElementById('fPrincipal').value.trim(),
+        obligee:             document.getElementById('fObligee').value.trim(),
+        project:             document.getElementById('fProject').value.trim(),
+        project_description: document.getElementById('fProjectDesc').value.trim(),
+        surety:              document.getElementById('fSurety').value.trim(),
+        status:              document.getElementById('fStatus').value,
+        decision_date:       document.getElementById('fDecDate').value||null,
+        notes:               document.getElementById('fNotes').value.trim(),
+        work_on_hand:        document.getElementById('fWorkOnHand').value.trim(),
+        work_on_hand_low:    document.getElementById('fWohLow').checked,
     };
     try {
         if (editId) { await api(`/api/bonds/${editId}`,'PUT',body); toast('Bond updated'); }
@@ -888,19 +997,51 @@ async function handlePDFUpload(input) {
 
 function openReport() {
     document.getElementById('rStatus').value = '';
+    document.getElementById('rType').value   = '';
     document.getElementById('rFrom').value   = '';
     document.getElementById('rTo').value     = '';
     open_('reportModal');
 }
 function reportParams() {
     const status = document.getElementById('rStatus').value;
+    const type   = document.getElementById('rType').value;
     const from   = document.getElementById('rFrom').value;
     const to     = document.getElementById('rTo').value;
     const params = new URLSearchParams();
-    if (status) params.append('status',    status);
-    if (from)   params.append('from_date', from);
-    if (to)     params.append('to_date',   to);
+    if (status) params.append('status',     status);
+    if (type)   params.append('bond_type',  type);
+    if (from)   params.append('from_date',  from);
+    if (to)     params.append('to_date',    to);
     return params.toString();
+}
+
+// ── Bid bond percent helpers ─────────────────────────────────────────────
+function onBondTypeChange() {
+    const t = document.getElementById('fType').value;
+    document.getElementById('bidPctRow').style.display = t==='Bid Bond' ? '' : 'none';
+    if (t!=='Bid Bond') {
+        document.getElementById('fBidPct').value='';
+        document.getElementById('fBidPctCustom').value='';
+        document.getElementById('bidPctCustomRow').style.display='none';
+    }
+}
+function onBidPctChange() {
+    const v = document.getElementById('fBidPct').value;
+    document.getElementById('bidPctCustomRow').style.display = v==='custom' ? '' : 'none';
+}
+
+// ── Final Bond ───────────────────────────────────────────────────────────
+async function createFinalBond(id) {
+    const b = bonds.find(x=>x.id===id);
+    if (!b) return;
+    if (!confirm(`Create a Final Bond for ${b.principal}?\n\nThis will open a new Pending bond prefilled with principal, obligee, project, and surety.`)) return;
+    try {
+        await api(`/api/bonds/${id}/create-final`, 'POST');
+        closeModal('viewModal');
+        await loadBonds();
+        loadActivity();
+        toast('Final Bond created — open to add bond number');
+    } catch(err) { toast(err.message,'err'); }
 }
 function downloadReport() {
     window.location.href = '/reports/pdf?' + reportParams();
