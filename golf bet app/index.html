@@ -799,7 +799,7 @@ function pg_home(){
   const isIOS=/iphone|ipad|ipod/i.test(navigator.userAgent)
   const isStandalone=window.navigator.standalone||window.matchMedia('(display-mode: standalone)').matches
   const dismissed=localStorage.getItem('install_dismissed')
-  const installBanner=isIOS&&!isStandalone&&!dismissed?`<div class="install-banner"><div class="ib-icon">⛳</div><div class="ib-text"><div class="ib-title">Add Wager to Home Screen</div>Tap <strong>Share &#8593;</strong> then <strong>"Add to Home Screen"</strong> to install as an app</div><button class="ib-close" data-dismiss-install>&#10005;</button></div>`:''
+  const installBanner=isIOS&&!isStandalone&&!dismissed?`<div class="install-banner"><div class="ib-icon">⛳</div><div class="ib-text"><div class="ib-title">Add Wager to Home Screen</div>Tap <strong>Share &#8593;</strong> → <strong>View More</strong> → <strong>"Add to Home Screen"</strong></div><button class="ib-close" data-dismiss-install>&#10005;</button></div>`:''
   return`${installBanner}${userBadge}${banner}${groupBanner}
   <div class="hero"><h2>Ready to play?</h2><p>${D.players.length} players registered</p>
     <div class="btn-row" style="margin-top:14px">
@@ -951,8 +951,9 @@ function pg_players(){
           <div style="font-size:12px;color:var(--muted);line-height:1.7">
             1. Open Wager in <strong>Safari</strong> — not Chrome<br>
             2. Tap the <strong>Share</strong> button (box with arrow ↑)<br>
-            3. Scroll down and tap <strong>"Add to Home Screen"</strong><br>
-            4. Tap <strong>Add</strong>
+            3. Tap <strong>"View More"</strong> at the bottom of the sheet<br>
+            4. Tap <strong>"Add to Home Screen"</strong><br>
+            5. Tap <strong>Add</strong>
           </div>
         </div>
       </div>
