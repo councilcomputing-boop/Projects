@@ -270,6 +270,17 @@ function db(){try{const r=localStorage.getItem(KEY);const d=r?JSON.parse(r):{};i
 function save(d){localStorage.setItem(KEY,JSON.stringify(d))}
 let _logoKey=localStorage.getItem('wager_logo')||'A'
 let _voiceRec=null
+let _wakeLock=null
+async function _wakelock(want){
+  if(want){
+    if(_wakeLock)return
+    try{_wakeLock=await navigator.wakeLock?.request('screen')}catch(e){}
+  }else{
+    _wakeLock?.release();_wakeLock=null
+  }
+}
+// re-acquire after phone comes back from sleep mid-round
+document.addEventListener('visibilitychange',()=>{if(!document.hidden&&S.sc==='scorecard')_wakelock(true)})
 function isPro(){return S.user?.isPaid||(S.user?.proExpiry&&new Date(S.user.proExpiry)>new Date())}
 // capture referral code from URL before any navigation clears it
 ;(()=>{const r=new URLSearchParams(location.search).get('ref');if(r)localStorage.setItem('wager_ref',r)})()
@@ -704,6 +715,7 @@ function ren(){
   const ol=document.getElementById('OL')
   if(ol)ol.innerHTML=S.holeMenu&&S.sc==='scorecard'?pg_hole_menu():''
   bind()
+  _wakelock(S.sc==='scorecard')
 }
 
 function nav_bar(){
