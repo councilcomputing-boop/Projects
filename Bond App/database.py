@@ -66,6 +66,7 @@ class Bond(db.Model):
     notes                = db.Column(db.Text)
     work_on_hand         = db.Column(db.Text)
     work_on_hand_low     = db.Column(db.Boolean, default=False)
+    low_bid              = db.Column(db.Boolean, default=False)
     created_by           = db.Column(db.String(50))
     created_at           = db.Column(db.DateTime, default=datetime.utcnow)
     updated_by           = db.Column(db.String(50))
@@ -90,6 +91,7 @@ class Bond(db.Model):
             'notes':               self.notes or '',
             'work_on_hand':        self.work_on_hand or '',
             'work_on_hand_low':    bool(self.work_on_hand_low),
+            'low_bid':             bool(self.low_bid),
             'created_by':          self.created_by or '',
             'created_at':          fmt(self.created_at),
             'updated_by':          self.updated_by or '',

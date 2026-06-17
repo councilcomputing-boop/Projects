@@ -355,7 +355,6 @@
             <div class="twrap">
                 <table>
                     <thead><tr>
-                        <th id="th-bond_number" onclick="sort('bond_number')">Bond #</th>
                         <th id="th-principal"   onclick="sort('principal')">Principal</th>
                         <th id="th-obligee"     onclick="sort('obligee')">Obligee</th>
                         <th id="th-project"     onclick="sort('project')">Project</th>
@@ -392,7 +391,7 @@
                 <table class="log-table">
                     <thead><tr>
                         <th style="cursor:default;">Date &amp; Time</th>
-                        <th style="cursor:default;">Bond #</th>
+                        <th style="cursor:default;">Principal</th>
                         <th style="cursor:default;">Action</th>
                         <th style="cursor:default;">Changed By</th>
                         <th style="cursor:default;">Details</th>
@@ -421,7 +420,6 @@
             <div id="formError" class="empty" style="display:none;padding:10px;background:#ffebee;color:#c62828;border-radius:4px;font-size:13px;margin-bottom:14px;"></div>
             <form id="bondForm" class="fg" onsubmit="saveBond(event)">
                 <div class="fsect">Bond Information</div>
-                <div class="fgrp"><label class="flbl">Bond Number</label><div style="display:flex;gap:8px;align-items:center;"><input type="text" class="fc" id="fNum" style="flex:1;"><button type="button" class="btn btn-secondary" style="white-space:nowrap;padding:6px 10px;font-size:13px;" onclick="document.getElementById('fNum').value='N/A'">N/A</button></div></div>
                 <div class="fgrp"><label class="flbl">Bond Type <span class="req">*</span></label>
                     <select class="fc" id="fType" required onchange="onBondTypeChange()"><option value="">Select...</option><option>Bid Bond</option><option>Final Bond</option><option>License Bond</option><option>Maintenance Bond</option><option>Other</option></select>
                 </div>
@@ -437,6 +435,7 @@
                     </select>
                 </div>
                 <div class="fgrp" id="bidPctCustomRow" style="display:none;"><label class="flbl">Custom Bid Bond %</label><input type="number" class="fc" id="fBidPctCustom" min="0" max="100" step="0.1" placeholder="e.g. 15"></div>
+                <div class="fgrp full"><label style="display:flex;align-items:center;gap:10px;cursor:pointer;margin-top:2px;"><input type="checkbox" id="fLowBid" style="width:17px;height:17px;accent-color:#2e7d32;flex-shrink:0;"> <span style="font-size:14px;font-weight:500;color:#2e7d32;">Low Bid</span></label></div>
                 <div class="fsect">Parties</div>
                 <div class="fgrp full"><label class="flbl">Principal (Contractor / Applicant) <span class="req">*</span></label><input type="text" class="fc" id="fPrincipal" placeholder="Name of contractor or entity requesting the bond" required></div>
                 <div class="fgrp full"><label class="flbl">Obligee (Requiring Party) <span class="req">*</span></label><input type="text" class="fc" id="fObligee" placeholder="Entity requiring the bond" required></div>
@@ -567,11 +566,11 @@ let sortAsc  = false;
 let activeTab = 'bonds';
 
 const LABELS = {
-    bond_number:'Bond #', bond_type:'Bond Type', principal:'Principal',
+    bond_type:'Bond Type', principal:'Principal',
     obligee:'Obligee', project:'Project', project_description:'Project Description',
     surety:'Surety', bond_amount:'Amount', bid_bond_percent:'Bid Bond %',
-    bid_date:'Bid Date', expiration_date:'Expiration Date', decision_date:'Decision Date',
-    status:'Status', notes:'Notes', work_on_hand:'Work on Hand',
+    bid_date:'Bid Date', decision_date:'Decision Date',
+    status:'Status', notes:'Notes', work_on_hand:'Work on Hand', low_bid:'Low Bid',
 };
 
 // ── API ────────────────────────────────────────────────────────────────
@@ -636,7 +635,7 @@ function renderBonds() {
     const suf = document.getElementById('fltSurety').value;
 
     let rows = bonds.filter(b => {
-        const hit = !q || [b.bond_number,b.principal,b.obligee,b.surety,b.bond_type,b.project]
+        const hit = !q || [b.principal,b.obligee,b.surety,b.bond_type,b.project]
             .some(v=>(v||'').toLowerCase().includes(q));
         return hit && (!sf||b.status===sf) && (!tf||b.bond_type===tf) && (!pf||b.principal===pf) && (!suf||b.surety===suf);
     });
@@ -660,12 +659,12 @@ function renderBonds() {
             const amt = b.bond_amount ? '$'+(+b.bond_amount).toLocaleString('en-US',{maximumFractionDigits:0}) : '&mdash;';
             const amtSub = (b.bond_type==='Bid Bond'&&b.bid_bond_percent&&b.bond_amount)
                 ? `<div class="meta">${b.bid_bond_percent}% = $${(b.bond_amount*b.bid_bond_percent/100).toLocaleString('en-US',{maximumFractionDigits:0})}</div>` : '';
+            const lowBidBadge = b.low_bid ? ' <span style="background:#e8f5e9;color:#2e7d32;border-radius:10px;padding:1px 7px;font-size:10px;font-weight:700;vertical-align:middle;">LOW BID</span>' : '';
             return `<tr>
-            <td><div class="bond-num">${esc(b.bond_number||'N/A')}</div><div class="meta">Added by ${esc(b.created_by)} &middot; ${b.created_at}</div></td>
-            <td><span class="principal">${esc(b.principal)}</span></td>
+            <td><span class="principal">${esc(b.principal)}</span><div class="meta">Added by ${esc(b.created_by)} &middot; ${b.created_at}</div></td>
             <td>${esc(b.obligee)}</td>
             <td>${esc(b.project)||'&mdash;'}</td>
-            <td>${esc(b.bond_type)}</td>
+            <td>${esc(b.bond_type)}${lowBidBadge}</td>
             <td>${fmtDate(b.bid_date)}</td>
             <td>${esc(b.surety)}</td>
             <td>${amt}${amtSub}</td>
@@ -713,7 +712,7 @@ function sort(field) {
 function openView(id) {
     const b = bonds.find(x=>x.id===id);
     if (!b) return;
-    document.getElementById('viewTitle').textContent = 'Bond — ' + (b.bond_number||'N/A');
+    document.getElementById('viewTitle').textContent = b.principal + ' — ' + b.bond_type;
 
     let bidPctHtml = '';
     if (b.bond_type==='Bid Bond' && b.bid_bond_percent) {
@@ -735,9 +734,10 @@ function openView(id) {
     document.getElementById('viewBody').innerHTML = `
         <div class="fg" style="row-gap:16px;">
             <div class="fsect">Bond Information</div>
-            ${dv('Bond Number',b.bond_number||'N/A')} ${dv('Bond Type',b.bond_type)}
-            ${dv('Bond Amount',b.bond_amount?'$'+(+b.bond_amount).toLocaleString('en-US'):'')} ${dv('Bid Date',fmtDate(b.bid_date))}
+            ${dv('Bond Type',b.bond_type)} ${dv('Bid Date',fmtDate(b.bid_date))}
+            ${dv('Bond Amount',b.bond_amount?'$'+(+b.bond_amount).toLocaleString('en-US'):'')}
             ${bidPctHtml}
+            ${b.low_bid?`<div class="fgrp"><div class="flbl">Low Bid</div><div style="margin-top:4px;"><span style="background:#e8f5e9;color:#2e7d32;border-radius:20px;padding:3px 12px;font-size:12px;font-weight:700;">LOW BID</span></div></div>`:''}
             <div class="fsect">Parties</div>
             ${dv('Principal',b.principal,true)} ${dv('Obligee',b.obligee,true)}
             ${projectHtml}
@@ -774,6 +774,7 @@ function openAdd() {
     document.getElementById('formError').style.display='none';
     document.getElementById('bidPctRow').style.display='none';
     document.getElementById('bidPctCustomRow').style.display='none';
+    document.getElementById('fLowBid').checked=false;
     open_('bondModal');
 }
 
@@ -783,7 +784,6 @@ function openEdit(id) {
     editId=id;
     document.getElementById('modalTitle').textContent='Edit Bond';
     document.getElementById('formError').style.display='none';
-    document.getElementById('fNum').value        = b.bond_number        ||'';
     document.getElementById('fType').value       = b.bond_type          ||'';
     document.getElementById('fAmt').value        = b.bond_amount        ||'';
     document.getElementById('fBidDate').value    = b.bid_date           ||'';
@@ -796,6 +796,7 @@ function openEdit(id) {
     document.getElementById('fDecDate').value    = b.decision_date      ||'';
     document.getElementById('fNotes').value      = b.notes              ||'';
     document.getElementById('fWorkOnHand').value = b.work_on_hand ||'';
+    document.getElementById('fLowBid').checked   = b.low_bid || false;
 
     // Bid bond percent
     const isBid = b.bond_type==='Bid Bond';
@@ -832,7 +833,6 @@ async function saveBond(e) {
         else if (pctSel) bidBondPct = parseFloat(pctSel);
     }
     const body = {
-        bond_number:         document.getElementById('fNum').value.trim(),
         bond_type:           bondType,
         bond_amount:         document.getElementById('fAmt').value||null,
         bid_bond_percent:    bidBondPct,
@@ -846,6 +846,7 @@ async function saveBond(e) {
         decision_date:       document.getElementById('fDecDate').value||null,
         notes:               document.getElementById('fNotes').value.trim(),
         work_on_hand:        document.getElementById('fWorkOnHand').value.trim(),
+        low_bid:             document.getElementById('fLowBid').checked,
     };
     try {
         if (editId) { await api(`/api/bonds/${editId}`,'PUT',body); toast('Bond updated'); }

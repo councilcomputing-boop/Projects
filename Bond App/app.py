@@ -132,6 +132,7 @@ def create_bond():
         notes                = data.get('notes', '').strip(),
         work_on_hand         = data.get('work_on_hand', '').strip(),
         work_on_hand_low     = bool(data.get('work_on_hand_low', False)),
+        low_bid              = bool(data.get('low_bid', False)),
         created_by           = current_user.username,
         created_at           = datetime.utcnow(),
     )
@@ -172,6 +173,7 @@ def update_bond(bond_id):
     bond.notes               = data.get('notes',               bond.notes or '').strip()
     bond.work_on_hand        = data.get('work_on_hand',        bond.work_on_hand or '').strip()
     bond.work_on_hand_low    = bool(data.get('work_on_hand_low', bond.work_on_hand_low or False))
+    bond.low_bid             = bool(data.get('low_bid', bond.low_bid or False))
     bond.updated_by          = current_user.username
     bond.updated_at          = datetime.utcnow()
 
@@ -804,6 +806,7 @@ with app.app_context():
                 conn.execute(text('ALTER TABLE bonds ADD COLUMN IF NOT EXISTS bid_bond_percent FLOAT'))
                 conn.execute(text('ALTER TABLE bonds ADD COLUMN IF NOT EXISTS work_on_hand TEXT'))
                 conn.execute(text('ALTER TABLE bonds ADD COLUMN IF NOT EXISTS work_on_hand_low BOOLEAN DEFAULT FALSE'))
+                conn.execute(text('ALTER TABLE bonds ADD COLUMN IF NOT EXISTS low_bid BOOLEAN DEFAULT FALSE'))
                 conn.commit()
     except Exception:
         pass
