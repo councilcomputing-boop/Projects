@@ -971,14 +971,24 @@ async function handlePDFUpload(input) {
         if (!resp.ok) throw new Error(data.error || 'Extraction failed');
 
         openAdd();
-        if (data.bond_number)   document.getElementById('fNum').value      = data.bond_number;
-        if (data.bond_type)     document.getElementById('fType').value     = data.bond_type;
-        if (data.principal)     document.getElementById('fPrincipal').value = data.principal;
-        if (data.obligee)       document.getElementById('fObligee').value  = data.obligee;
-        if (data.surety)        document.getElementById('fSurety').value   = data.surety;
-        if (data.bond_amount)   document.getElementById('fAmt').value      = data.bond_amount;
-        if (data.bid_date)      document.getElementById('fBidDate').value  = data.bid_date;
-        if (data.decision_date) document.getElementById('fDecDate').value  = data.decision_date;
+        if (data.bond_type)     { document.getElementById('fType').value     = data.bond_type; onBondTypeChange(); }
+        if (data.principal)     document.getElementById('fPrincipal').value  = data.principal;
+        if (data.obligee)       document.getElementById('fObligee').value    = data.obligee;
+        if (data.surety)        document.getElementById('fSurety').value     = data.surety;
+        if (data.bond_amount)   document.getElementById('fAmt').value        = data.bond_amount;
+        if (data.bid_date)      document.getElementById('fBidDate').value    = data.bid_date;
+        if (data.decision_date) document.getElementById('fDecDate').value    = data.decision_date;
+
+        // Build a bond data summary into Work on Hand notes
+        const lines = [];
+        if (data.bond_type)     lines.push(`Bond Type: ${data.bond_type}`);
+        if (data.principal)     lines.push(`Principal: ${data.principal}`);
+        if (data.obligee)       lines.push(`Obligee: ${data.obligee}`);
+        if (data.surety)        lines.push(`Surety: ${data.surety}`);
+        if (data.bond_amount)   lines.push(`Bond Amount: $${Number(data.bond_amount).toLocaleString('en-US',{maximumFractionDigits:0})}`);
+        if (data.bid_date)      lines.push(`Bid Date: ${fmtDate(data.bid_date)}`);
+        if (lines.length) document.getElementById('fWorkOnHand').value = lines.join('\n');
+
         toast('Form filled from PDF — review and save');
     } catch(e) {
         toast(e.message, 'err');
