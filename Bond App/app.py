@@ -225,8 +225,9 @@ def create_final_bond(bond_id):
         decision_date       = None,
         status              = 'Pending',
         notes               = '',
-        work_on_hand        = '',
-        work_on_hand_low    = False,
+        work_on_hand        = orig.work_on_hand,
+        work_on_hand_low    = orig.work_on_hand_low,
+        low_bid             = orig.low_bid,
         created_by          = current_user.username,
         created_at          = datetime.utcnow(),
     )

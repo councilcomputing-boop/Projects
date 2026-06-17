@@ -869,7 +869,7 @@ async function saveBond(e) {
 function openDel(id) {
     const b=bonds.find(x=>x.id===id);
     delId=id;
-    document.getElementById('delSub').textContent=`${b.bond_number} — ${b.principal}`;
+    document.getElementById('delSub').textContent=b.principal;
     open_('delModal');
 }
 async function doDelete() {
@@ -1023,21 +1023,14 @@ function onBidPctChange() {
 }
 
 // ── Final Bond ───────────────────────────────────────────────────────────
-function createFinalBond(id) {
-    const b = bonds.find(x=>x.id===id);
-    if (!b) return;
-    closeModal('viewModal');
-    openAdd();
-    document.getElementById('modalTitle').textContent = 'New Final Bond';
-    document.getElementById('fType').value            = 'Final Bond';
-    document.getElementById('fPrincipal').value       = b.principal || '';
-    document.getElementById('fObligee').value         = b.obligee || '';
-    document.getElementById('fProject').value         = b.project || '';
-    document.getElementById('fProjectDesc').value     = b.project_description || '';
-    document.getElementById('fSurety').value          = b.surety || '';
-    document.getElementById('fAmt').value             = b.bond_amount || '';
-    document.getElementById('fBidDate').value         = b.bid_date || '';
-    document.getElementById('bidPctRow').style.display = 'none';
+async function createFinalBond(id) {
+    try {
+        await api(`/api/bonds/${id}/create-final`, 'POST');
+        closeModal('viewModal');
+        await loadBonds();
+        loadActivity();
+        toast('Final Bond created');
+    } catch(err) { toast(err.message, 'err'); }
 }
 function downloadReport() {
     window.location.href = '/reports/pdf?' + reportParams();
