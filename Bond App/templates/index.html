@@ -224,6 +224,7 @@
     <div class="hdr-right">
         <div class="hdr-nav">
             <button class="nav-btn active" id="navBonds"    onclick="switchTab('bonds')">Bond Portfolio</button>
+            <button class="nav-btn"        id="navStats"    onclick="switchTab('stats')">Stats</button>
             <button class="nav-btn"        id="navActivity" onclick="switchTab('activity')">Activity Log</button>
             {% if user.role == 'admin' %}
             <a href="/admin" class="nav-btn">User Management</a>
@@ -374,6 +375,108 @@
                 </div>
             </div>
             <div class="tfooter"><span id="rowCount"></span><span id="rowAmt"></span></div>
+        </div>
+    </div>
+
+    <!-- ── Stats Tab ────────────────────────────────────── -->
+    <div id="tabStats" class="tab-panel">
+        <div class="page-hdr">
+            <div>
+                <div class="page-title">Analytics</div>
+                <div class="page-sub">Bond activity and performance over time</div>
+            </div>
+        </div>
+
+        <!-- Period cards -->
+        <div class="stats" style="grid-template-columns:repeat(4,1fr);margin-bottom:20px;">
+            <div class="stat" style="border-left-color:#1565c0;">
+                <div class="stat-lbl">Last 7 Days</div>
+                <div class="stat-val" id="st7Count">—</div>
+                <div class="stat-sub" id="st7Amt"></div>
+                <div class="stat-sub" id="st7Rate" style="margin-top:4px;color:#1565c0;font-weight:600;"></div>
+            </div>
+            <div class="stat" style="border-left-color:#0288d1;">
+                <div class="stat-lbl">Last 30 Days</div>
+                <div class="stat-val" id="st30Count">—</div>
+                <div class="stat-sub" id="st30Amt"></div>
+                <div class="stat-sub" id="st30Rate" style="margin-top:4px;color:#0288d1;font-weight:600;"></div>
+            </div>
+            <div class="stat" style="border-left-color:#2e7d32;">
+                <div class="stat-lbl">Last Year</div>
+                <div class="stat-val" id="st365Count">—</div>
+                <div class="stat-sub" id="st365Amt"></div>
+                <div class="stat-sub" id="st365Rate" style="margin-top:4px;color:#2e7d32;font-weight:600;"></div>
+            </div>
+            <div class="stat" style="border-left-color:#5f6368;">
+                <div class="stat-lbl">All Time</div>
+                <div class="stat-val" id="stAllCount">—</div>
+                <div class="stat-sub" id="stAllAmt"></div>
+                <div class="stat-sub" id="stAllRate" style="margin-top:4px;color:#5f6368;font-weight:600;"></div>
+            </div>
+        </div>
+
+        <!-- Bond Type + Status row -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;">
+            <div class="tcard">
+                <div style="padding:16px 20px 10px;font-size:14px;font-weight:700;color:var(--navy);border-bottom:1px solid var(--gray-200);">By Bond Type</div>
+                <div class="twrap" style="padding:0;">
+                    <table class="log-table">
+                        <thead><tr>
+                            <th style="cursor:default;">Type</th>
+                            <th style="cursor:default;text-align:right;">Count</th>
+                            <th style="cursor:default;text-align:right;">Total Amount</th>
+                            <th style="cursor:default;text-align:right;">Approval Rate</th>
+                        </tr></thead>
+                        <tbody id="stTypeBody"></tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="tcard">
+                <div style="padding:16px 20px 10px;font-size:14px;font-weight:700;color:var(--navy);border-bottom:1px solid var(--gray-200);">By Status</div>
+                <div class="twrap" style="padding:0;">
+                    <table class="log-table">
+                        <thead><tr>
+                            <th style="cursor:default;">Status</th>
+                            <th style="cursor:default;text-align:right;">Count</th>
+                            <th style="cursor:default;text-align:right;">Total Amount</th>
+                            <th style="cursor:default;text-align:right;">% of Total</th>
+                        </tr></thead>
+                        <tbody id="stStatusBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Top Principals + Top Sureties row -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+            <div class="tcard">
+                <div style="padding:16px 20px 10px;font-size:14px;font-weight:700;color:var(--navy);border-bottom:1px solid var(--gray-200);">Top Principals</div>
+                <div class="twrap" style="padding:0;">
+                    <table class="log-table">
+                        <thead><tr>
+                            <th style="cursor:default;">Principal</th>
+                            <th style="cursor:default;text-align:right;">Bonds</th>
+                            <th style="cursor:default;text-align:right;">Total Amount</th>
+                            <th style="cursor:default;text-align:right;">Approval Rate</th>
+                        </tr></thead>
+                        <tbody id="stPrincipalBody"></tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="tcard">
+                <div style="padding:16px 20px 10px;font-size:14px;font-weight:700;color:var(--navy);border-bottom:1px solid var(--gray-200);">Top Sureties</div>
+                <div class="twrap" style="padding:0;">
+                    <table class="log-table">
+                        <thead><tr>
+                            <th style="cursor:default;">Surety</th>
+                            <th style="cursor:default;text-align:right;">Bonds</th>
+                            <th style="cursor:default;text-align:right;">Total Amount</th>
+                            <th style="cursor:default;text-align:right;">Approval Rate</th>
+                        </tr></thead>
+                        <tbody id="stSuretyBody"></tbody>
+                    </table>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -591,10 +694,13 @@ async function api(path, method='GET', body=null) {
 function switchTab(tab) {
     activeTab = tab;
     document.getElementById('tabBonds').classList.toggle('active',    tab==='bonds');
+    document.getElementById('tabStats').classList.toggle('active',    tab==='stats');
     document.getElementById('tabActivity').classList.toggle('active', tab==='activity');
     document.getElementById('navBonds').classList.toggle('active',    tab==='bonds');
+    document.getElementById('navStats').classList.toggle('active',    tab==='stats');
     document.getElementById('navActivity').classList.toggle('active', tab==='activity');
     if (tab==='activity') loadActivity();
+    if (tab==='stats')    loadStats();
 }
 
 // ── Bonds ──────────────────────────────────────────────────────────────
@@ -700,6 +806,103 @@ function updateStats() {
     document.getElementById('asAmt').textContent=fmt(sum(app));
     document.getElementById('naAmt').textContent=fmt(sum(na));
     document.getElementById('pAmt').textContent=fmt(sum(pend));
+}
+
+// ── Analytics Tab ──────────────────────────────────────────────────────
+function loadStats() {
+    if (!bonds.length) {
+        ['stTypeBody','stStatusBody','stPrincipalBody','stSuretyBody'].forEach(id=>{
+            document.getElementById(id).innerHTML='<tr><td colspan="4" style="color:var(--gray-600);text-align:center;">No bonds yet</td></tr>';
+        });
+        return;
+    }
+    const today = new Date();
+    const cutoff = days => {
+        const d = new Date(today); d.setDate(d.getDate()-days);
+        return d.toISOString().split('T')[0];
+    };
+    const d7   = cutoff(7);
+    const d30  = cutoff(30);
+    const d365 = cutoff(365);
+
+    const inP  = (b, since) => b.bid_date && b.bid_date >= since;
+    const sum  = arr => arr.reduce((s,b)=>s+(+b.bond_amount||0), 0);
+    const fmtC = n => '$'+n.toLocaleString('en-US',{notation:'compact',maximumFractionDigits:1});
+    const fmtF = n => n ? '$'+n.toLocaleString('en-US',{maximumFractionDigits:0}) : '—';
+    const rate = (sub, tot) => tot ? Math.round(sub/tot*100)+'%' : '—';
+
+    // Period cards
+    [
+        ['st7',   bonds.filter(b=>inP(b,d7))],
+        ['st30',  bonds.filter(b=>inP(b,d30))],
+        ['st365', bonds.filter(b=>inP(b,d365))],
+        ['stAll', bonds],
+    ].forEach(([pfx, arr]) => {
+        const app = arr.filter(b=>b.status==='Approved');
+        document.getElementById(pfx+'Count').textContent = arr.length;
+        document.getElementById(pfx+'Amt').textContent   = arr.length ? fmtC(sum(arr))+' total' : '';
+        document.getElementById(pfx+'Rate').textContent  = arr.length ? rate(app.length, arr.length)+' approved' : '';
+    });
+
+    // By Bond Type
+    const types = ['Bid Bond','Final Bond','License Bond','Maintenance Bond','Other'];
+    document.getElementById('stTypeBody').innerHTML = types.map(t=>{
+        const tb = bonds.filter(b=>b.bond_type===t);
+        if (!tb.length) return '';
+        const app = tb.filter(b=>b.status==='Approved');
+        return `<tr>
+            <td>${t}</td>
+            <td style="text-align:right;font-weight:600;">${tb.length}</td>
+            <td style="text-align:right;">${fmtF(sum(tb))}</td>
+            <td style="text-align:right;">${rate(app.length,tb.length)}</td>
+        </tr>`;
+    }).join('') || '<tr><td colspan="4" style="color:var(--gray-600);">No data</td></tr>';
+
+    // By Status
+    const statuses = ['Approved','Pending','Not Approved'];
+    const total = bonds.length;
+    document.getElementById('stStatusBody').innerHTML = statuses.map(s=>{
+        const sb = bonds.filter(b=>b.status===s);
+        if (!sb.length) return '';
+        const pct = Math.round(sb.length/total*100);
+        const color = s==='Approved'?'var(--green)':s==='Not Approved'?'var(--red)':'var(--amber)';
+        return `<tr>
+            <td><span style="color:${color};font-weight:600;">${s}</span></td>
+            <td style="text-align:right;font-weight:600;">${sb.length}</td>
+            <td style="text-align:right;">${fmtF(sum(sb))}</td>
+            <td style="text-align:right;">${pct}%</td>
+        </tr>`;
+    }).join('') || '<tr><td colspan="4" style="color:var(--gray-600);">No data</td></tr>';
+
+    // Top Principals (top 10 by count)
+    const byPrincipal = {};
+    bonds.forEach(b=>{ byPrincipal[b.principal]=(byPrincipal[b.principal]||[]).concat([b]); });
+    document.getElementById('stPrincipalBody').innerHTML = Object.entries(byPrincipal)
+        .sort((a,b)=>b[1].length-a[1].length).slice(0,10)
+        .map(([p,arr])=>{
+            const app=arr.filter(b=>b.status==='Approved');
+            return `<tr>
+                <td>${esc(p)}</td>
+                <td style="text-align:right;font-weight:600;">${arr.length}</td>
+                <td style="text-align:right;">${fmtF(sum(arr))}</td>
+                <td style="text-align:right;">${rate(app.length,arr.length)}</td>
+            </tr>`;
+        }).join('') || '<tr><td colspan="4" style="color:var(--gray-600);">No data</td></tr>';
+
+    // Top Sureties (top 10 by count)
+    const bySurety = {};
+    bonds.forEach(b=>{ bySurety[b.surety]=(bySurety[b.surety]||[]).concat([b]); });
+    document.getElementById('stSuretyBody').innerHTML = Object.entries(bySurety)
+        .sort((a,b)=>b[1].length-a[1].length).slice(0,10)
+        .map(([s,arr])=>{
+            const app=arr.filter(b=>b.status==='Approved');
+            return `<tr>
+                <td>${esc(s)}</td>
+                <td style="text-align:right;font-weight:600;">${arr.length}</td>
+                <td style="text-align:right;">${fmtF(sum(arr))}</td>
+                <td style="text-align:right;">${rate(app.length,arr.length)}</td>
+            </tr>`;
+        }).join('') || '<tr><td colspan="4" style="color:var(--gray-600);">No data</td></tr>';
 }
 
 function sort(field) {
