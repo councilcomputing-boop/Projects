@@ -715,9 +715,17 @@ function switchTab(tab) {
 
 // ── Bonds ──────────────────────────────────────────────────────────────
 async function loadBonds() {
-    bonds = await api('/api/bonds');
-    populatePrincipalFilter();
-    renderBonds();
+    const loader    = document.getElementById('aiLoader');
+    const loaderTxt = document.getElementById('aiLoaderText');
+    loaderTxt.textContent = 'Loading bonds…';
+    loader.classList.add('show');
+    try {
+        bonds = await api('/api/bonds');
+        populatePrincipalFilter();
+        renderBonds();
+    } finally {
+        loader.classList.remove('show');
+    }
 }
 
 function populatePrincipalFilter() {

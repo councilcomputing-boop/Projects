@@ -111,12 +111,8 @@ def get_bonds():
 def create_bond():
     data = request.get_json()
 
-    bond_num = data.get('bond_number', '').strip()
-    if bond_num and Bond.query.filter_by(bond_number=bond_num).first():
-        return jsonify({'error': 'Bond number already exists.'}), 400
-
     bond = Bond(
-        bond_number          = data['bond_number'].strip(),
+        bond_number          = None,
         bond_type            = data['bond_type'],
         principal            = data['principal'].strip(),
         obligee              = data['obligee'].strip(),
@@ -153,11 +149,7 @@ def update_bond(bond_id):
     old_data = bond.to_dict()
     old_status = bond.status
 
-    new_num = data.get('bond_number', bond.bond_number).strip()
-    if new_num != bond.bond_number and Bond.query.filter_by(bond_number=new_num).first():
-        return jsonify({'error': 'Bond number already exists.'}), 400
-
-    bond.bond_number         = new_num
+    bond.bond_number         = bond.bond_number
     bond.bond_type           = data.get('bond_type',           bond.bond_type)
     bond.principal           = data.get('principal',           bond.principal).strip()
     bond.obligee             = data.get('obligee',             bond.obligee).strip()
