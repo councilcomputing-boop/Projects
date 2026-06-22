@@ -1197,9 +1197,8 @@ async function handlePDFUpload(input) {
             }
         }
 
-        // Work on Hand notes: project description from the document
-        const woh = [data.project, data.project_description].filter(Boolean).join('\n');
-        if (woh) document.getElementById('fWorkOnHand').value = woh;
+        // Work on Hand notes: use extracted work on hand section from document
+        if (data.work_on_hand) document.getElementById('fWorkOnHand').value = data.work_on_hand;
 
         toast('Form filled from PDF — review and save');
     } catch(e) {

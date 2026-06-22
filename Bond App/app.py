@@ -743,7 +743,7 @@ def extract_bond_pdf():
     client = _anthropic.Anthropic(api_key=api_key)
     message = client.messages.create(
         model='claude-haiku-4-5-20251001',
-        max_tokens=1024,
+        max_tokens=2048,
         messages=[{
             'role': 'user',
             'content': (
@@ -755,7 +755,8 @@ def extract_bond_pdf():
                 '  bid_bond_percent: the bid bond percentage (e.g. 5, 10, or 20 — number only, or null if not stated),\n'
                 '  bid_date (YYYY-MM-DD or null), decision_date (YYYY-MM-DD or null),\n'
                 '  project: the name of the project or job this bond is for (short name or title, or null),\n'
-                '  project_description: a brief description of the project scope or work (1-3 sentences, or null)\n'
+                '  project_description: a brief description of the project scope or work (1-3 sentences, or null),\n'
+                '  work_on_hand: copy the ENTIRE work on hand section verbatim — this is usually near the bottom of the document and includes current jobs, dollar amounts, percentages, bonding capacity, or a work-on-hand schedule. Copy all of it as plain text. If not present return null.\n'
                 'Return only the JSON, no extra text.\n\n'
                 f'Document:\n{text[:4000]}'
             )
