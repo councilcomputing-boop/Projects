@@ -756,7 +756,7 @@ def extract_bond_pdf():
                 '  bid_date (YYYY-MM-DD or null), decision_date (YYYY-MM-DD or null),\n'
                 '  project: the name of the project or job this bond is for (short name or title, or null),\n'
                 '  project_description: a brief description of the project scope or work (1-3 sentences, or null),\n'
-                '  work_on_hand: find and copy verbatim the section that lists the contractor\'s current or active jobs/projects — it is usually near the bottom of the document and may appear as a table or list showing job names, contract amounts, percent complete, amount remaining, or bonding capacity used. It will NOT be labeled "work on hand" — look for columns or rows with dollar amounts and percentages tied to specific jobs or projects. Copy all of it as plain text preserving the structure. If nothing like this exists in the document return null.\n'
+                '  work_on_hand: find the jobs/contracts table near the bottom of the document. It has these columns: job or project name | Bonded (Y or blank) | Amount (contract dollar amount) | Complete (percentage) | Remaining balance ($). There is a TOTAL row at the bottom. Copy every row that has any data as plain text, one row per line, tab or space separated. Include the TOTAL line. If this table is not present or all rows are blank/zero return null.\n'
                 'Return only the JSON, no extra text.\n\n'
                 f'Document:\n{text[:4000]}'
             )
