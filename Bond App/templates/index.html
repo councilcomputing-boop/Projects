@@ -1100,11 +1100,12 @@ async function doDelete() {
     try {
         await api(`/api/bonds/${delId}`,'DELETE');
         closeModal('delModal');
-        await loadBonds();
+        loadBonds();
         loadActivity();
         toast('Bond deleted');
     } catch(err) {
         toast(err.message,'err');
+    } finally {
         btn.disabled = false;
         btn.innerHTML = 'Yes, Delete';
     }
