@@ -743,16 +743,19 @@ def extract_bond_pdf():
     client = _anthropic.Anthropic(api_key=api_key)
     message = client.messages.create(
         model='claude-haiku-4-5-20251001',
-        max_tokens=512,
+        max_tokens=1024,
         messages=[{
             'role': 'user',
             'content': (
                 'Extract bond information from this document. '
                 'Return ONLY a JSON object with these exact keys:\n'
-                '  bond_number, bond_type (one of: Bid Bond / Final Bond / License Bond / Maintenance Bond / Other),\n'
+                '  bond_type (one of: Bid Bond / Final Bond / License Bond / Maintenance Bond / Other),\n'
                 '  principal, obligee, surety,\n'
                 '  bond_amount: the CONTRACT amount or bid amount (NOT the bond penalty or penal sum — the full contract/project dollar value, number only no $ or commas, or null),\n'
-                '  bid_date (YYYY-MM-DD or null), decision_date (YYYY-MM-DD or null)\n'
+                '  bid_bond_percent: the bid bond percentage (e.g. 5, 10, or 20 — number only, or null if not stated),\n'
+                '  bid_date (YYYY-MM-DD or null), decision_date (YYYY-MM-DD or null),\n'
+                '  project: the name of the project or job this bond is for (short name or title, or null),\n'
+                '  project_description: a brief description of the project scope or work (1-3 sentences, or null)\n'
                 'Return only the JSON, no extra text.\n\n'
                 f'Document:\n{text[:4000]}'
             )
