@@ -318,6 +318,10 @@
                     &#128196; Upload PDF
                     <input type="file" accept=".pdf" style="display:none;" onchange="handlePDFUpload(this)">
                 </label>
+                <label class="btn btn-secondary" id="xlsLabel" style="cursor:pointer;margin:0;">
+                    &#128202; Import Excel
+                    <input type="file" accept=".xlsx,.xls" style="display:none;" onchange="handleExcelUpload(this)">
+                </label>
                 <button class="btn btn-primary" onclick="openAdd()">+ New Bond</button>
             </div>
         </div>
@@ -1232,6 +1236,39 @@ async function handlePDFUpload(input) {
     } finally {
         hideLoader();
         lbl.innerHTML = '&#128196; Upload PDF<input type="file" accept=".pdf" style="display:none;" onchange="handlePDFUpload(this)">';
+        input.value = '';
+    }
+}
+
+async function handleExcelUpload(input) {
+    const file = input.files[0];
+    if (!file) return;
+    const lbl       = document.getElementById('xlsLabel');
+    const loader    = document.getElementById('aiLoader');
+    const loaderTxt = document.getElementById('aiLoaderText');
+    const showLoader = txt => { loaderTxt.textContent = txt; loader.classList.add('show'); };
+    const hideLoader = ()  => loader.classList.remove('show');
+
+    lbl.textContent = '⏳ Uploading…';
+    showLoader('Reading Excel file…');
+    try {
+        const fd = new FormData();
+        fd.append('file', file);
+        showLoader('Mapping columns with AI…');
+        const resp = await fetch('/api/bonds/import-excel', { method:'POST', body:fd });
+        const data = await resp.json();
+        if (!resp.ok) throw new Error(data.error || 'Import failed');
+
+        showLoader('Saving bonds…');
+        let msg = `${data.created} bond${data.created !== 1 ? 's' : ''} imported successfully`;
+        if (data.skipped) msg += ` (${data.skipped} skipped — missing required fields)`;
+        toast(msg);
+        await loadBonds();
+    } catch(e) {
+        toast(e.message, 'err');
+    } finally {
+        hideLoader();
+        lbl.innerHTML = '&#128202; Import Excel<input type="file" accept=".xlsx,.xls" style="display:none;" onchange="handleExcelUpload(this)">';
         input.value = '';
     }
 }

@@ -768,6 +768,136 @@ def extract_bond_pdf():
     return jsonify(extracted)
 
 
+@app.route('/api/bonds/import-excel', methods=['POST'])
+@login_required
+def import_excel():
+    import openpyxl
+    import anthropic as _anthropic
+    from datetime import date as _date
+
+    if 'file' not in request.files:
+        return jsonify({'error': 'No file uploaded.'}), 400
+    file = request.files['file']
+    if not file.filename.lower().endswith(('.xlsx', '.xls')):
+        return jsonify({'error': 'File must be an Excel file (.xlsx).'}), 400
+
+    try:
+        wb = openpyxl.load_workbook(file, data_only=True)
+        ws = wb.active
+        rows = list(ws.iter_rows(values_only=True))
+    except Exception as e:
+        return jsonify({'error': f'Could not read Excel file: {e}'}), 400
+
+    if len(rows) < 2:
+        return jsonify({'error': 'File must have a header row and at least one data row.'}), 400
+
+    def cell_str(v):
+        if v is None: return ''
+        if isinstance(v, (datetime, _date)): return v.strftime('%Y-%m-%d')
+        return str(v).strip()
+
+    def norm_date(v):
+        if v is None: return None
+        if isinstance(v, (datetime, _date)): return v.strftime('%Y-%m-%d')
+        s = str(v).strip()
+        if not s: return None
+        for fmt in ('%Y-%m-%d', '%m/%d/%Y', '%m/%d/%y', '%Y/%m/%d'):
+            try: return datetime.strptime(s, fmt).strftime('%Y-%m-%d')
+            except: pass
+        return None
+
+    headers = [cell_str(h) for h in rows[0]]
+    sample_rows = [[cell_str(v) for v in row] for row in rows[1:4]]
+
+    api_key = os.environ.get('ANTHROPIC_API_KEY', '')
+    if not api_key:
+        return jsonify({'error': 'ANTHROPIC_API_KEY not set.'}), 500
+
+    client = _anthropic.Anthropic(api_key=api_key)
+    sample_text = 'Headers: ' + ' | '.join(headers) + '\n'
+    for i, row in enumerate(sample_rows):
+        sample_text += f'Row {i+1}: ' + ' | '.join(row) + '\n'
+
+    mapping_msg = client.messages.create(
+        model='claude-haiku-4-5-20251001',
+        max_tokens=512,
+        messages=[{'role': 'user', 'content': (
+            'These are column headers and sample rows from a bond tracking Excel spreadsheet. '
+            'Return a JSON object mapping each 0-based column index to one of these bond field names '
+            '(only include columns that clearly match):\n'
+            'bond_type, principal, obligee, surety, bond_amount, bid_bond_percent, '
+            'bid_date, decision_date, expiration_date, status, notes, project, project_description\n'
+            'Return ONLY the JSON, no explanation.\n\n' + sample_text
+        )}]
+    )
+
+    try:
+        raw = mapping_msg.content[0].text.strip()
+        if '```' in raw:
+            raw = raw.split('```')[1]
+            if raw.startswith('json'): raw = raw[4:]
+        start, end = raw.find('{'), raw.rfind('}')
+        col_map = {int(k): v for k, v in json.loads(raw[start:end+1]).items()}
+    except Exception as e:
+        return jsonify({'error': f'Could not map columns: {e}'}), 500
+
+    created, skipped, skip_reasons = 0, 0, []
+    valid_types    = {'Bid Bond', 'Final Bond', 'License Bond', 'Maintenance Bond', 'Other'}
+    valid_statuses = {'Pending', 'Approved', 'Not Approved'}
+
+    for row_num, row in enumerate(rows[1:], start=2):
+        row_vals = [cell_str(v) for v in row]
+        if all(v == '' for v in row_vals):
+            continue
+
+        d = {}
+        for idx, field in col_map.items():
+            if idx < len(row_vals) and row_vals[idx]:
+                d[field] = row_vals[idx]
+
+        if not d.get('principal') or not d.get('surety'):
+            skipped += 1
+            skip_reasons.append(f'Row {row_num}: missing principal or surety')
+            continue
+
+        bond_type = d.get('bond_type', 'Other')
+        if bond_type not in valid_types: bond_type = 'Other'
+
+        status = d.get('status', 'Pending')
+        if status not in valid_statuses: status = 'Pending'
+
+        try:   bond_amount = float(d['bond_amount'].replace(',','').replace('$','')) if d.get('bond_amount') else None
+        except: bond_amount = None
+
+        try:   bid_pct = float(d['bid_bond_percent'].replace('%','')) if d.get('bid_bond_percent') else None
+        except: bid_pct = None
+
+        bond = Bond(
+            bond_type           = bond_type,
+            principal           = d.get('principal', '').strip(),
+            obligee             = d.get('obligee', '').strip(),
+            project             = d.get('project', '').strip(),
+            project_description = d.get('project_description', '').strip(),
+            surety              = d.get('surety', '').strip(),
+            bond_amount         = bond_amount,
+            bid_bond_percent    = bid_pct,
+            bid_date            = norm_date(d.get('bid_date')),
+            expiration_date     = norm_date(d.get('expiration_date')),
+            decision_date       = norm_date(d.get('decision_date')),
+            status              = status,
+            notes               = d.get('notes', '').strip(),
+            created_by          = current_user.username,
+            created_at          = datetime.utcnow(),
+        )
+        db.session.add(bond)
+        db.session.flush()
+        log_action(bond, 'created')
+        created += 1
+
+    db.session.commit()
+    return jsonify({'created': created, 'skipped': skipped, 'skip_reasons': skip_reasons[:10]})
+
+
 @app.route('/api/me/password', methods=['PUT'])
 @login_required
 def change_password():
