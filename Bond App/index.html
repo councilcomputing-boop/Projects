@@ -259,6 +259,7 @@
             .page-header { flex-direction: column; gap: 12px; }
         }
     </style>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 </head>
 <body>
 
@@ -351,10 +352,10 @@
                 </thead>
                 <tbody id="tbody"></tbody>
             </table>
-            <div id="emptyState" class="empty-state" style="display:none;">
-                <div class="empty-ico">&#128203;</div>
-                <div class="empty-title">No bonds found</div>
-                <div class="empty-sub">Add a new bond or adjust your filters.</div>
+            <div id="emptyState" class="empty-state">
+                <div class="empty-ico">&#8987;</div>
+                <div class="empty-title">Loading bonds…</div>
+                <div class="empty-sub"></div>
             </div>
         </div>
         <div class="table-footer">
@@ -487,23 +488,51 @@
 <div class="toasts" id="toasts"></div>
 
 <script>
+// ── Supabase ───────────────────────────────────────────────────────────
+const _url = 'https://ffhnkwotnuviaicohajm.supabase.co';
+const _key = 'sb_publishable_8UWKJ3zxnAKnoj3WbNejDg_MuLyOCpA';
+const db   = supabase.createClient(_url, _key);
+
 // ── Data ───────────────────────────────────────────────────────────────
-let bonds = JSON.parse(localStorage.getItem('bt_bonds') || '[]');
+let bonds = [];
 let editId = null, delId = null;
 let sortField = 'bidDate', sortAsc = false;
 
-const save = () => localStorage.setItem('bt_bonds', JSON.stringify(bonds));
-const uid  = () => Date.now().toString(36) + Math.random().toString(36).slice(2);
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2);
 
-// Demo data on first open
-if (bonds.length === 0) {
-    bonds = [
-        { id:uid(), bondNumber:'BND-2026-001', bondType:'Bid Bond',        principal:'Acme Construction LLC',   obligee:'City of Dallas',                    surety:'Travelers Insurance',  bondAmount:250000,  bidDate:'2026-07-15', decisionDate:'2026-06-01', status:'Approved',     notes:'' },
-        { id:uid(), bondNumber:'BND-2026-002', bondType:'Performance Bond', principal:'Summit Builders Inc.',   obligee:'Texas Dept. of Transportation',     surety:'Liberty Mutual',       bondAmount:1500000, bidDate:'2026-06-30', decisionDate:'',           status:'Pending',      notes:'Awaiting financial statement review.' },
-        { id:uid(), bondNumber:'BND-2026-003', bondType:'Payment Bond',     principal:'Cornerstone Group LLC',  obligee:'Harris County',                     surety:'Zurich North America', bondAmount:800000,  bidDate:'2026-05-20', decisionDate:'2026-05-10', status:'Not Approved', notes:'Credit score below threshold. May reapply in 90 days.' },
-        { id:uid(), bondNumber:'BND-2026-004', bondType:'License Bond',     principal:'Riverway Electric Co.',  obligee:'State of Texas',                    surety:'Travelers Insurance',  bondAmount:50000,   bidDate:'2026-04-10', decisionDate:'2026-04-05', status:'Approved',     notes:'' },
-    ];
-    save();
+const toDb = b => ({
+    id:            b.id,
+    bond_number:   b.bondNumber,
+    bond_type:     b.bondType     || null,
+    bond_amount:   b.bondAmount   ? +b.bondAmount : null,
+    bid_date:      b.bidDate      || null,
+    principal:     b.principal,
+    obligee:       b.obligee,
+    surety:        b.surety,
+    status:        b.status       || null,
+    decision_date: b.decisionDate || null,
+    notes:         b.notes        || null,
+});
+
+const fromDb = r => ({
+    id:           r.id,
+    bondNumber:   r.bond_number,
+    bondType:     r.bond_type,
+    bondAmount:   r.bond_amount,
+    bidDate:      r.bid_date,
+    principal:    r.principal,
+    obligee:      r.obligee,
+    surety:       r.surety,
+    status:       r.status,
+    decisionDate: r.decision_date,
+    notes:        r.notes,
+});
+
+async function loadBonds() {
+    const { data, error } = await db.from('bonds').select('*').order('created_at', { ascending: false });
+    if (error) { toast('Could not load bonds: ' + error.message, 'err'); return; }
+    bonds = (data || []).map(fromDb);
+    render();
 }
 
 // ── Render ─────────────────────────────────────────────────────────────
@@ -532,8 +561,14 @@ function render() {
     const tbody = document.getElementById('tbody');
     const empty = document.getElementById('emptyState');
 
-    if (rows.length===0) { tbody.innerHTML=''; empty.style.display=''; }
-    else {
+    if (rows.length===0) {
+        tbody.innerHTML='';
+        empty.style.display='';
+        empty.innerHTML = `
+            <div class="empty-ico">&#128203;</div>
+            <div class="empty-title">No bonds found</div>
+            <div class="empty-sub">Add a new bond or adjust your filters.</div>`;
+    } else {
         empty.style.display='none';
         tbody.innerHTML = rows.map(b=>`
             <tr>
@@ -672,9 +707,14 @@ function saveBond(e) {
         decisionDate: document.getElementById('fDecisionDate').value,
         notes:        document.getElementById('fNotes').value.trim(),
     };
-    if (editId) { bonds[bonds.findIndex(x=>x.id===editId)]=b; toast('Bond updated'); }
-    else        { bonds.unshift(b); toast('Bond added'); }
-    save(); closeModal('bondModal'); render();
+    if (editId) { bonds[bonds.findIndex(x=>x.id===editId)]=b; }
+    else        { bonds.unshift(b); }
+    closeModal('bondModal');
+    toast(editId ? 'Bond updated' : 'Bond added');
+    render();
+    db.from('bonds').upsert(toDb(b)).then(({ error }) => {
+        if (error) toast('Save failed — ' + error.message, 'err');
+    });
 }
 
 // ── Delete ─────────────────────────────────────────────────────────────
@@ -685,8 +725,14 @@ function openDel(id) {
     openOverlay('delModal');
 }
 function doDelete() {
-    bonds = bonds.filter(b=>b.id!==delId);
-    save(); closeModal('delModal'); render(); toast('Bond deleted');
+    const id = delId;
+    bonds = bonds.filter(b=>b.id!==id);
+    closeModal('delModal');
+    toast('Bond deleted');
+    render();
+    db.from('bonds').delete().eq('id', id).then(({ error }) => {
+        if (error) { toast('Delete failed — ' + error.message, 'err'); loadBonds(); }
+    });
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────
@@ -711,7 +757,7 @@ document.addEventListener('keydown',e=>{
     if(e.key==='Escape'){document.querySelectorAll('.overlay').forEach(el=>el.classList.remove('open'));delId=null;}
 });
 
-render();
+loadBonds();
 </script>
 </body>
 </html>
