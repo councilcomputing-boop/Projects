@@ -782,9 +782,16 @@ def import_excel():
         return jsonify({'error': 'File must be an Excel file (.xlsx).'}), 400
 
     try:
-        wb = openpyxl.load_workbook(file, data_only=True)
-        ws = wb.active
-        rows = list(ws.iter_rows(values_only=True))
+        filename = file.filename.lower()
+        if filename.endswith('.xls'):
+            import xlrd
+            wb_xls = xlrd.open_workbook(file_contents=file.read())
+            ws_xls = wb_xls.sheet_by_index(0)
+            rows = [tuple(ws_xls.row_values(r)) for r in range(ws_xls.nrows)]
+        else:
+            wb = openpyxl.load_workbook(file, data_only=True)
+            ws = wb.active
+            rows = list(ws.iter_rows(values_only=True))
     except Exception as e:
         return jsonify({'error': f'Could not read Excel file: {e}'}), 400
 
