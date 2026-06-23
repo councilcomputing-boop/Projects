@@ -848,11 +848,11 @@ def import_excel():
     except Exception as e:
         return jsonify({'error': f'Could not map columns: {e}'}), 500
 
-    created, skipped, skip_reasons = 0, 0, []
     valid_types    = {'Bid Bond', 'Final Bond', 'License Bond', 'Maintenance Bond', 'Other'}
     valid_statuses = {'Pending', 'Approved', 'Not Approved'}
+    bonds_out = []
 
-    for row_num, row in enumerate(rows[1:], start=2):
+    for row in rows[1:]:
         row_vals = [cell_str(v) for v in row]
         if all(v == '' for v in row_vals):
             continue
@@ -862,47 +862,35 @@ def import_excel():
             if idx < len(row_vals) and row_vals[idx]:
                 d[field] = row_vals[idx]
 
-        if not d.get('principal') or not d.get('surety'):
-            skipped += 1
-            skip_reasons.append(f'Row {row_num}: missing principal or surety')
-            continue
-
         bond_type = d.get('bond_type', 'Other')
         if bond_type not in valid_types: bond_type = 'Other'
 
         status = d.get('status', 'Pending')
         if status not in valid_statuses: status = 'Pending'
 
-        try:   bond_amount = float(d['bond_amount'].replace(',','').replace('$','')) if d.get('bond_amount') else None
+        try:   bond_amount = float(str(d['bond_amount']).replace(',','').replace('$','')) if d.get('bond_amount') else None
         except: bond_amount = None
 
-        try:   bid_pct = float(d['bid_bond_percent'].replace('%','')) if d.get('bid_bond_percent') else None
+        try:   bid_pct = float(str(d['bid_bond_percent']).replace('%','')) if d.get('bid_bond_percent') else None
         except: bid_pct = None
 
-        bond = Bond(
-            bond_type           = bond_type,
-            principal           = d.get('principal', '').strip(),
-            obligee             = d.get('obligee', '').strip(),
-            project             = d.get('project', '').strip(),
-            project_description = d.get('project_description', '').strip(),
-            surety              = d.get('surety', '').strip(),
-            bond_amount         = bond_amount,
-            bid_bond_percent    = bid_pct,
-            bid_date            = norm_date(d.get('bid_date')),
-            expiration_date     = norm_date(d.get('expiration_date')),
-            decision_date       = norm_date(d.get('decision_date')),
-            status              = status,
-            notes               = d.get('notes', '').strip(),
-            created_by          = current_user.username,
-            created_at          = datetime.utcnow(),
-        )
-        db.session.add(bond)
-        db.session.flush()
-        log_action(bond, 'created')
-        created += 1
+        bonds_out.append({
+            'bond_type':           bond_type,
+            'principal':           d.get('principal', ''),
+            'obligee':             d.get('obligee', ''),
+            'project':             d.get('project', ''),
+            'project_description': d.get('project_description', ''),
+            'surety':              d.get('surety', ''),
+            'bond_amount':         bond_amount,
+            'bid_bond_percent':    bid_pct,
+            'bid_date':            norm_date(d.get('bid_date')),
+            'expiration_date':     norm_date(d.get('expiration_date')),
+            'decision_date':       norm_date(d.get('decision_date')),
+            'status':              status,
+            'notes':               d.get('notes', ''),
+        })
 
-    db.session.commit()
-    return jsonify({'created': created, 'skipped': skipped, 'skip_reasons': skip_reasons[:10]})
+    return jsonify({'bonds': bonds_out})
 
 
 @app.route('/api/me/password', methods=['PUT'])

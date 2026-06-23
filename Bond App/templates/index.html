@@ -677,6 +677,7 @@
 // ── State ──────────────────────────────────────────────────────────────
 let bonds    = [];
 let editId   = null;
+let xlsQueue = [], xlsTotalCount = 0;
 let delId    = null;
 let sortF    = 'bid_date';
 let sortAsc  = false;
@@ -1079,6 +1080,7 @@ async function saveBond(e) {
         closeModal('bondModal');
         await loadBonds();
         loadActivity();
+        if (!editId && xlsQueue.length > 0) setTimeout(() => openNextXlsBond(), 300);
     } catch(err) {
         const el=document.getElementById('formError');
         el.textContent='Error: ' + err.message;
@@ -1258,18 +1260,52 @@ async function handleExcelUpload(input) {
         const resp = await fetch('/api/bonds/import-excel', { method:'POST', body:fd });
         const data = await resp.json();
         if (!resp.ok) throw new Error(data.error || 'Import failed');
+        if (!data.bonds || data.bonds.length === 0) { toast('No bonds found in file', 'err'); return; }
 
-        showLoader('Saving bonds…');
-        let msg = `${data.created} bond${data.created !== 1 ? 's' : ''} imported successfully`;
-        if (data.skipped) msg += ` (${data.skipped} skipped — missing required fields)`;
-        toast(msg);
-        await loadBonds();
+        xlsQueue      = data.bonds;
+        xlsTotalCount = data.bonds.length;
+        toast(`Found ${xlsTotalCount} bond${xlsTotalCount > 1 ? 's' : ''} — review and save each one`);
+        openNextXlsBond();
     } catch(e) {
         toast(e.message, 'err');
     } finally {
         hideLoader();
         lbl.innerHTML = '&#128202; Import Excel<input type="file" accept=".xlsx,.xls" style="display:none;" onchange="handleExcelUpload(this)">';
         input.value = '';
+    }
+}
+
+function openNextXlsBond() {
+    if (xlsQueue.length === 0) return;
+    const b = xlsQueue.shift();
+    const doneCount = xlsTotalCount - xlsQueue.length;
+
+    openAdd();
+    document.getElementById('modalTitle').textContent =
+        `New Bond (${doneCount} of ${xlsTotalCount})`;
+
+    if (b.bond_type)           { document.getElementById('fType').value = b.bond_type; onBondTypeChange(); }
+    if (b.principal)           document.getElementById('fPrincipal').value   = b.principal;
+    if (b.obligee)             document.getElementById('fObligee').value     = b.obligee;
+    if (b.surety)              document.getElementById('fSurety').value      = b.surety;
+    if (b.bond_amount)         document.getElementById('fAmt').value         = b.bond_amount;
+    if (b.bid_date)            document.getElementById('fBidDate').value     = b.bid_date;
+    if (b.decision_date)       document.getElementById('fDecDate').value     = b.decision_date;
+    if (b.project)             document.getElementById('fProject').value     = b.project;
+    if (b.project_description) document.getElementById('fProjectDesc').value = b.project_description;
+    if (b.status)              document.getElementById('fStatus').value      = b.status;
+    if (b.notes)               document.getElementById('fNotes').value       = b.notes;
+
+    if (b.bond_type === 'Bid Bond' && b.bid_bond_percent) {
+        const pct = +b.bid_bond_percent;
+        if ([5,10,20].includes(pct)) {
+            document.getElementById('fBidPct').value = String(pct);
+            document.getElementById('bidPctCustomRow').style.display = 'none';
+        } else {
+            document.getElementById('fBidPct').value = 'custom';
+            document.getElementById('fBidPctCustom').value = pct;
+            document.getElementById('bidPctCustomRow').style.display = '';
+        }
     }
 }
 
