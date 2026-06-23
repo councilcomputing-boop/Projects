@@ -1,7 +1,7 @@
 from flask import Flask, render_template, request, jsonify, redirect, url_for
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from database import db, User, Bond, AuditLog, Reconciliation, ReconciliationItem
-from email_service import send_bond_notification, send_invite_email
+from email_service import send_invite_email
 from datetime import datetime, timedelta
 import os
 import json
@@ -137,7 +137,6 @@ def create_bond():
     log_action(bond, 'created')
     db.session.commit()
 
-    send_bond_notification('created', bond, current_user.username)
     return jsonify(bond.to_dict()), 201
 
 
@@ -172,11 +171,6 @@ def update_bond(bond_id):
     log_action(bond, 'updated', old_data)
     db.session.commit()
 
-    if bond.status != old_status:
-        send_bond_notification('status_changed', bond, current_user.username, old_status=old_status)
-    else:
-        send_bond_notification('updated', bond, current_user.username)
-
     return jsonify(bond.to_dict())
 
 
@@ -194,7 +188,6 @@ def delete_bond(bond_id):
         old_values  = json.dumps(old_data),
     )
     db.session.add(entry)
-    send_bond_notification('deleted', bond, current_user.username)
     db.session.delete(bond)
     db.session.commit()
     return jsonify({'ok': True})
@@ -227,7 +220,6 @@ def create_final_bond(bond_id):
     db.session.flush()
     log_action(bond, 'created')
     db.session.commit()
-    send_bond_notification('created', bond, current_user.username)
     return jsonify(bond.to_dict()), 201
 
 
