@@ -314,6 +314,7 @@
                 <div class="page-sub">Manage and track all surety bonds</div>
             </div>
             <div style="display:flex;gap:8px;">
+                <button class="btn btn-secondary" onclick="loadBonds()" title="Refresh bond list">&#8635; Refresh</button>
                 <label class="btn btn-secondary" id="uploadLabel" style="cursor:pointer;margin:0;">
                     &#128196; Upload PDF
                     <input type="file" accept=".pdf" style="display:none;" onchange="handlePDFUpload(this)">

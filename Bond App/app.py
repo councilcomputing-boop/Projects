@@ -406,15 +406,16 @@ def invite_user():
         return jsonify({'error': 'Unauthorized'}), 403
     data = request.get_json()
 
-    if User.query.filter_by(username=data.get('username', '').strip()).first():
+    username = data.get('username', '').strip()
+    if not username:
+        return jsonify({'error': 'Username is required.'}), 400
+    if User.query.filter_by(username=username).first():
         return jsonify({'error': 'Username already exists.'}), 400
-    if User.query.filter_by(email=data.get('email', '').strip()).first():
-        return jsonify({'error': 'Email already exists.'}), 400
 
     token = secrets.token_urlsafe(32)
     user  = User(
-        username       = data['username'].strip(),
-        email          = data['email'].strip(),
+        username       = username,
+        email          = f'{username}@noemail.local',
         role           = data.get('role', 'user'),
         active         = False,
         invite_token   = token,
@@ -424,8 +425,6 @@ def invite_user():
     db.session.commit()
 
     invite_link = url_for('accept_invite', token=token, _external=True)
-    threading.Thread(target=send_invite_email, args=(user.email, user.username, invite_link), daemon=True).start()
-
     return jsonify({'ok': True, 'invite_link': invite_link}), 201
 
 
