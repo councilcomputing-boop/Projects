@@ -564,7 +564,27 @@
                 <div class="fsect">Parties</div>
                 <div class="fgrp full"><label class="flbl">Principal (Contractor / Applicant) <span class="req">*</span></label><input type="text" class="fc" id="fPrincipal" placeholder="Name of contractor or entity requesting the bond" required></div>
                 <div class="fgrp full"><label class="flbl">Obligee (Requiring Party) <span class="req">*</span></label><input type="text" class="fc" id="fObligee" placeholder="Entity requiring the bond" required></div>
-                <div class="fgrp full"><label class="flbl">Surety (Bonding Company) <span class="req">*</span></label><input type="text" class="fc" id="fSurety" placeholder="e.g., Travelers, Liberty Mutual" required></div>
+                <div class="fgrp full"><label class="flbl">Surety (Bonding Company) <span class="req">*</span></label>
+                    <select class="fc" id="fSurety" required onchange="onSuretyChange()">
+                        <option value="">Select...</option>
+                        <option>Berkley Surety</option>
+                        <option>CCI Surety, Inc.</option>
+                        <option>CNA Surety</option>
+                        <option>Employers Mutual Casualty Co.</option>
+                        <option>Granite Re, Inc.</option>
+                        <option>Great American Insurance Group</option>
+                        <option>Insurors Indemnity Companies</option>
+                        <option>Liberty Mutual Surety</option>
+                        <option>Merchants Bonding Company</option>
+                        <option>Mid-Continent Insurance Co.</option>
+                        <option>National American Insurance Co</option>
+                        <option>RLI Surety</option>
+                        <option>The Gray Casualty &amp; Surety Company</option>
+                        <option>Travelers</option>
+                        <option value="other">Other…</option>
+                    </select>
+                </div>
+                <div class="fgrp full" id="suretyCustomRow" style="display:none;"><label class="flbl">Surety Name</label><input type="text" class="fc" id="fSuretyCustom" placeholder="Enter bonding company name"></div>
                 <div class="fsect">Project</div>
                 <div class="fgrp full"><label class="flbl">Project Name</label><input type="text" class="fc" id="fProject" placeholder="Project or job name"></div>
                 <div class="fgrp full"><label class="flbl">Project Description</label><textarea class="fc" id="fProjectDesc" placeholder="Description of the project or work..."></textarea></div>
@@ -693,6 +713,13 @@ let delId    = null;
 let sortF    = 'bid_date';
 let sortAsc  = false;
 let activeTab = 'bonds';
+
+const SURETIES = [
+    'Berkley Surety', 'CCI Surety, Inc.', 'CNA Surety', 'Employers Mutual Casualty Co.',
+    'Granite Re, Inc.', 'Great American Insurance Group', 'Insurors Indemnity Companies',
+    'Liberty Mutual Surety', 'Merchants Bonding Company', 'Mid-Continent Insurance Co.',
+    'National American Insurance Co', 'RLI Surety', 'The Gray Casualty & Surety Company', 'Travelers',
+];
 
 const LABELS = {
     bond_type:'Bond Type', principal:'Principal',
@@ -1042,6 +1069,8 @@ function openAdd() {
     document.getElementById('bidPctCustomRow').style.display='none';
     document.getElementById('lowBidRow').style.display='none';
     document.getElementById('fLowBid').checked=false;
+    document.getElementById('suretyCustomRow').style.display='none';
+    document.getElementById('fSuretyCustom').required=false;
     open_('bondModal');
 }
 
@@ -1059,7 +1088,7 @@ function openEdit(id) {
     document.getElementById('fProducer').value   = b.producer           ||'';
     document.getElementById('fProject').value    = b.project            ||'';
     document.getElementById('fProjectDesc').value= b.project_description||'';
-    document.getElementById('fSurety').value     = b.surety             ||'';
+    setSuretyField(b.surety);
     document.getElementById('fStatus').value     = b.status             ||'';
     document.getElementById('fDecDate').value    = b.decision_date      ||'';
     document.getElementById('fNotes').value      = b.notes              ||'';
@@ -1101,6 +1130,8 @@ async function saveBond(e) {
         if (pctSel==='custom') bidBondPct = parseFloat(document.getElementById('fBidPctCustom').value)||null;
         else if (pctSel) bidBondPct = parseFloat(pctSel);
     }
+    const suretySel = document.getElementById('fSurety').value;
+    const surety = suretySel==='other' ? document.getElementById('fSuretyCustom').value.trim() : suretySel;
     const body = {
         bond_type:           bondType,
         bond_amount:         document.getElementById('fAmt').value||null,
@@ -1111,7 +1142,7 @@ async function saveBond(e) {
         producer:            document.getElementById('fProducer').value.trim(),
         project:             document.getElementById('fProject').value.trim(),
         project_description: document.getElementById('fProjectDesc').value.trim(),
-        surety:              document.getElementById('fSurety').value.trim(),
+        surety:              surety,
         status:              document.getElementById('fStatus').value,
         decision_date:       document.getElementById('fDecDate').value||null,
         notes:               document.getElementById('fNotes').value.trim(),
@@ -1252,7 +1283,7 @@ async function handlePDFUpload(input) {
         if (data.bond_type)          { document.getElementById('fType').value = data.bond_type; onBondTypeChange(); }
         if (data.principal)          document.getElementById('fPrincipal').value    = data.principal;
         if (data.obligee)            document.getElementById('fObligee').value      = data.obligee;
-        if (data.surety)             document.getElementById('fSurety').value       = data.surety;
+        if (data.surety)             setSuretyField(data.surety);
         if (data.bond_amount)        document.getElementById('fAmt').value          = data.bond_amount;
         if (data.bid_date)           document.getElementById('fBidDate').value      = data.bid_date;
         if (data.decision_date)      document.getElementById('fDecDate').value      = data.decision_date;
@@ -1321,6 +1352,33 @@ function onBondTypeChange() {
 function onBidPctChange() {
     const v = document.getElementById('fBidPct').value;
     document.getElementById('bidPctCustomRow').style.display = v==='custom' ? '' : 'none';
+}
+
+function onSuretyChange() {
+    const v = document.getElementById('fSurety').value;
+    const isOther = v==='other';
+    document.getElementById('suretyCustomRow').style.display = isOther ? '' : 'none';
+    document.getElementById('fSuretyCustom').required = isOther;
+    if (!isOther) document.getElementById('fSuretyCustom').value='';
+}
+
+function setSuretyField(value) {
+    if (value && SURETIES.includes(value)) {
+        document.getElementById('fSurety').value = value;
+        document.getElementById('suretyCustomRow').style.display = 'none';
+        document.getElementById('fSuretyCustom').required = false;
+        document.getElementById('fSuretyCustom').value = '';
+    } else if (value) {
+        document.getElementById('fSurety').value = 'other';
+        document.getElementById('suretyCustomRow').style.display = '';
+        document.getElementById('fSuretyCustom').required = true;
+        document.getElementById('fSuretyCustom').value = value;
+    } else {
+        document.getElementById('fSurety').value = '';
+        document.getElementById('suretyCustomRow').style.display = 'none';
+        document.getElementById('fSuretyCustom').required = false;
+        document.getElementById('fSuretyCustom').value = '';
+    }
 }
 
 // ── Final Bond ───────────────────────────────────────────────────────────
