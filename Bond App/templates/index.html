@@ -381,7 +381,6 @@
                         <th id="th-obligee"     onclick="sort('obligee')">Obligee</th>
                         <th id="th-project"     onclick="sort('project')">Project</th>
                         <th id="th-bond_type"   onclick="sort('bond_type')">Bond Type</th>
-                        <th id="th-low_bid"     onclick="sort('low_bid')">Low Bid</th>
                         <th id="th-bid_date"    onclick="sort('bid_date')">Bid Date</th>
                         <th id="th-surety"      onclick="sort('surety')">Surety</th>
                         <th id="th-bond_amount" onclick="sort('bond_amount')">Amount</th>
@@ -793,7 +792,6 @@ function renderBonds() {
     rows.sort((a,b)=>{
         let va=a[sortF]??'', vb=b[sortF]??'';
         if(sortF==='bond_amount'){va=+va||0;vb=+vb||0;}
-        if(sortF==='low_bid'){va=va?1:0;vb=vb?1:0;}
         return sortAsc?(va<vb?-1:va>vb?1:0):(va>vb?-1:va<vb?1:0);
     });
 
@@ -810,16 +808,15 @@ function renderBonds() {
             const amt = b.bond_amount ? '$'+(+b.bond_amount).toLocaleString('en-US',{maximumFractionDigits:0}) : '&mdash;';
             const amtSub = (b.bond_type==='Bid Bond'&&b.bid_bond_percent&&b.bond_amount)
                 ? `<div class="meta">${b.bid_bond_percent}% = $${(b.bond_amount*b.bid_bond_percent/100).toLocaleString('en-US',{maximumFractionDigits:0})}</div>` : '';
-            const lowBidCell = b.bond_type==='Bid Bond'
-                ? `<button onclick="toggleLowBid(${b.id})" style="border:none;cursor:pointer;border-radius:20px;padding:3px 10px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.4px;${b.low_bid?'background:#e8f5e9;color:#2e7d32;':'background:var(--gray-100);color:var(--gray-600);'}">${b.low_bid?'Low Bid':'Not Low'}</button>`
-                : '&mdash;';
+            const lowBidBtn = b.bond_type==='Bid Bond'
+                ? `<button class="btn btn-secondary btn-sm" onclick="toggleLowBid(${b.id})" style="${b.low_bid?'color:#2e7d32;border-color:#2e7d32;':''}">${b.low_bid?'Low Bid ✓':'Mark Low Bid'}</button>`
+                : '';
             return `<tr>
             <td><span class="principal">${esc(b.principal)}</span><div class="meta">Added by ${esc(b.created_by)} &middot; ${b.created_at}</div></td>
             <td>${esc(b.producer)||'&mdash;'}</td>
             <td>${esc(b.obligee)}</td>
             <td>${esc(b.project)||'&mdash;'}</td>
             <td>${esc(b.bond_type)}</td>
-            <td>${lowBidCell}</td>
             <td>${fmtDate(b.bid_date)}</td>
             <td>${esc(b.surety)}</td>
             <td>${amt}${amtSub}</td>
@@ -828,6 +825,7 @@ function renderBonds() {
                 <button class="btn btn-secondary btn-sm" onclick="openView(${b.id})">View</button>
                 <button class="btn btn-secondary btn-sm" onclick="openEdit(${b.id})">Edit</button>
                 ${b.bond_type==='Bid Bond'?`<button class="btn btn-secondary btn-sm" onclick="createFinalBond(${b.id})" style="color:#1565c0;border-color:#1565c0;">Final</button>`:''}
+                ${lowBidBtn}
                 <button class="btn btn-danger btn-sm" onclick="openDel(${b.id})">Delete</button>
             </div></td>
         </tr>`;}).join('');
