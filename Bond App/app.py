@@ -116,6 +116,7 @@ def create_bond():
         bond_type            = data['bond_type'],
         principal            = data['principal'].strip(),
         obligee              = data['obligee'].strip(),
+        producer             = data.get('producer', '').strip(),
         project              = data.get('project', '').strip(),
         project_description  = data.get('project_description', '').strip(),
         surety               = data['surety'].strip(),
@@ -152,6 +153,7 @@ def update_bond(bond_id):
     bond.bond_type           = data.get('bond_type',           bond.bond_type)
     bond.principal           = data.get('principal',           bond.principal).strip()
     bond.obligee             = data.get('obligee',             bond.obligee).strip()
+    bond.producer            = data.get('producer',            bond.producer or '').strip()
     bond.project             = data.get('project',             bond.project or '').strip()
     bond.project_description = data.get('project_description', bond.project_description or '').strip()
     bond.surety              = data.get('surety',              bond.surety).strip()
@@ -167,6 +169,23 @@ def update_bond(bond_id):
     bond.low_bid             = bool(data.get('low_bid', bond.low_bid or False))
     bond.updated_by          = current_user.username
     bond.updated_at          = datetime.utcnow()
+
+    log_action(bond, 'updated', old_data)
+    db.session.commit()
+
+    return jsonify(bond.to_dict())
+
+
+@app.route('/api/bonds/<int:bond_id>/low-bid', methods=['PUT'])
+@login_required
+def toggle_low_bid(bond_id):
+    bond = Bond.query.get_or_404(bond_id)
+    old_data = bond.to_dict()
+    data = request.get_json()
+
+    bond.low_bid    = bool(data.get('low_bid', False))
+    bond.updated_by = current_user.username
+    bond.updated_at = datetime.utcnow()
 
     log_action(bond, 'updated', old_data)
     db.session.commit()
@@ -202,6 +221,7 @@ def create_final_bond(bond_id):
         bond_type           = 'Final Bond',
         principal           = orig.principal,
         obligee             = orig.obligee,
+        producer            = orig.producer,
         project             = orig.project,
         project_description = orig.project_description,
         surety              = orig.surety,
@@ -648,8 +668,8 @@ def generate_excel():
     ws = wb.active
     ws.title = 'Bond Report'
 
-    headers = ['Bond #', 'Bond Type', 'Principal', 'Obligee', 'Project', 'Project Description',
-               'Surety', 'Amount', 'Bid Bond %', 'Bid Date', 'Decision Date',
+    headers = ['Bond #', 'Bond Type', 'Principal', 'Obligee', 'Producer', 'Project', 'Project Description',
+               'Surety', 'Amount', 'Bid Bond %', 'Low Bid', 'Bid Date', 'Decision Date',
                'Status', 'Notes', 'Work on Hand', 'Work on Hand Low']
 
     hdr_fill = PatternFill(start_color='0D1B2A', end_color='0D1B2A', fill_type='solid')
@@ -669,10 +689,11 @@ def generate_excel():
     for ri, bond in enumerate(bonds, 2):
         row_data = [
             bond.bond_number or 'N/A', bond.bond_type, bond.principal,
-            bond.obligee, bond.project or '', bond.project_description or '',
+            bond.obligee, bond.producer or '', bond.project or '', bond.project_description or '',
             bond.surety,
             bond.bond_amount,
             f'{bond.bid_bond_percent}%' if bond.bid_bond_percent else '',
+            'Yes' if bond.low_bid else 'No',
             bond.bid_date, bond.decision_date,
             bond.status, bond.notes or '',
             bond.work_on_hand or '',
@@ -795,6 +816,31 @@ with app.app_context():
                 conn.execute(text('ALTER TABLE bonds ADD COLUMN IF NOT EXISTS work_on_hand TEXT'))
                 conn.execute(text('ALTER TABLE bonds ADD COLUMN IF NOT EXISTS work_on_hand_low BOOLEAN DEFAULT FALSE'))
                 conn.execute(text('ALTER TABLE bonds ADD COLUMN IF NOT EXISTS low_bid BOOLEAN DEFAULT FALSE'))
+                conn.execute(text('ALTER TABLE bonds ADD COLUMN IF NOT EXISTS producer VARCHAR(200)'))
+                conn.execute(text('ALTER TABLE users ADD COLUMN IF NOT EXISTS invite_token VARCHAR(64)'))
+                conn.execute(text('ALTER TABLE users ADD COLUMN IF NOT EXISTS invite_expires TIMESTAMP'))
+                conn.commit()
+            else:
+                # SQLite has no "ADD COLUMN IF NOT EXISTS" — check PRAGMA table_info instead
+                bond_cols = {row[1] for row in conn.execute(text('PRAGMA table_info(bonds)'))}
+                bond_migrations = [
+                    ('expiration_date',     'VARCHAR(10)'),
+                    ('project',             'VARCHAR(300)'),
+                    ('project_description', 'TEXT'),
+                    ('bid_bond_percent',    'FLOAT'),
+                    ('work_on_hand',        'TEXT'),
+                    ('work_on_hand_low',    'BOOLEAN DEFAULT 0'),
+                    ('low_bid',             'BOOLEAN DEFAULT 0'),
+                    ('producer',            'VARCHAR(200)'),
+                ]
+                for col_name, col_type in bond_migrations:
+                    if col_name not in bond_cols:
+                        conn.execute(text(f'ALTER TABLE bonds ADD COLUMN {col_name} {col_type}'))
+                user_cols = {row[1] for row in conn.execute(text('PRAGMA table_info(users)'))}
+                if 'invite_token' not in user_cols:
+                    conn.execute(text('ALTER TABLE users ADD COLUMN invite_token VARCHAR(64)'))
+                if 'invite_expires' not in user_cols:
+                    conn.execute(text('ALTER TABLE users ADD COLUMN invite_expires DATETIME'))
                 conn.commit()
     except Exception:
         pass

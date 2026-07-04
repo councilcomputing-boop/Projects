@@ -54,6 +54,7 @@ class Bond(db.Model):
     bond_type            = db.Column(db.String(50), nullable=False)
     principal            = db.Column(db.String(200), nullable=False)
     obligee              = db.Column(db.String(200), nullable=False)
+    producer             = db.Column(db.String(200))
     project              = db.Column(db.String(300))
     project_description  = db.Column(db.Text)
     surety               = db.Column(db.String(200), nullable=False)
@@ -79,6 +80,7 @@ class Bond(db.Model):
             'bond_type':           self.bond_type,
             'principal':           self.principal,
             'obligee':             self.obligee,
+            'producer':            self.producer or '',
             'project':             self.project or '',
             'project_description': self.project_description or '',
             'surety':              self.surety,
