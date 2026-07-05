@@ -547,8 +547,22 @@
                 <div class="fgrp"><label class="flbl">Bond Type <span class="req">*</span></label>
                     <select class="fc" id="fType" required onchange="onBondTypeChange()"><option value="">Select...</option><option>Bid Bond</option><option>Final Bond</option><option>License Bond</option><option>Maintenance Bond</option><option>Other</option></select>
                 </div>
-                <div class="fgrp"><label class="flbl">Producer</label><input type="text" class="fc" id="fProducer" placeholder="Agency producer/agent name"></div>
+                <div class="fgrp"><label class="flbl">Producer</label>
+                    <select class="fc" id="fProducer" onchange="onProducerChange()">
+                        <option value="">Select...</option>
+                        <option>Larry Bixler</option>
+                        <option>Logan Buckner</option>
+                        <option>Cody McNeill</option>
+                        <option>Mike McNeill</option>
+                        <option>Kyle Reser</option>
+                        <option>Mike Shannon</option>
+                        <option>Todd Triplett</option>
+                        <option>Kyle Vandruff</option>
+                        <option value="other">Other…</option>
+                    </select>
+                </div>
                 <div class="fgrp"><label class="flbl">Bond Amount ($)</label><input type="number" class="fc" id="fAmt" min="0" step="0.01"></div>
+                <div class="fgrp full" id="producerCustomRow" style="display:none;"><label class="flbl">Producer Name</label><input type="text" class="fc" id="fProducerCustom" placeholder="Enter producer name"></div>
                 <div class="fgrp"><label class="flbl">Bid Date</label><input type="date" class="fc" id="fBidDate"></div>
                 <div class="fgrp" id="bidPctRow" style="display:none;"><label class="flbl">Bid Bond %</label>
                     <select class="fc" id="fBidPct" onchange="onBidPctChange()">
@@ -721,6 +735,11 @@ const SURETIES = [
     'National American Insurance Co', 'RLI Surety', 'The Gray Casualty & Surety Company', 'Travelers',
 ];
 
+const PRODUCERS = [
+    'Larry Bixler', 'Logan Buckner', 'Cody McNeill', 'Mike McNeill',
+    'Kyle Reser', 'Mike Shannon', 'Todd Triplett', 'Kyle Vandruff',
+];
+
 const LABELS = {
     bond_type:'Bond Type', principal:'Principal',
     obligee:'Obligee', producer:'Producer', project:'Project', project_description:'Project Description',
@@ -780,15 +799,13 @@ function populatePrincipalFilter() {
 
     const surSel = document.getElementById('fltSurety');
     const surCur = surSel.value;
-    const sureties = [...new Set(bonds.map(b=>b.surety).filter(Boolean))].sort();
     surSel.innerHTML = '<option value="">All Sureties</option>' +
-        sureties.map(s=>`<option value="${esc(s)}"${s===surCur?' selected':''}>${esc(s)}</option>`).join('');
+        SURETIES.map(s=>`<option value="${esc(s)}"${s===surCur?' selected':''}>${esc(s)}</option>`).join('');
 
     const prodSel = document.getElementById('fltProducer');
     const prodCur = prodSel.value;
-    const producers = [...new Set(bonds.map(b=>b.producer).filter(Boolean))].sort();
     prodSel.innerHTML = '<option value="">All Producers</option>' +
-        producers.map(p=>`<option value="${esc(p)}"${p===prodCur?' selected':''}>${esc(p)}</option>`).join('');
+        PRODUCERS.map(p=>`<option value="${esc(p)}"${p===prodCur?' selected':''}>${esc(p)}</option>`).join('');
 }
 
 function expStyle(dateStr) {
@@ -1071,6 +1088,7 @@ function openAdd() {
     document.getElementById('fLowBid').checked=false;
     document.getElementById('suretyCustomRow').style.display='none';
     document.getElementById('fSuretyCustom').required=false;
+    document.getElementById('producerCustomRow').style.display='none';
     open_('bondModal');
 }
 
@@ -1085,7 +1103,7 @@ function openEdit(id) {
     document.getElementById('fBidDate').value    = b.bid_date           ||'';
     document.getElementById('fPrincipal').value  = b.principal          ||'';
     document.getElementById('fObligee').value    = b.obligee            ||'';
-    document.getElementById('fProducer').value   = b.producer           ||'';
+    setProducerField(b.producer);
     document.getElementById('fProject').value    = b.project            ||'';
     document.getElementById('fProjectDesc').value= b.project_description||'';
     setSuretyField(b.surety);
@@ -1132,6 +1150,8 @@ async function saveBond(e) {
     }
     const suretySel = document.getElementById('fSurety').value;
     const surety = suretySel==='other' ? document.getElementById('fSuretyCustom').value.trim() : suretySel;
+    const producerSel = document.getElementById('fProducer').value;
+    const producer = producerSel==='other' ? document.getElementById('fProducerCustom').value.trim() : producerSel;
     const body = {
         bond_type:           bondType,
         bond_amount:         document.getElementById('fAmt').value||null,
@@ -1139,7 +1159,7 @@ async function saveBond(e) {
         bid_date:            document.getElementById('fBidDate').value||null,
         principal:           document.getElementById('fPrincipal').value.trim(),
         obligee:             document.getElementById('fObligee').value.trim(),
-        producer:            document.getElementById('fProducer').value.trim(),
+        producer:            producer,
         project:             document.getElementById('fProject').value.trim(),
         project_description: document.getElementById('fProjectDesc').value.trim(),
         surety:              surety,
@@ -1378,6 +1398,28 @@ function setSuretyField(value) {
         document.getElementById('suretyCustomRow').style.display = 'none';
         document.getElementById('fSuretyCustom').required = false;
         document.getElementById('fSuretyCustom').value = '';
+    }
+}
+
+function onProducerChange() {
+    const v = document.getElementById('fProducer').value;
+    document.getElementById('producerCustomRow').style.display = v==='other' ? '' : 'none';
+    if (v!=='other') document.getElementById('fProducerCustom').value='';
+}
+
+function setProducerField(value) {
+    if (value && PRODUCERS.includes(value)) {
+        document.getElementById('fProducer').value = value;
+        document.getElementById('producerCustomRow').style.display = 'none';
+        document.getElementById('fProducerCustom').value = '';
+    } else if (value) {
+        document.getElementById('fProducer').value = 'other';
+        document.getElementById('producerCustomRow').style.display = '';
+        document.getElementById('fProducerCustom').value = value;
+    } else {
+        document.getElementById('fProducer').value = '';
+        document.getElementById('producerCustomRow').style.display = 'none';
+        document.getElementById('fProducerCustom').value = '';
     }
 }
 
