@@ -49,41 +49,55 @@ class User(UserMixin, db.Model):
 
 class Bond(db.Model):
     __tablename__ = 'bonds'
-    id            = db.Column(db.Integer, primary_key=True)
-    bond_number   = db.Column(db.String(50), unique=True, nullable=True)
-    bond_type     = db.Column(db.String(50), nullable=False)
-    principal     = db.Column(db.String(200), nullable=False)
-    obligee       = db.Column(db.String(200), nullable=False)
-    surety        = db.Column(db.String(200), nullable=False)
-    bond_amount   = db.Column(db.Float)
-    bid_date        = db.Column(db.String(10))
-    expiration_date = db.Column(db.String(10))
-    decision_date   = db.Column(db.String(10))
-    status        = db.Column(db.String(20), default='Pending')
-    notes         = db.Column(db.Text)
-    created_by    = db.Column(db.String(50))
-    created_at    = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_by    = db.Column(db.String(50))
-    updated_at    = db.Column(db.DateTime)
+    id                   = db.Column(db.Integer, primary_key=True)
+    bond_number          = db.Column(db.String(50), unique=True, nullable=True)
+    bond_type            = db.Column(db.String(50), nullable=False)
+    principal            = db.Column(db.String(200), nullable=False)
+    obligee              = db.Column(db.String(200), nullable=False)
+    producer             = db.Column(db.String(200))
+    project              = db.Column(db.String(300))
+    project_description  = db.Column(db.Text)
+    surety               = db.Column(db.String(200), nullable=False)
+    bond_amount          = db.Column(db.Float)
+    bid_bond_percent     = db.Column(db.Float)
+    bid_date             = db.Column(db.String(10))
+    expiration_date      = db.Column(db.String(10))
+    decision_date        = db.Column(db.String(10))
+    status               = db.Column(db.String(20), default='Pending')
+    notes                = db.Column(db.Text)
+    work_on_hand         = db.Column(db.Text)
+    work_on_hand_low     = db.Column(db.Boolean, default=False)
+    low_bid              = db.Column(db.Boolean, default=False)
+    created_by           = db.Column(db.String(50))
+    created_at           = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_by           = db.Column(db.String(50))
+    updated_at           = db.Column(db.DateTime)
 
     def to_dict(self):
         return {
-            'id':            self.id,
-            'bond_number':   self.bond_number,
-            'bond_type':     self.bond_type,
-            'principal':     self.principal,
-            'obligee':       self.obligee,
-            'surety':        self.surety,
-            'bond_amount':   self.bond_amount,
-            'bid_date':        self.bid_date or '',
-            'expiration_date': self.expiration_date or '',
-            'decision_date':   self.decision_date or '',
-            'status':        self.status,
-            'notes':         self.notes or '',
-            'created_by':    self.created_by or '',
-            'created_at':    fmt(self.created_at),
-            'updated_by':    self.updated_by or '',
-            'updated_at':    fmt(self.updated_at),
+            'id':                  self.id,
+            'bond_number':         self.bond_number,
+            'bond_type':           self.bond_type,
+            'principal':           self.principal,
+            'obligee':             self.obligee,
+            'producer':            self.producer or '',
+            'project':             self.project or '',
+            'project_description': self.project_description or '',
+            'surety':              self.surety,
+            'bond_amount':         self.bond_amount,
+            'bid_bond_percent':    self.bid_bond_percent,
+            'bid_date':            self.bid_date or '',
+            'expiration_date':     self.expiration_date or '',
+            'decision_date':       self.decision_date or '',
+            'status':              self.status,
+            'notes':               self.notes or '',
+            'work_on_hand':        self.work_on_hand or '',
+            'work_on_hand_low':    bool(self.work_on_hand_low),
+            'low_bid':             bool(self.low_bid),
+            'created_by':          self.created_by or '',
+            'created_at':          fmt(self.created_at),
+            'updated_by':          self.updated_by or '',
+            'updated_at':          fmt(self.updated_at),
         }
 
 

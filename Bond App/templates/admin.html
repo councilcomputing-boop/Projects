@@ -146,7 +146,6 @@
             <table>
                 <thead><tr>
                     <th>Username</th>
-                    <th>Email</th>
                     <th>Role</th>
                     <th>Status</th>
                     <th>Added</th>
@@ -156,7 +155,6 @@
                     {% for u in users %}
                     <tr id="row-{{ u.id }}">
                         <td><span class="uname">{{ u.username }}</span>{% if u.id == user.id %} <span style="font-size:11px;color:var(--gray-600);">(you)</span>{% endif %}</td>
-                        <td>{{ u.email }}</td>
                         <td><span class="role-badge role-{{ u.role }}">{{ u.role }}</span></td>
                         <td>
                             {% if u.invite_pending %}
@@ -207,9 +205,8 @@
                 </div>
             </div>
             <form id="addForm" onsubmit="sendInvite(event)">
-                <div class="info-box">An invitation email will be sent with a secure link to set their password. The link expires in 72 hours.</div>
+                <div class="info-box">Create the account, then copy the invite link and send it to them however you like. They click it to set their password.</div>
                 <div class="fgrp"><label class="flbl">Username <span class="req">*</span></label><input type="text" class="fc" id="aUsername" required autocomplete="off"></div>
-                <div class="fgrp"><label class="flbl">Email Address <span class="req">*</span></label><input type="email" class="fc" id="aEmail" required autocomplete="off"></div>
                 <div class="fgrp"><label class="flbl">Role <span class="req">*</span></label>
                     <select class="fc" id="aRole" required>
                         <option value="user">User — Can view and edit bonds</option>
@@ -236,7 +233,6 @@
             <div id="editErr" style="display:none;background:var(--red-bg);color:var(--red);border-radius:var(--r-sm);padding:10px 13px;font-size:13px;margin-bottom:14px;"></div>
             <form id="editForm" onsubmit="updateUser(event)">
                 <input type="hidden" id="eId">
-                <div class="fgrp"><label class="flbl">Email Address <span class="req">*</span></label><input type="email" class="fc" id="eEmail" required></div>
                 <div class="fgrp"><label class="flbl">Role</label>
                     <select class="fc" id="eRole">
                         <option value="user">User</option>
@@ -331,7 +327,6 @@ async function sendInvite(e) {
     try {
         const data = await api('/api/users/invite','POST',{
             username: document.getElementById('aUsername').value.trim(),
-            email:    document.getElementById('aEmail').value.trim(),
             role:     document.getElementById('aRole').value,
         });
         document.getElementById('addForm').style.display = 'none';
@@ -357,7 +352,6 @@ function openEdit(id, username, email, role, active) {
     document.getElementById('editTitle').textContent = 'Edit — ' + username;
     document.getElementById('editErr').style.display='none';
     document.getElementById('eId').value    = id;
-    document.getElementById('eEmail').value = email;
     document.getElementById('eRole').value  = role;
     document.getElementById('eActive').value= String(active);
     open_('editModal');
@@ -367,7 +361,6 @@ async function updateUser(e) {
     const err = document.getElementById('editErr');
     try {
         await api(`/api/users/${editingId}`,'PUT',{
-            email:  document.getElementById('eEmail').value.trim(),
             role:   document.getElementById('eRole').value,
             active: document.getElementById('eActive').value === 'true',
         });

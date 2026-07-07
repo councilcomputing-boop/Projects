@@ -8,10 +8,11 @@ exports.handler = async (event) => {
     return { statusCode: 400, body: 'Invalid JSON' }
   }
 
-  const { course, holes } = body
+  const { course, holes, location } = body
   if (!course || !holes) {
     return { statusCode: 400, body: 'Missing course or holes' }
   }
+  const courseDesc = location ? `"${course}" in ${location}` : `"${course}"`
 
   const key = process.env.ANTHROPIC_API_KEY
   if (!key) {
@@ -26,11 +27,11 @@ exports.handler = async (event) => {
       'content-type': 'application/json'
     },
     body: JSON.stringify({
-      model: 'claude-haiku-4-5-20251001',
-      max_tokens: 120,
+      model: 'claude-sonnet-4-6',
+      max_tokens: 200,
       messages: [{
         role: 'user',
-        content: `What is the par for each hole at ${course}? Return ONLY a JSON array of ${holes} integers (each 3, 4, or 5). If you don't know the exact course layout, give a realistic estimate for a typical ${holes}-hole course. No explanation, just the array.`
+        content: `You are a golf expert. What is the official par for each hole at ${courseDesc} golf course (${holes} holes)? Return ONLY a JSON array of exactly ${holes} integers, each being 3, 4, or 5. Use the real course layout if you know it. If you are uncertain, make your best estimate ensuring the total par is realistic (typically 70-72 for 18 holes, 35-36 for 9 holes). No explanation, no text, just the JSON array.`
       }]
     })
   })

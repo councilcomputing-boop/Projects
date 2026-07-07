@@ -1,7 +1,7 @@
 from flask import Flask, render_template, request, jsonify, redirect, url_for
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from database import db, User, Bond, AuditLog, Reconciliation, ReconciliationItem
-from email_service import send_bond_notification, send_invite_email
+from email_service import send_invite_email
 from datetime import datetime, timedelta
 import os
 import json
@@ -111,31 +111,33 @@ def get_bonds():
 def create_bond():
     data = request.get_json()
 
-    bond_num = data.get('bond_number', '').strip()
-    if bond_num and Bond.query.filter_by(bond_number=bond_num).first():
-        return jsonify({'error': 'Bond number already exists.'}), 400
-
     bond = Bond(
-        bond_number   = data['bond_number'].strip(),
-        bond_type     = data['bond_type'],
-        principal     = data['principal'].strip(),
-        obligee       = data['obligee'].strip(),
-        surety        = data['surety'].strip(),
-        bond_amount     = data.get('bond_amount') or None,
-        bid_date        = data.get('bid_date') or None,
-        expiration_date = data.get('expiration_date') or None,
-        decision_date   = data.get('decision_date') or None,
-        status        = data.get('status', 'Pending'),
-        notes         = data.get('notes', '').strip(),
-        created_by    = current_user.username,
-        created_at    = datetime.utcnow(),
+        bond_number          = None,
+        bond_type            = data['bond_type'],
+        principal            = data['principal'].strip(),
+        obligee              = data['obligee'].strip(),
+        producer             = data.get('producer', '').strip(),
+        project              = data.get('project', '').strip(),
+        project_description  = data.get('project_description', '').strip(),
+        surety               = data['surety'].strip(),
+        bond_amount          = data.get('bond_amount') or None,
+        bid_bond_percent     = data.get('bid_bond_percent') or None,
+        bid_date             = data.get('bid_date') or None,
+        expiration_date      = data.get('expiration_date') or None,
+        decision_date        = data.get('decision_date') or None,
+        status               = data.get('status', 'Pending'),
+        notes                = data.get('notes', '').strip(),
+        work_on_hand         = data.get('work_on_hand', '').strip(),
+        work_on_hand_low     = bool(data.get('work_on_hand_low', False)),
+        low_bid              = bool(data.get('low_bid', False)),
+        created_by           = current_user.username,
+        created_at           = datetime.utcnow(),
     )
     db.session.add(bond)
     db.session.flush()
     log_action(bond, 'created')
     db.session.commit()
 
-    send_bond_notification('created', bond, current_user.username)
     return jsonify(bond.to_dict()), 201
 
 
@@ -147,31 +149,46 @@ def update_bond(bond_id):
     old_data = bond.to_dict()
     old_status = bond.status
 
-    new_num = data.get('bond_number', bond.bond_number).strip()
-    if new_num != bond.bond_number and Bond.query.filter_by(bond_number=new_num).first():
-        return jsonify({'error': 'Bond number already exists.'}), 400
-
-    bond.bond_number   = new_num
-    bond.bond_type     = data.get('bond_type',     bond.bond_type)
-    bond.principal     = data.get('principal',     bond.principal).strip()
-    bond.obligee       = data.get('obligee',       bond.obligee).strip()
-    bond.surety        = data.get('surety',        bond.surety).strip()
-    bond.bond_amount     = data.get('bond_amount')     or bond.bond_amount
-    bond.bid_date        = data.get('bid_date')        or bond.bid_date
-    bond.expiration_date = data.get('expiration_date') or None
-    bond.decision_date   = data.get('decision_date')   or bond.decision_date
-    bond.status        = data.get('status',        bond.status)
-    bond.notes         = data.get('notes',         bond.notes or '').strip()
-    bond.updated_by    = current_user.username
-    bond.updated_at    = datetime.utcnow()
+    bond.bond_number         = bond.bond_number
+    bond.bond_type           = data.get('bond_type',           bond.bond_type)
+    bond.principal           = data.get('principal',           bond.principal).strip()
+    bond.obligee             = data.get('obligee',             bond.obligee).strip()
+    bond.producer            = data.get('producer',            bond.producer or '').strip()
+    bond.project             = data.get('project',             bond.project or '').strip()
+    bond.project_description = data.get('project_description', bond.project_description or '').strip()
+    bond.surety              = data.get('surety',              bond.surety).strip()
+    bond.bond_amount         = data.get('bond_amount')         or bond.bond_amount
+    bond.bid_bond_percent    = data.get('bid_bond_percent')    or None
+    bond.bid_date            = data.get('bid_date')            or bond.bid_date
+    bond.expiration_date     = data.get('expiration_date')     or None
+    bond.decision_date       = data.get('decision_date')       or bond.decision_date
+    bond.status              = data.get('status',              bond.status)
+    bond.notes               = data.get('notes',               bond.notes or '').strip()
+    bond.work_on_hand        = data.get('work_on_hand',        bond.work_on_hand or '').strip()
+    bond.work_on_hand_low    = bool(data.get('work_on_hand_low', bond.work_on_hand_low or False))
+    bond.low_bid             = bool(data.get('low_bid', bond.low_bid or False))
+    bond.updated_by          = current_user.username
+    bond.updated_at          = datetime.utcnow()
 
     log_action(bond, 'updated', old_data)
     db.session.commit()
 
-    if bond.status != old_status:
-        send_bond_notification('status_changed', bond, current_user.username, old_status=old_status)
-    else:
-        send_bond_notification('updated', bond, current_user.username)
+    return jsonify(bond.to_dict())
+
+
+@app.route('/api/bonds/<int:bond_id>/low-bid', methods=['PUT'])
+@login_required
+def toggle_low_bid(bond_id):
+    bond = Bond.query.get_or_404(bond_id)
+    old_data = bond.to_dict()
+    data = request.get_json()
+
+    bond.low_bid    = bool(data.get('low_bid', False))
+    bond.updated_by = current_user.username
+    bond.updated_at = datetime.utcnow()
+
+    log_action(bond, 'updated', old_data)
+    db.session.commit()
 
     return jsonify(bond.to_dict())
 
@@ -190,10 +207,40 @@ def delete_bond(bond_id):
         old_values  = json.dumps(old_data),
     )
     db.session.add(entry)
-    send_bond_notification('deleted', bond, current_user.username)
     db.session.delete(bond)
     db.session.commit()
     return jsonify({'ok': True})
+
+
+@app.route('/api/bonds/<int:bond_id>/create-final', methods=['POST'])
+@login_required
+def create_final_bond(bond_id):
+    orig = Bond.query.get_or_404(bond_id)
+    bond = Bond(
+        bond_number         = None,
+        bond_type           = 'Final Bond',
+        principal           = orig.principal,
+        obligee             = orig.obligee,
+        producer            = orig.producer,
+        project             = orig.project,
+        project_description = orig.project_description,
+        surety              = orig.surety,
+        bond_amount         = orig.bond_amount,
+        bid_date            = orig.bid_date,
+        decision_date       = None,
+        status              = 'Pending',
+        notes               = '',
+        work_on_hand        = orig.work_on_hand,
+        work_on_hand_low    = orig.work_on_hand_low,
+        low_bid             = orig.low_bid,
+        created_by          = current_user.username,
+        created_at          = datetime.utcnow(),
+    )
+    db.session.add(bond)
+    db.session.flush()
+    log_action(bond, 'created')
+    db.session.commit()
+    return jsonify(bond.to_dict()), 201
 
 
 # ── Audit log API ──────────────────────────────────────────────────────
@@ -379,15 +426,16 @@ def invite_user():
         return jsonify({'error': 'Unauthorized'}), 403
     data = request.get_json()
 
-    if User.query.filter_by(username=data.get('username', '').strip()).first():
+    username = data.get('username', '').strip()
+    if not username:
+        return jsonify({'error': 'Username is required.'}), 400
+    if User.query.filter_by(username=username).first():
         return jsonify({'error': 'Username already exists.'}), 400
-    if User.query.filter_by(email=data.get('email', '').strip()).first():
-        return jsonify({'error': 'Email already exists.'}), 400
 
     token = secrets.token_urlsafe(32)
     user  = User(
-        username       = data['username'].strip(),
-        email          = data['email'].strip(),
+        username       = username,
+        email          = f'{username}@noemail.local',
         role           = data.get('role', 'user'),
         active         = False,
         invite_token   = token,
@@ -397,8 +445,6 @@ def invite_user():
     db.session.commit()
 
     invite_link = url_for('accept_invite', token=token, _external=True)
-    threading.Thread(target=send_invite_email, args=(user.email, user.username, invite_link), daemon=True).start()
-
     return jsonify({'ok': True, 'invite_link': invite_link}), 201
 
 
@@ -461,12 +507,15 @@ def generate_report():
     from flask import make_response
 
     status_filter = request.args.get('status', '')
+    type_filter   = request.args.get('bond_type', '')
     from_date     = request.args.get('from_date', '')
     to_date       = request.args.get('to_date', '')
 
     query = Bond.query
     if status_filter:
         query = query.filter(Bond.status == status_filter)
+    if type_filter:
+        query = query.filter(Bond.bond_type == type_filter)
     if from_date:
         query = query.filter(Bond.bid_date >= from_date)
     if to_date:
@@ -511,9 +560,9 @@ def generate_report():
 
     # ── Table header ────────────────────────────────────────
     cols = [
-        ('Bond #',    28), ('Type',      25), ('Principal', 44),
-        ('Obligee',   38), ('Surety',    33), ('Amount',    24),
-        ('Bid Date',  22), ('Expires',   22), ('Status',    31),
+        ('Bond #',   24), ('Type',     24), ('Principal', 42),
+        ('Obligee',  34), ('Project',  40), ('Surety',    30),
+        ('Amount',   22), ('Bid Date', 22), ('Status',    29),
     ]
 
     pdf.set_fill_color(13, 27, 42)
@@ -528,6 +577,7 @@ def generate_report():
         'Approved':     (46, 125, 50),
         'Not Approved': (198, 40, 40),
         'Pending':      (230, 81, 0),
+        'Final Bond':   (13, 71, 161),
     }
     pdf.set_font('Helvetica', '', 8)
 
@@ -537,8 +587,10 @@ def generate_report():
             pdf.set_fill_color(248, 249, 250)
 
         amt = f'${bond.bond_amount:,.0f}' if bond.bond_amount else '-'
+        if bond.bond_amount and bond.bid_bond_percent and bond.bond_type == 'Bid Bond':
+            pct_amt = bond.bond_amount * bond.bid_bond_percent / 100
+            amt += f' ({bond.bid_bond_percent:.0f}%=${pct_amt:,.0f})'
         bid = bond.bid_date or '-'
-        exp = bond.expiration_date or '-'
 
         def safe(s):
             return ''.join(c if ord(c) < 256 else '?' for c in (s or ''))
@@ -548,14 +600,14 @@ def generate_report():
             return s[:n-1] + '...' if len(s) > n else s
 
         row_vals = [
-            (trunc(bond.bond_number or 'N/A', 14), cols[0][1], 'L'),
-            (trunc(bond.bond_type,   13), cols[1][1], 'L'),
-            (trunc(bond.principal,   24), cols[2][1], 'L'),
-            (trunc(bond.obligee,     21), cols[3][1], 'L'),
-            (trunc(bond.surety,      18), cols[4][1], 'L'),
-            (amt,                         cols[5][1], 'R'),
-            (bid,                         cols[6][1], 'C'),
-            (exp,                         cols[7][1], 'C'),
+            (trunc(bond.bond_number or 'N/A', 12), cols[0][1], 'L'),
+            (trunc(bond.bond_type,   12),           cols[1][1], 'L'),
+            (trunc(bond.principal,   23),           cols[2][1], 'L'),
+            (trunc(bond.obligee,     19),           cols[3][1], 'L'),
+            (trunc(bond.project or '', 22),         cols[4][1], 'L'),
+            (trunc(bond.surety,      16),           cols[5][1], 'L'),
+            (trunc(amt,              12),           cols[6][1], 'R'),
+            (bid,                                   cols[7][1], 'C'),
         ]
 
         pdf.set_text_color(60, 64, 67)
@@ -575,8 +627,9 @@ def generate_report():
     approved = sum(1 for b in bonds if b.status == 'Approved')
     not_appr = sum(1 for b in bonds if b.status == 'Not Approved')
     pending  = sum(1 for b in bonds if b.status == 'Pending')
+    woh_low  = sum(1 for b in bonds if b.work_on_hand_low)
     pdf.cell(0, 6,
-        f'Total: {len(bonds)}   |   Approved: {approved}   |   Not Approved: {not_appr}   |   Pending: {pending}',
+        f'Total: {len(bonds)}   |   Approved: {approved}   |   Not Approved: {not_appr}   |   Pending: {pending}   |   Work on Hand Low: {woh_low}',
         align='C')
 
     pdf_bytes = bytes(pdf.output())
@@ -596,12 +649,15 @@ def generate_excel():
     import io
 
     status_filter = request.args.get('status', '')
+    type_filter   = request.args.get('bond_type', '')
     from_date     = request.args.get('from_date', '')
     to_date       = request.args.get('to_date', '')
 
     query = Bond.query
     if status_filter:
         query = query.filter(Bond.status == status_filter)
+    if type_filter:
+        query = query.filter(Bond.bond_type == type_filter)
     if from_date:
         query = query.filter(Bond.bid_date >= from_date)
     if to_date:
@@ -612,8 +668,9 @@ def generate_excel():
     ws = wb.active
     ws.title = 'Bond Report'
 
-    headers = ['Bond #', 'Bond Type', 'Principal', 'Obligee', 'Surety',
-               'Amount', 'Bid Date', 'Expiration Date', 'Decision Date', 'Status', 'Notes']
+    headers = ['Bond #', 'Bond Type', 'Principal', 'Obligee', 'Producer', 'Project', 'Project Description',
+               'Surety', 'Amount', 'Bid Bond %', 'Low Bid', 'Bid Date', 'Decision Date',
+               'Status', 'Notes', 'Work on Hand', 'Work on Hand Low']
 
     hdr_fill = PatternFill(start_color='0D1B2A', end_color='0D1B2A', fill_type='solid')
     hdr_font = Font(color='FFFFFF', bold=True, size=10)
@@ -632,9 +689,15 @@ def generate_excel():
     for ri, bond in enumerate(bonds, 2):
         row_data = [
             bond.bond_number or 'N/A', bond.bond_type, bond.principal,
-            bond.obligee, bond.surety,
-            bond.bond_amount, bond.bid_date, bond.expiration_date,
-            bond.decision_date, bond.status, bond.notes,
+            bond.obligee, bond.producer or '', bond.project or '', bond.project_description or '',
+            bond.surety,
+            bond.bond_amount,
+            f'{bond.bid_bond_percent}%' if bond.bid_bond_percent else '',
+            'Yes' if bond.low_bid else 'No',
+            bond.bid_date, bond.decision_date,
+            bond.status, bond.notes or '',
+            bond.work_on_hand or '',
+            'Yes' if bond.work_on_hand_low else 'No',
         ]
         fill = status_fills.get(bond.status)
         for ci, val in enumerate(row_data, 1):
@@ -684,16 +747,20 @@ def extract_bond_pdf():
     client = _anthropic.Anthropic(api_key=api_key)
     message = client.messages.create(
         model='claude-haiku-4-5-20251001',
-        max_tokens=512,
+        max_tokens=2048,
         messages=[{
             'role': 'user',
             'content': (
                 'Extract bond information from this document. '
                 'Return ONLY a JSON object with these exact keys:\n'
-                '  bond_number, bond_type (one of: Bid Bond / Final Bond / License Bond / Maintenance Bond / Other),\n'
+                '  bond_type (one of: Bid Bond / Final Bond / License Bond / Maintenance Bond / Other),\n'
                 '  principal, obligee, surety,\n'
                 '  bond_amount: the CONTRACT amount or bid amount (NOT the bond penalty or penal sum — the full contract/project dollar value, number only no $ or commas, or null),\n'
-                '  bid_date (YYYY-MM-DD or null), decision_date (YYYY-MM-DD or null)\n'
+                '  bid_bond_percent: the bid bond percentage (e.g. 5, 10, or 20 — number only, or null if not stated),\n'
+                '  bid_date (YYYY-MM-DD or null), decision_date (YYYY-MM-DD or null),\n'
+                '  project: the name of the project or job this bond is for (short name or title, or null),\n'
+                '  project_description: a brief description of the project scope or work (1-3 sentences, or null),\n'
+                '  work_on_hand: find the jobs/contracts table near the bottom of the document. It has these columns: job or project name | Bonded (Y or blank) | Amount (contract dollar amount) | Complete (percentage) | Remaining balance ($). There is a TOTAL row at the bottom. Copy every row that has any data as plain text, one row per line, tab or space separated. Include the TOTAL line. If this table is not present or all rows are blank/zero return null.\n'
                 'Return only the JSON, no extra text.\n\n'
                 f'Document:\n{text[:4000]}'
             )
@@ -743,6 +810,37 @@ with app.app_context():
             if 'postgresql' in str(db.engine.url):
                 conn.execute(text('ALTER TABLE bonds ALTER COLUMN bond_number DROP NOT NULL'))
                 conn.execute(text('ALTER TABLE bonds ADD COLUMN IF NOT EXISTS expiration_date VARCHAR(10)'))
+                conn.execute(text('ALTER TABLE bonds ADD COLUMN IF NOT EXISTS project VARCHAR(300)'))
+                conn.execute(text('ALTER TABLE bonds ADD COLUMN IF NOT EXISTS project_description TEXT'))
+                conn.execute(text('ALTER TABLE bonds ADD COLUMN IF NOT EXISTS bid_bond_percent FLOAT'))
+                conn.execute(text('ALTER TABLE bonds ADD COLUMN IF NOT EXISTS work_on_hand TEXT'))
+                conn.execute(text('ALTER TABLE bonds ADD COLUMN IF NOT EXISTS work_on_hand_low BOOLEAN DEFAULT FALSE'))
+                conn.execute(text('ALTER TABLE bonds ADD COLUMN IF NOT EXISTS low_bid BOOLEAN DEFAULT FALSE'))
+                conn.execute(text('ALTER TABLE bonds ADD COLUMN IF NOT EXISTS producer VARCHAR(200)'))
+                conn.execute(text('ALTER TABLE users ADD COLUMN IF NOT EXISTS invite_token VARCHAR(64)'))
+                conn.execute(text('ALTER TABLE users ADD COLUMN IF NOT EXISTS invite_expires TIMESTAMP'))
+                conn.commit()
+            else:
+                # SQLite has no "ADD COLUMN IF NOT EXISTS" — check PRAGMA table_info instead
+                bond_cols = {row[1] for row in conn.execute(text('PRAGMA table_info(bonds)'))}
+                bond_migrations = [
+                    ('expiration_date',     'VARCHAR(10)'),
+                    ('project',             'VARCHAR(300)'),
+                    ('project_description', 'TEXT'),
+                    ('bid_bond_percent',    'FLOAT'),
+                    ('work_on_hand',        'TEXT'),
+                    ('work_on_hand_low',    'BOOLEAN DEFAULT 0'),
+                    ('low_bid',             'BOOLEAN DEFAULT 0'),
+                    ('producer',            'VARCHAR(200)'),
+                ]
+                for col_name, col_type in bond_migrations:
+                    if col_name not in bond_cols:
+                        conn.execute(text(f'ALTER TABLE bonds ADD COLUMN {col_name} {col_type}'))
+                user_cols = {row[1] for row in conn.execute(text('PRAGMA table_info(users)'))}
+                if 'invite_token' not in user_cols:
+                    conn.execute(text('ALTER TABLE users ADD COLUMN invite_token VARCHAR(64)'))
+                if 'invite_expires' not in user_cols:
+                    conn.execute(text('ALTER TABLE users ADD COLUMN invite_expires DATETIME'))
                 conn.commit()
     except Exception:
         pass

@@ -100,6 +100,7 @@
         .btn-secondary:hover { background: var(--gray-100); }
         .btn-danger    { background: white; color: var(--red); border: 1px solid #ef9a9a; }
         .btn-danger:hover  { background: var(--red-bg); }
+        .btn-danger .spinner { border-color: rgba(198,40,40,0.3); border-top-color: var(--red); }
         .btn-sm { padding: 4px 11px; font-size: 12px; }
 
         /* Table */
@@ -184,11 +185,21 @@
         .toast.err { border-left: 4px solid #ef5350; }
         @keyframes tin  { from { opacity:0; transform:translateX(14px); } to { opacity:1; transform:translateX(0); } }
         @keyframes spin { to { transform:rotate(360deg); } }
+        @keyframes fadeIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
         .spinner { display:inline-block; width:13px; height:13px; border:2px solid rgba(255,255,255,0.4); border-top-color:white; border-radius:50%; animation:spin 0.7s linear infinite; vertical-align:middle; margin-right:6px; }
+        .ai-loader { position:fixed; bottom:22px; left:22px; z-index:2000; display:none; align-items:center; gap:12px; background:var(--navy); color:white; padding:13px 18px; border-radius:var(--r); box-shadow:var(--shadow-lg); border-left:4px solid var(--accent); animation:fadeIn 0.2s ease; }
+        .ai-loader.show { display:flex; }
+        .ai-loader-spin { width:18px; height:18px; border:2.5px solid rgba(255,255,255,0.3); border-top-color:white; border-radius:50%; animation:spin 0.8s linear infinite; flex-shrink:0; }
+        .ai-loader-text { font-size:13px; font-weight:500; }
 
         @media (max-width: 1100px) { .stats { grid-template-columns: repeat(3,1fr); } }
         @media (max-width: 960px)  { .stats { grid-template-columns: repeat(2,1fr); } }
-        @media (max-width: 680px) { .main { padding: 14px; } .hdr { padding: 0 14px; } .fg { grid-template-columns: 1fr; } .page-hdr { flex-direction: column; gap: 10px; } .hdr-nav { display: none; } }
+        @media (max-width: 680px) {
+            .main { padding: 14px; } .hdr { padding: 0 14px; } .fg { grid-template-columns: 1fr; } .page-hdr { flex-direction: column; gap: 10px; } .hdr-nav { display: none; }
+            /* Hide lower-priority columns on phones — still visible via View */
+            .bonds-table th:nth-child(3), .bonds-table td:nth-child(3),
+            .bonds-table th:nth-child(4), .bonds-table td:nth-child(4) { display: none; }
+        }
     </style>
 </head>
 <body>
@@ -224,8 +235,8 @@
     <div class="hdr-right">
         <div class="hdr-nav">
             <button class="nav-btn active" id="navBonds"    onclick="switchTab('bonds')">Bond Portfolio</button>
+            <button class="nav-btn"        id="navStats"    onclick="switchTab('stats')">Stats</button>
             <button class="nav-btn"        id="navActivity" onclick="switchTab('activity')">Activity Log</button>
-            <button class="nav-btn"        id="navRecon"    onclick="switchTab('recon')">Direct Bill</button>
             {% if user.role == 'admin' %}
             <a href="/admin" class="nav-btn">User Management</a>
             {% endif %}
@@ -308,11 +319,12 @@
                 <div class="page-sub">Manage and track all surety bonds</div>
             </div>
             <div style="display:flex;gap:8px;">
+                <button class="btn btn-secondary" onclick="loadBonds()" title="Refresh bond list">&#8635; Refresh</button>
                 <label class="btn btn-secondary" id="uploadLabel" style="cursor:pointer;margin:0;">
                     &#128196; Upload PDF
                     <input type="file" accept=".pdf" style="display:none;" onchange="handlePDFUpload(this)">
                 </label>
-                <button class="btn btn-primary" onclick="openAdd()">+ New Bond</button>
+<button class="btn btn-primary" onclick="openAdd()">+ New Bond</button>
             </div>
         </div>
 
@@ -321,7 +333,7 @@
             <div class="stat s-a"><div class="stat-lbl">Approved</div><div class="stat-val" id="asStat">—</div><div class="stat-sub" id="asAmt"></div></div>
             <div class="stat s-n"><div class="stat-lbl">Not Approved</div><div class="stat-val" id="naStat">—</div><div class="stat-sub" id="naAmt"></div></div>
             <div class="stat s-p"><div class="stat-lbl">Pending Review</div><div class="stat-val" id="pStat">—</div><div class="stat-sub" id="pAmt"></div></div>
-            <div class="stat s-e"><div class="stat-lbl">Expiring Soon</div><div class="stat-val" id="eStat">—</div><div class="stat-sub" id="eSub">Within 30 days</div></div>
+            <div class="stat s-e"><div class="stat-lbl">Final Bonds</div><div class="stat-val" id="eStat">—</div><div class="stat-sub" id="eSub"></div></div>
         </div>
 
         <div class="toolbar">
@@ -346,22 +358,33 @@
             <select class="flt" id="fltPrincipal" onchange="renderBonds()">
                 <option value="">All Principals</option>
             </select>
+            <select class="flt" id="fltSurety" onchange="renderBonds()">
+                <option value="">All Sureties</option>
+            </select>
+            <select class="flt" id="fltProducer" onchange="renderBonds()">
+                <option value="">All Producers</option>
+            </select>
+            <select class="flt" id="fltLowBid" onchange="renderBonds()">
+                <option value="">All Bids</option>
+                <option value="low">Low Bid</option>
+                <option value="not-low">Not Low</option>
+            </select>
             <button class="btn btn-secondary" onclick="openReport()" style="white-space:nowrap;">&#128196; Report</button>
         </div>
 
         <div class="tcard">
             <div class="twrap">
-                <table>
+                <table class="bonds-table">
                     <thead><tr>
-                        <th id="th-bond_number"  onclick="sort('bond_number')">Bond #</th>
-                        <th id="th-principal"    onclick="sort('principal')">Principal</th>
-                        <th id="th-obligee"      onclick="sort('obligee')">Obligee</th>
-                        <th id="th-bond_type"    onclick="sort('bond_type')">Bond Type</th>
-                        <th id="th-bid_date"        onclick="sort('bid_date')">Bid Date</th>
-                        <th id="th-expiration_date" onclick="sort('expiration_date')">Expires</th>
-                        <th id="th-surety"          onclick="sort('surety')">Surety</th>
-                        <th id="th-bond_amount"     onclick="sort('bond_amount')">Amount</th>
-                        <th id="th-status"          onclick="sort('status')">Status</th>
+                        <th id="th-principal"   onclick="sort('principal')">Principal</th>
+                        <th id="th-producer"    onclick="sort('producer')">Producer</th>
+                        <th id="th-obligee"     onclick="sort('obligee')">Obligee</th>
+                        <th id="th-project"     onclick="sort('project')">Project</th>
+                        <th id="th-bond_type"   onclick="sort('bond_type')">Bond Type</th>
+                        <th id="th-bid_date"    onclick="sort('bid_date')">Bid Date</th>
+                        <th id="th-surety"      onclick="sort('surety')">Surety</th>
+                        <th id="th-bond_amount" onclick="sort('bond_amount')">Amount</th>
+                        <th id="th-status"      onclick="sort('status')">Status</th>
                         <th>Actions</th>
                     </tr></thead>
                     <tbody id="tbody"></tbody>
@@ -373,6 +396,108 @@
                 </div>
             </div>
             <div class="tfooter"><span id="rowCount"></span><span id="rowAmt"></span></div>
+        </div>
+    </div>
+
+    <!-- ── Stats Tab ────────────────────────────────────── -->
+    <div id="tabStats" class="tab-panel">
+        <div class="page-hdr">
+            <div>
+                <div class="page-title">Analytics</div>
+                <div class="page-sub">Bond activity and performance over time</div>
+            </div>
+        </div>
+
+        <!-- Period cards -->
+        <div class="stats" style="grid-template-columns:repeat(4,1fr);margin-bottom:20px;">
+            <div class="stat" style="border-left-color:#1565c0;">
+                <div class="stat-lbl">Last 7 Days</div>
+                <div class="stat-val" id="st7Count">—</div>
+                <div class="stat-sub" id="st7Amt"></div>
+                <div class="stat-sub" id="st7Rate" style="margin-top:4px;color:#1565c0;font-weight:600;"></div>
+            </div>
+            <div class="stat" style="border-left-color:#0288d1;">
+                <div class="stat-lbl">Last 30 Days</div>
+                <div class="stat-val" id="st30Count">—</div>
+                <div class="stat-sub" id="st30Amt"></div>
+                <div class="stat-sub" id="st30Rate" style="margin-top:4px;color:#0288d1;font-weight:600;"></div>
+            </div>
+            <div class="stat" style="border-left-color:#2e7d32;">
+                <div class="stat-lbl">Last Year</div>
+                <div class="stat-val" id="st365Count">—</div>
+                <div class="stat-sub" id="st365Amt"></div>
+                <div class="stat-sub" id="st365Rate" style="margin-top:4px;color:#2e7d32;font-weight:600;"></div>
+            </div>
+            <div class="stat" style="border-left-color:#5f6368;">
+                <div class="stat-lbl">All Time</div>
+                <div class="stat-val" id="stAllCount">—</div>
+                <div class="stat-sub" id="stAllAmt"></div>
+                <div class="stat-sub" id="stAllRate" style="margin-top:4px;color:#5f6368;font-weight:600;"></div>
+            </div>
+        </div>
+
+        <!-- Bond Type + Status row -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;">
+            <div class="tcard">
+                <div style="padding:16px 20px 10px;font-size:14px;font-weight:700;color:var(--navy);border-bottom:1px solid var(--gray-200);">By Bond Type</div>
+                <div class="twrap" style="padding:0;">
+                    <table class="log-table">
+                        <thead><tr>
+                            <th style="cursor:default;">Type</th>
+                            <th style="cursor:default;text-align:right;">Count</th>
+                            <th style="cursor:default;text-align:right;">Total Amount</th>
+                            <th style="cursor:default;text-align:right;">Approval Rate</th>
+                        </tr></thead>
+                        <tbody id="stTypeBody"></tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="tcard">
+                <div style="padding:16px 20px 10px;font-size:14px;font-weight:700;color:var(--navy);border-bottom:1px solid var(--gray-200);">By Status</div>
+                <div class="twrap" style="padding:0;">
+                    <table class="log-table">
+                        <thead><tr>
+                            <th style="cursor:default;">Status</th>
+                            <th style="cursor:default;text-align:right;">Count</th>
+                            <th style="cursor:default;text-align:right;">Total Amount</th>
+                            <th style="cursor:default;text-align:right;">% of Total</th>
+                        </tr></thead>
+                        <tbody id="stStatusBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Top Principals + Top Sureties row -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+            <div class="tcard">
+                <div style="padding:16px 20px 10px;font-size:14px;font-weight:700;color:var(--navy);border-bottom:1px solid var(--gray-200);">Top Principals</div>
+                <div class="twrap" style="padding:0;">
+                    <table class="log-table">
+                        <thead><tr>
+                            <th style="cursor:default;">Principal</th>
+                            <th style="cursor:default;text-align:right;">Bonds</th>
+                            <th style="cursor:default;text-align:right;">Total Amount</th>
+                            <th style="cursor:default;text-align:right;">Approval Rate</th>
+                        </tr></thead>
+                        <tbody id="stPrincipalBody"></tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="tcard">
+                <div style="padding:16px 20px 10px;font-size:14px;font-weight:700;color:var(--navy);border-bottom:1px solid var(--gray-200);">Top Sureties</div>
+                <div class="twrap" style="padding:0;">
+                    <table class="log-table">
+                        <thead><tr>
+                            <th style="cursor:default;">Surety</th>
+                            <th style="cursor:default;text-align:right;">Bonds</th>
+                            <th style="cursor:default;text-align:right;">Total Amount</th>
+                            <th style="cursor:default;text-align:right;">Approval Rate</th>
+                        </tr></thead>
+                        <tbody id="stSuretyBody"></tbody>
+                    </table>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -390,7 +515,7 @@
                 <table class="log-table">
                     <thead><tr>
                         <th style="cursor:default;">Date &amp; Time</th>
-                        <th style="cursor:default;">Bond #</th>
+                        <th style="cursor:default;">Principal</th>
                         <th style="cursor:default;">Action</th>
                         <th style="cursor:default;">Changed By</th>
                         <th style="cursor:default;">Details</th>
@@ -406,115 +531,7 @@
         </div>
     </div>
 
-    <!-- ── Direct Bill Tab ───────────────────────────────── -->
-    <div id="tabRecon" class="tab-panel">
-        <div class="page-hdr">
-            <div>
-                <div class="page-title">Direct Bill Reconciliation</div>
-                <div class="page-sub">Match carrier statements against your records</div>
-            </div>
-            <button class="btn btn-primary" onclick="openNewRecon()">+ New Reconciliation</button>
-        </div>
-
-        <div class="tcard">
-            <div class="twrap">
-                <table id="reconTable">
-                    <thead><tr>
-                        <th style="cursor:default;">Carrier</th>
-                        <th style="cursor:default;">Period</th>
-                        <th style="cursor:default;">Status</th>
-                        <th style="cursor:default;">Items</th>
-                        <th style="cursor:default;">Matched</th>
-                        <th style="cursor:default;">Discrepancies</th>
-                        <th style="cursor:default;">Missing</th>
-                        <th style="cursor:default;">Created By</th>
-                        <th style="cursor:default;">Actions</th>
-                    </tr></thead>
-                    <tbody id="reconBody"></tbody>
-                </table>
-                <div id="emptyRecon" class="empty" style="display:none;">
-                    <div class="empty-ico">&#128203;</div>
-                    <div class="empty-title">No reconciliations yet</div>
-                    <div class="empty-sub">Click "New Reconciliation" to get started.</div>
-                </div>
-            </div>
-        </div>
-    </div>
-
 </main>
-
-<!-- ── Recon Create/Edit Modal ──────────────────────────── -->
-<div class="overlay" id="reconModal">
-    <div class="modal modal-sm">
-        <div class="modal-hdr">
-            <div class="modal-ttl" id="reconModalTitle">New Reconciliation</div>
-            <button class="modal-cls" onclick="closeModal('reconModal')">&times;</button>
-        </div>
-        <div class="modal-body">
-            <form id="reconForm" class="fg" onsubmit="saveRecon(event)">
-                <div class="fgrp full"><label class="flbl">Carrier / Surety Company <span class="req">*</span></label><input type="text" class="fc" id="rCarrier" required placeholder="e.g. Travelers, Liberty Mutual"></div>
-                <div class="fgrp"><label class="flbl">Statement Period</label><input type="month" class="fc" id="rPeriod"></div>
-                <div class="fgrp"><label class="flbl">Status</label>
-                    <select class="fc" id="rRecStatus">
-                        <option>In Progress</option>
-                        <option>Complete</option>
-                    </select>
-                </div>
-                <div class="fgrp full"><label class="flbl">Notes</label><textarea class="fc" id="rNotes" placeholder="Any notes about this reconciliation..."></textarea></div>
-            </form>
-        </div>
-        <div class="modal-ftr">
-            <button class="btn btn-secondary" onclick="closeModal('reconModal')">Cancel</button>
-            <button class="btn btn-primary" onclick="document.getElementById('reconForm').requestSubmit()">Save</button>
-        </div>
-    </div>
-</div>
-
-<!-- ── Recon Detail Modal ──────────────────────────────── -->
-<div class="overlay" id="reconDetailModal">
-    <div class="modal" style="max-width:900px;">
-        <div class="modal-hdr">
-            <div class="modal-ttl" id="reconDetailTitle">Reconciliation Detail</div>
-            <button class="modal-cls" onclick="closeModal('reconDetailModal')">&times;</button>
-        </div>
-        <div class="modal-body" id="reconDetailBody"></div>
-        <div class="modal-ftr">
-            <button class="btn btn-secondary" onclick="closeModal('reconDetailModal')">Close</button>
-            <button class="btn btn-primary" onclick="openAddItem()">+ Add Item</button>
-        </div>
-    </div>
-</div>
-
-<!-- ── Recon Item Modal ───────────────────────────────── -->
-<div class="overlay" id="reconItemModal">
-    <div class="modal modal-sm">
-        <div class="modal-hdr">
-            <div class="modal-ttl" id="reconItemTitle">Add Line Item</div>
-            <button class="modal-cls" onclick="closeModal('reconItemModal')">&times;</button>
-        </div>
-        <div class="modal-body">
-            <form id="reconItemForm" class="fg" onsubmit="saveItem(event)">
-                <div class="fgrp"><label class="flbl">Bond Number</label><input type="text" class="fc" id="iNum" placeholder="Bond # or N/A"></div>
-                <div class="fgrp full"><label class="flbl">Principal</label><input type="text" class="fc" id="iPrincipal" placeholder="Contractor / applicant name"></div>
-                <div class="fgrp"><label class="flbl">Carrier Amount ($)</label><input type="number" class="fc" id="iCarrier" step="0.01" min="0"></div>
-                <div class="fgrp"><label class="flbl">Our Amount ($)</label><input type="number" class="fc" id="iOur" step="0.01" min="0"></div>
-                <div class="fgrp"><label class="flbl">Status</label>
-                    <select class="fc" id="iStatus">
-                        <option value="">Auto-detect</option>
-                        <option value="Matched">Matched</option>
-                        <option value="Discrepancy">Discrepancy</option>
-                        <option value="Missing">Missing</option>
-                    </select>
-                </div>
-                <div class="fgrp full"><label class="flbl">Notes</label><textarea class="fc" id="iNotes" placeholder="Explain any discrepancy..."></textarea></div>
-            </form>
-        </div>
-        <div class="modal-ftr">
-            <button class="btn btn-secondary" onclick="closeModal('reconItemModal')">Cancel</button>
-            <button class="btn btn-primary" id="saveItemBtn" onclick="document.getElementById('reconItemForm').requestSubmit()">Save Item</button>
-        </div>
-    </div>
-</div>
 
 <!-- ── Add/Edit Modal ──────────────────────────────────── -->
 <div class="overlay" id="bondModal">
@@ -527,23 +544,72 @@
             <div id="formError" class="empty" style="display:none;padding:10px;background:#ffebee;color:#c62828;border-radius:4px;font-size:13px;margin-bottom:14px;"></div>
             <form id="bondForm" class="fg" onsubmit="saveBond(event)">
                 <div class="fsect">Bond Information</div>
-                <div class="fgrp"><label class="flbl">Bond Number</label><div style="display:flex;gap:8px;align-items:center;"><input type="text" class="fc" id="fNum" style="flex:1;"><button type="button" class="btn btn-secondary" style="white-space:nowrap;padding:6px 10px;font-size:13px;" onclick="document.getElementById('fNum').value='N/A'">N/A</button></div></div>
                 <div class="fgrp"><label class="flbl">Bond Type <span class="req">*</span></label>
-                    <select class="fc" id="fType" required><option value="">Select...</option><option>Bid Bond</option><option>Final Bond</option><option>License Bond</option><option>Maintenance Bond</option><option>Other</option></select>
+                    <select class="fc" id="fType" required onchange="onBondTypeChange()"><option value="">Select...</option><option>Bid Bond</option><option>Final Bond</option><option>License Bond</option><option>Maintenance Bond</option><option>Other</option></select>
+                </div>
+                <div class="fgrp"><label class="flbl">Producer</label>
+                    <select class="fc" id="fProducer" onchange="onProducerChange()">
+                        <option value="">Select...</option>
+                        <option>Larry Bixler</option>
+                        <option>Logan Buckner</option>
+                        <option>Cody McNeill</option>
+                        <option>Mike McNeill</option>
+                        <option>Kyle Reser</option>
+                        <option>Mike Shannon</option>
+                        <option>Todd Triplett</option>
+                        <option>Kyle Vandruff</option>
+                        <option value="other">Other…</option>
+                    </select>
                 </div>
                 <div class="fgrp"><label class="flbl">Bond Amount ($)</label><input type="number" class="fc" id="fAmt" min="0" step="0.01"></div>
+                <div class="fgrp full" id="producerCustomRow" style="display:none;"><label class="flbl">Producer Name</label><input type="text" class="fc" id="fProducerCustom" placeholder="Enter producer name"></div>
                 <div class="fgrp"><label class="flbl">Bid Date</label><input type="date" class="fc" id="fBidDate"></div>
-                <div class="fgrp"><label class="flbl">Expiration Date</label><input type="date" class="fc" id="fExpDate"></div>
+                <div class="fgrp" id="bidPctRow" style="display:none;"><label class="flbl">Bid Bond %</label>
+                    <select class="fc" id="fBidPct" onchange="onBidPctChange()">
+                        <option value="">Select %</option>
+                        <option value="5">5%</option>
+                        <option value="10">10%</option>
+                        <option value="20">20%</option>
+                        <option value="custom">Custom…</option>
+                    </select>
+                </div>
+                <div class="fgrp" id="bidPctCustomRow" style="display:none;"><label class="flbl">Custom Bid Bond %</label><input type="number" class="fc" id="fBidPctCustom" min="0" max="100" step="0.1" placeholder="e.g. 15"></div>
+                <div class="fgrp full" id="lowBidRow" style="display:none;"><label style="display:flex;align-items:center;gap:10px;cursor:pointer;margin-top:2px;"><input type="checkbox" id="fLowBid" style="width:17px;height:17px;accent-color:#2e7d32;flex-shrink:0;"> <span style="font-size:14px;font-weight:500;color:#2e7d32;">Low Bid</span></label></div>
                 <div class="fsect">Parties</div>
                 <div class="fgrp full"><label class="flbl">Principal (Contractor / Applicant) <span class="req">*</span></label><input type="text" class="fc" id="fPrincipal" placeholder="Name of contractor or entity requesting the bond" required></div>
                 <div class="fgrp full"><label class="flbl">Obligee (Requiring Party) <span class="req">*</span></label><input type="text" class="fc" id="fObligee" placeholder="Entity requiring the bond" required></div>
-                <div class="fgrp full"><label class="flbl">Surety (Bonding Company) <span class="req">*</span></label><input type="text" class="fc" id="fSurety" placeholder="e.g., Travelers, Liberty Mutual" required></div>
+                <div class="fgrp full"><label class="flbl">Surety (Bonding Company) <span class="req">*</span></label>
+                    <select class="fc" id="fSurety" required onchange="onSuretyChange()">
+                        <option value="">Select...</option>
+                        <option>Berkley Surety</option>
+                        <option>CCI Surety, Inc.</option>
+                        <option>CNA Surety</option>
+                        <option>Employers Mutual Casualty Co.</option>
+                        <option>Granite Re, Inc.</option>
+                        <option>Great American Insurance Group</option>
+                        <option>Insurors Indemnity Companies</option>
+                        <option>Liberty Mutual Surety</option>
+                        <option>Merchants Bonding Company</option>
+                        <option>Mid-Continent Insurance Co.</option>
+                        <option>National American Insurance Co</option>
+                        <option>RLI Surety</option>
+                        <option>The Gray Casualty &amp; Surety Company</option>
+                        <option>Travelers</option>
+                        <option value="other">Other…</option>
+                    </select>
+                </div>
+                <div class="fgrp full" id="suretyCustomRow" style="display:none;"><label class="flbl">Surety Name</label><input type="text" class="fc" id="fSuretyCustom" placeholder="Enter bonding company name"></div>
+                <div class="fsect">Project</div>
+                <div class="fgrp full"><label class="flbl">Project Name</label><input type="text" class="fc" id="fProject" placeholder="Project or job name"></div>
+                <div class="fgrp full"><label class="flbl">Project Description</label><textarea class="fc" id="fProjectDesc" placeholder="Description of the project or work..."></textarea></div>
                 <div class="fsect">Decision</div>
                 <div class="fgrp"><label class="flbl">Status <span class="req">*</span></label>
                     <select class="fc" id="fStatus" required><option value="">Select...</option><option>Pending</option><option>Approved</option><option>Not Approved</option></select>
                 </div>
                 <div class="fgrp"><label class="flbl">Decision Date</label><input type="date" class="fc" id="fDecDate"></div>
                 <div class="fgrp full"><label class="flbl">Notes / Reason</label><textarea class="fc" id="fNotes" placeholder="Reason for approval or denial, conditions, notes..."></textarea></div>
+                <div class="fsect">Work on Hand</div>
+                <div class="fgrp full"><label class="flbl">Work on Hand Notes</label><textarea class="fc" id="fWorkOnHand" placeholder="Current work on hand — projects in progress, capacity notes..."></textarea></div>
             </form>
         </div>
         <div class="modal-ftr">
@@ -563,6 +629,7 @@
         <div class="modal-body" id="viewBody"></div>
         <div class="modal-ftr">
             <button class="btn btn-secondary" onclick="closeModal('viewModal')">Close</button>
+            <button class="btn btn-secondary" id="viewFinalBtn" style="display:none;border-color:#1565c0;color:#1565c0;">&#128196; Create Final Bond</button>
             <button class="btn btn-primary"   id="viewEditBtn">Edit Bond</button>
         </div>
     </div>
@@ -588,8 +655,8 @@
 <div class="overlay" id="reportModal">
     <div class="modal modal-sm">
         <div class="modal-hdr"><div class="modal-ttl">&#128196; Generate Bond Report</div><button class="modal-cls" onclick="closeModal('reportModal')">&times;</button></div>
-        <div class="modal-body">
-            <div style="font-size:13px;color:var(--gray-600);margin-bottom:16px;">Choose filters then click Download. Leave fields blank to include everything.</div>
+        <div class="modal-body" style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+            <div style="grid-column:1/-1;font-size:13px;color:var(--gray-600);">Choose filters then click Download. Leave fields blank to include everything.</div>
             <div class="fgrp">
                 <label class="flbl">Status</label>
                 <select class="fc" id="rStatus">
@@ -597,6 +664,17 @@
                     <option value="Pending">Pending</option>
                     <option value="Approved">Approved</option>
                     <option value="Not Approved">Not Approved</option>
+                </select>
+            </div>
+            <div class="fgrp">
+                <label class="flbl">Bond Type</label>
+                <select class="fc" id="rType">
+                    <option value="">All Bond Types</option>
+                    <option value="Bid Bond">Bid Bond</option>
+                    <option value="Final Bond">Final Bond</option>
+                    <option value="License Bond">License Bond</option>
+                    <option value="Maintenance Bond">Maintenance Bond</option>
+                    <option value="Other">Other</option>
                 </select>
             </div>
             <div class="fgrp">
@@ -635,6 +713,10 @@
     </div>
 </div>
 
+<div class="ai-loader" id="aiLoader">
+    <div class="ai-loader-spin"></div>
+    <div class="ai-loader-text" id="aiLoaderText">Analyzing PDF…</div>
+</div>
 <div class="toasts" id="toasts"></div>
 
 <script>
@@ -646,11 +728,24 @@ let sortF    = 'bid_date';
 let sortAsc  = false;
 let activeTab = 'bonds';
 
+const SURETIES = [
+    'Berkley Surety', 'CCI Surety, Inc.', 'CNA Surety', 'Employers Mutual Casualty Co.',
+    'Granite Re, Inc.', 'Great American Insurance Group', 'Insurors Indemnity Companies',
+    'Liberty Mutual Surety', 'Merchants Bonding Company', 'Mid-Continent Insurance Co.',
+    'National American Insurance Co', 'RLI Surety', 'The Gray Casualty & Surety Company', 'Travelers',
+];
+
+const PRODUCERS = [
+    'Larry Bixler', 'Logan Buckner', 'Cody McNeill', 'Mike McNeill',
+    'Kyle Reser', 'Mike Shannon', 'Todd Triplett', 'Kyle Vandruff',
+];
+
 const LABELS = {
-    bond_number:'Bond #', bond_type:'Bond Type', principal:'Principal',
-    obligee:'Obligee', surety:'Surety', bond_amount:'Amount',
-    bid_date:'Bid Date', expiration_date:'Expiration Date', decision_date:'Decision Date',
-    status:'Status', notes:'Notes',
+    bond_type:'Bond Type', principal:'Principal',
+    obligee:'Obligee', producer:'Producer', project:'Project', project_description:'Project Description',
+    surety:'Surety', bond_amount:'Amount', bid_bond_percent:'Bid Bond %',
+    bid_date:'Bid Date', decision_date:'Decision Date',
+    status:'Status', notes:'Notes', work_on_hand:'Work on Hand', low_bid:'Low Bid',
 };
 
 // ── API ────────────────────────────────────────────────────────────────
@@ -671,20 +766,28 @@ async function api(path, method='GET', body=null) {
 function switchTab(tab) {
     activeTab = tab;
     document.getElementById('tabBonds').classList.toggle('active',    tab==='bonds');
+    document.getElementById('tabStats').classList.toggle('active',    tab==='stats');
     document.getElementById('tabActivity').classList.toggle('active', tab==='activity');
-    document.getElementById('tabRecon').classList.toggle('active',    tab==='recon');
     document.getElementById('navBonds').classList.toggle('active',    tab==='bonds');
+    document.getElementById('navStats').classList.toggle('active',    tab==='stats');
     document.getElementById('navActivity').classList.toggle('active', tab==='activity');
-    document.getElementById('navRecon').classList.toggle('active',    tab==='recon');
     if (tab==='activity') loadActivity();
-    if (tab==='recon')    loadRecons();
+    if (tab==='stats')    loadStats();
 }
 
 // ── Bonds ──────────────────────────────────────────────────────────────
 async function loadBonds() {
-    bonds = await api('/api/bonds');
-    populatePrincipalFilter();
-    renderBonds();
+    const loader    = document.getElementById('aiLoader');
+    const loaderTxt = document.getElementById('aiLoaderText');
+    loaderTxt.textContent = 'Loading bonds…';
+    loader.classList.add('show');
+    try {
+        bonds = await api('/api/bonds');
+        populatePrincipalFilter();
+        renderBonds();
+    } finally {
+        loader.classList.remove('show');
+    }
 }
 
 function populatePrincipalFilter() {
@@ -693,6 +796,16 @@ function populatePrincipalFilter() {
     const principals = [...new Set(bonds.map(b=>b.principal).filter(Boolean))].sort();
     sel.innerHTML = '<option value="">All Principals</option>' +
         principals.map(p=>`<option value="${esc(p)}"${p===cur?' selected':''}>${esc(p)}</option>`).join('');
+
+    const surSel = document.getElementById('fltSurety');
+    const surCur = surSel.value;
+    surSel.innerHTML = '<option value="">All Sureties</option>' +
+        SURETIES.map(s=>`<option value="${esc(s)}"${s===surCur?' selected':''}>${esc(s)}</option>`).join('');
+
+    const prodSel = document.getElementById('fltProducer');
+    const prodCur = prodSel.value;
+    prodSel.innerHTML = '<option value="">All Producers</option>' +
+        PRODUCERS.map(p=>`<option value="${esc(p)}"${p===prodCur?' selected':''}>${esc(p)}</option>`).join('');
 }
 
 function expStyle(dateStr) {
@@ -705,15 +818,19 @@ function expStyle(dateStr) {
 }
 
 function renderBonds() {
-    const q  = document.getElementById('srch').value.toLowerCase();
-    const sf = document.getElementById('fltStatus').value;
-    const tf = document.getElementById('fltType').value;
-    const pf = document.getElementById('fltPrincipal').value;
+    const q   = document.getElementById('srch').value.toLowerCase();
+    const sf  = document.getElementById('fltStatus').value;
+    const tf  = document.getElementById('fltType').value;
+    const pf  = document.getElementById('fltPrincipal').value;
+    const suf = document.getElementById('fltSurety').value;
+    const prf = document.getElementById('fltProducer').value;
+    const lbf = document.getElementById('fltLowBid').value;
 
     let rows = bonds.filter(b => {
-        const hit = !q || [b.bond_number,b.principal,b.obligee,b.surety,b.bond_type]
+        const hit = !q || [b.principal,b.obligee,b.surety,b.bond_type,b.project,b.producer]
             .some(v=>(v||'').toLowerCase().includes(q));
-        return hit && (!sf||b.status===sf) && (!tf||b.bond_type===tf) && (!pf||b.principal===pf);
+        return hit && (!sf||b.status===sf) && (!tf||b.bond_type===tf) && (!pf||b.principal===pf) && (!suf||b.surety===suf)
+            && (!prf||b.producer===prf) && (!lbf||(lbf==='low'?b.low_bid:!b.low_bid));
     });
 
     rows.sort((a,b)=>{
@@ -731,22 +848,31 @@ function renderBonds() {
     if(!rows.length){ tbody.innerHTML=''; empty.style.display=''; }
     else {
         empty.style.display='none';
-        tbody.innerHTML=rows.map(b=>`<tr>
-            <td><div class="bond-num">${esc(b.bond_number)}</div><div class="meta">Added by ${esc(b.created_by)} &middot; ${b.created_at}</div></td>
-            <td><span class="principal">${esc(b.principal)}</span></td>
+        tbody.innerHTML=rows.map(b=>{
+            const amt = b.bond_amount ? '$'+(+b.bond_amount).toLocaleString('en-US',{maximumFractionDigits:0}) : '&mdash;';
+            const amtSub = (b.bond_type==='Bid Bond'&&b.bid_bond_percent&&b.bond_amount)
+                ? `<div class="meta">${b.bid_bond_percent}% = $${(b.bond_amount*b.bid_bond_percent/100).toLocaleString('en-US',{maximumFractionDigits:0})}</div>` : '';
+            const lowBidBtn = b.bond_type==='Bid Bond'
+                ? `<button class="btn btn-secondary btn-sm" onclick="toggleLowBid(${b.id})" style="${b.low_bid?'color:#2e7d32;border-color:#2e7d32;':''}">${b.low_bid?'Low Bid ✓':'Mark Low Bid'}</button>`
+                : '';
+            return `<tr>
+            <td><span class="principal">${esc(b.principal)}</span><div class="meta">Added by ${esc(b.created_by)} &middot; ${b.created_at}</div></td>
+            <td>${esc(b.producer)||'&mdash;'}</td>
             <td>${esc(b.obligee)}</td>
+            <td>${esc(b.project)||'&mdash;'}</td>
             <td>${esc(b.bond_type)}</td>
             <td>${fmtDate(b.bid_date)}</td>
-            <td>${b.expiration_date ? '<span style="'+expStyle(b.expiration_date)+'">'+fmtDate(b.expiration_date)+'</span>' : '&mdash;'}</td>
             <td>${esc(b.surety)}</td>
-            <td>${b.bond_amount?'$'+(+b.bond_amount).toLocaleString('en-US',{maximumFractionDigits:0}):'&mdash;'}</td>
+            <td>${amt}${amtSub}</td>
             <td>${badge(b.status)}</td>
             <td><div class="row-acts">
                 <button class="btn btn-secondary btn-sm" onclick="openView(${b.id})">View</button>
                 <button class="btn btn-secondary btn-sm" onclick="openEdit(${b.id})">Edit</button>
-                <button class="btn btn-danger btn-sm"    onclick="openDel(${b.id})">Delete</button>
+                ${b.bond_type==='Bid Bond'?`<button class="btn btn-secondary btn-sm" onclick="createFinalBond(${b.id})" style="color:#1565c0;border-color:#1565c0;">Final</button>`:''}
+                ${lowBidBtn}
+                <button class="btn btn-danger btn-sm" onclick="openDel(${b.id})">Delete</button>
             </div></td>
-        </tr>`).join('');
+        </tr>`;}).join('');
     }
 
     document.getElementById('rowCount').textContent=`Showing ${rows.length} of ${bonds.length} bond${bonds.length!==1?'s':''}`;
@@ -759,20 +885,115 @@ function updateStats() {
     const app=bonds.filter(b=>b.status==='Approved');
     const na=bonds.filter(b=>b.status==='Not Approved');
     const pend=bonds.filter(b=>b.status==='Pending');
-    const today=new Date().toISOString().split('T')[0];
-    const in30=new Date(Date.now()+30*24*60*60*1000).toISOString().split('T')[0];
-    const expiring=bonds.filter(b=>b.expiration_date&&b.expiration_date>=today&&b.expiration_date<=in30);
+    const final=bonds.filter(b=>b.bond_type==='Final Bond');
     const sum=arr=>arr.reduce((s,b)=>s+(+b.bond_amount||0),0);
     const fmt=n=>n?'$'+n.toLocaleString('en-US',{notation:'compact',maximumFractionDigits:1})+' total':'';
     document.getElementById('sStat').textContent=bonds.length;
     document.getElementById('asStat').textContent=app.length;
     document.getElementById('naStat').textContent=na.length;
     document.getElementById('pStat').textContent=pend.length;
-    document.getElementById('eStat').textContent=expiring.length;
+    document.getElementById('eStat').textContent=final.length;
     document.getElementById('sAmt').textContent=fmt(sum(bonds));
     document.getElementById('asAmt').textContent=fmt(sum(app));
     document.getElementById('naAmt').textContent=fmt(sum(na));
     document.getElementById('pAmt').textContent=fmt(sum(pend));
+}
+
+// ── Analytics Tab ──────────────────────────────────────────────────────
+function loadStats() {
+    if (!bonds.length) {
+        ['stTypeBody','stStatusBody','stPrincipalBody','stSuretyBody'].forEach(id=>{
+            document.getElementById(id).innerHTML='<tr><td colspan="4" style="color:var(--gray-600);text-align:center;">No bonds yet</td></tr>';
+        });
+        return;
+    }
+    const today = new Date();
+    const cutoff = days => {
+        const d = new Date(today); d.setDate(d.getDate()-days);
+        return d.toISOString().split('T')[0];
+    };
+    const d7   = cutoff(7);
+    const d30  = cutoff(30);
+    const d365 = cutoff(365);
+
+    const inP  = (b, since) => b.bid_date && b.bid_date >= since;
+    const sum  = arr => arr.reduce((s,b)=>s+(+b.bond_amount||0), 0);
+    const fmtC = n => '$'+n.toLocaleString('en-US',{notation:'compact',maximumFractionDigits:1});
+    const fmtF = n => n ? '$'+n.toLocaleString('en-US',{maximumFractionDigits:0}) : '—';
+    const rate = (sub, tot) => tot ? Math.round(sub/tot*100)+'%' : '—';
+
+    // Period cards
+    [
+        ['st7',   bonds.filter(b=>inP(b,d7))],
+        ['st30',  bonds.filter(b=>inP(b,d30))],
+        ['st365', bonds.filter(b=>inP(b,d365))],
+        ['stAll', bonds],
+    ].forEach(([pfx, arr]) => {
+        const app = arr.filter(b=>b.status==='Approved');
+        document.getElementById(pfx+'Count').textContent = arr.length;
+        document.getElementById(pfx+'Amt').textContent   = arr.length ? fmtC(sum(arr))+' total' : '';
+        document.getElementById(pfx+'Rate').textContent  = arr.length ? rate(app.length, arr.length)+' approved' : '';
+    });
+
+    // By Bond Type
+    const types = ['Bid Bond','Final Bond','License Bond','Maintenance Bond','Other'];
+    document.getElementById('stTypeBody').innerHTML = types.map(t=>{
+        const tb = bonds.filter(b=>b.bond_type===t);
+        if (!tb.length) return '';
+        const app = tb.filter(b=>b.status==='Approved');
+        return `<tr>
+            <td>${t}</td>
+            <td style="text-align:right;font-weight:600;">${tb.length}</td>
+            <td style="text-align:right;">${fmtF(sum(tb))}</td>
+            <td style="text-align:right;">${rate(app.length,tb.length)}</td>
+        </tr>`;
+    }).join('') || '<tr><td colspan="4" style="color:var(--gray-600);">No data</td></tr>';
+
+    // By Status
+    const statuses = ['Approved','Pending','Not Approved'];
+    const total = bonds.length;
+    document.getElementById('stStatusBody').innerHTML = statuses.map(s=>{
+        const sb = bonds.filter(b=>b.status===s);
+        if (!sb.length) return '';
+        const pct = Math.round(sb.length/total*100);
+        const color = s==='Approved'?'var(--green)':s==='Not Approved'?'var(--red)':'var(--amber)';
+        return `<tr>
+            <td><span style="color:${color};font-weight:600;">${s}</span></td>
+            <td style="text-align:right;font-weight:600;">${sb.length}</td>
+            <td style="text-align:right;">${fmtF(sum(sb))}</td>
+            <td style="text-align:right;">${pct}%</td>
+        </tr>`;
+    }).join('') || '<tr><td colspan="4" style="color:var(--gray-600);">No data</td></tr>';
+
+    // Top Principals (top 10 by count)
+    const byPrincipal = {};
+    bonds.forEach(b=>{ byPrincipal[b.principal]=(byPrincipal[b.principal]||[]).concat([b]); });
+    document.getElementById('stPrincipalBody').innerHTML = Object.entries(byPrincipal)
+        .sort((a,b)=>b[1].length-a[1].length).slice(0,10)
+        .map(([p,arr])=>{
+            const app=arr.filter(b=>b.status==='Approved');
+            return `<tr>
+                <td>${esc(p)}</td>
+                <td style="text-align:right;font-weight:600;">${arr.length}</td>
+                <td style="text-align:right;">${fmtF(sum(arr))}</td>
+                <td style="text-align:right;">${rate(app.length,arr.length)}</td>
+            </tr>`;
+        }).join('') || '<tr><td colspan="4" style="color:var(--gray-600);">No data</td></tr>';
+
+    // Top Sureties (top 10 by count)
+    const bySurety = {};
+    bonds.forEach(b=>{ bySurety[b.surety]=(bySurety[b.surety]||[]).concat([b]); });
+    document.getElementById('stSuretyBody').innerHTML = Object.entries(bySurety)
+        .sort((a,b)=>b[1].length-a[1].length).slice(0,10)
+        .map(([s,arr])=>{
+            const app=arr.filter(b=>b.status==='Approved');
+            return `<tr>
+                <td>${esc(s)}</td>
+                <td style="text-align:right;font-weight:600;">${arr.length}</td>
+                <td style="text-align:right;">${fmtF(sum(arr))}</td>
+                <td style="text-align:right;">${rate(app.length,arr.length)}</td>
+            </tr>`;
+        }).join('') || '<tr><td colspan="4" style="color:var(--gray-600);">No data</td></tr>';
 }
 
 function sort(field) {
@@ -781,28 +1002,71 @@ function sort(field) {
     renderBonds();
 }
 
+// ── Low Bid toggle (no need to open the bond form) ─────────────────────
+async function toggleLowBid(id) {
+    const b = bonds.find(x=>x.id===id);
+    if (!b) return;
+    const prev = b.low_bid;
+    b.low_bid = !prev;
+    renderBonds();
+    try {
+        await api(`/api/bonds/${id}/low-bid`, 'PUT', { low_bid: b.low_bid });
+    } catch(err) {
+        b.low_bid = prev;
+        renderBonds();
+        toast('Could not update low bid — ' + err.message, 'err');
+    }
+}
+
 // ── View ───────────────────────────────────────────────────────────────
 function openView(id) {
     const b = bonds.find(x=>x.id===id);
     if (!b) return;
-    document.getElementById('viewTitle').textContent = 'Bond — ' + b.bond_number;
+    document.getElementById('viewTitle').textContent = b.principal + ' — ' + b.bond_type;
+
+    let bidPctHtml = '';
+    if (b.bond_type==='Bid Bond' && b.bid_bond_percent) {
+        const pctAmt = b.bond_amount ? ' = $'+(b.bond_amount*b.bid_bond_percent/100).toLocaleString('en-US',{maximumFractionDigits:0}) : '';
+        bidPctHtml = dv('Bid Bond %', b.bid_bond_percent+'%'+pctAmt);
+    }
+
+    const projectHtml = (b.project||b.project_description) ? `
+        <div class="fsect">Project</div>
+        ${b.project?dv('Project Name',b.project,true):''}
+        ${b.project_description?`<div class="fgrp full"><div class="flbl">Project Description</div><div style="font-size:14px;white-space:pre-wrap;line-height:1.55;margin-top:2px;">${esc(b.project_description)}</div></div>`:''}
+    ` : '';
+
+    const wohHtml = b.work_on_hand ? `
+        <div class="fsect">Work on Hand</div>
+        <div class="fgrp full"><div class="flbl">Notes</div><div style="font-size:14px;white-space:pre-wrap;line-height:1.55;margin-top:2px;">${esc(b.work_on_hand)}</div></div>
+    ` : '';
+
     document.getElementById('viewBody').innerHTML = `
         <div class="fg" style="row-gap:16px;">
             <div class="fsect">Bond Information</div>
-            ${dv('Bond Number',b.bond_number)} ${dv('Bond Type',b.bond_type)}
-            ${dv('Bond Amount',b.bond_amount?'$'+(+b.bond_amount).toLocaleString('en-US'):'')} ${dv('Bid Date',fmtDate(b.bid_date))}
-            ${dv('Expiration Date',fmtDate(b.expiration_date))}
+            ${dv('Bond Type',b.bond_type)} ${dv('Producer',b.producer)} ${dv('Bid Date',fmtDate(b.bid_date))}
+            ${dv('Bond Amount',b.bond_amount?'$'+(+b.bond_amount).toLocaleString('en-US'):'')}
+            ${bidPctHtml}
+            ${b.low_bid?`<div class="fgrp"><div class="flbl">Low Bid</div><div style="margin-top:4px;"><span style="background:#e8f5e9;color:#2e7d32;border-radius:20px;padding:3px 12px;font-size:12px;font-weight:700;">LOW BID</span></div></div>`:''}
             <div class="fsect">Parties</div>
-            ${dv('Principal',b.principal,true)} ${dv('Obligee',b.obligee,true)} ${dv('Surety',b.surety,true)}
+            ${dv('Principal',b.principal,true)} ${dv('Obligee',b.obligee,true)}
+            ${projectHtml}
+            ${dv('Surety',b.surety,true)}
             <div class="fsect">Decision</div>
             <div class="fgrp"><div class="flbl">Status</div><div style="margin-top:2px;">${badge(b.status)}</div></div>
             ${dv('Decision Date',fmtDate(b.decision_date))}
             ${b.notes?`<div class="fgrp full"><div class="flbl">Notes</div><div style="font-size:14px;white-space:pre-wrap;line-height:1.55;margin-top:2px;">${esc(b.notes)}</div></div>`:''}
+            ${wohHtml}
             <div class="fsect">Record Info</div>
             ${dv('Added By',b.created_by)} ${dv('Added At',b.created_at)}
             ${b.updated_by?dv('Last Updated By',b.updated_by):''}
             ${b.updated_at?dv('Last Updated At',b.updated_at):''}
         </div>`;
+
+    const finalBtn = document.getElementById('viewFinalBtn');
+    finalBtn.style.display = b.bond_type==='Bid Bond' ? '' : 'none';
+    finalBtn.onclick = () => createFinalBond(id);
+
     document.getElementById('viewEditBtn').onclick=()=>{closeModal('viewModal');openEdit(id);};
     open_('viewModal');
 }
@@ -818,6 +1082,13 @@ function openAdd() {
     document.getElementById('bondForm').reset();
     document.getElementById('fStatus').value='Pending';
     document.getElementById('formError').style.display='none';
+    document.getElementById('bidPctRow').style.display='none';
+    document.getElementById('bidPctCustomRow').style.display='none';
+    document.getElementById('lowBidRow').style.display='none';
+    document.getElementById('fLowBid').checked=false;
+    document.getElementById('suretyCustomRow').style.display='none';
+    document.getElementById('fSuretyCustom').required=false;
+    document.getElementById('producerCustomRow').style.display='none';
     open_('bondModal');
 }
 
@@ -827,17 +1098,41 @@ function openEdit(id) {
     editId=id;
     document.getElementById('modalTitle').textContent='Edit Bond';
     document.getElementById('formError').style.display='none';
-    document.getElementById('fNum').value     = b.bond_number   ||'';
-    document.getElementById('fType').value    = b.bond_type     ||'';
-    document.getElementById('fAmt').value     = b.bond_amount   ||'';
-    document.getElementById('fBidDate').value  = b.bid_date        ||'';
-    document.getElementById('fExpDate').value  = b.expiration_date ||'';
-    document.getElementById('fPrincipal').value= b.principal       ||'';
-    document.getElementById('fObligee').value = b.obligee       ||'';
-    document.getElementById('fSurety').value  = b.surety        ||'';
-    document.getElementById('fStatus').value  = b.status        ||'';
-    document.getElementById('fDecDate').value = b.decision_date ||'';
-    document.getElementById('fNotes').value   = b.notes         ||'';
+    document.getElementById('fType').value       = b.bond_type          ||'';
+    document.getElementById('fAmt').value        = b.bond_amount        ||'';
+    document.getElementById('fBidDate').value    = b.bid_date           ||'';
+    document.getElementById('fPrincipal').value  = b.principal          ||'';
+    document.getElementById('fObligee').value    = b.obligee            ||'';
+    setProducerField(b.producer);
+    document.getElementById('fProject').value    = b.project            ||'';
+    document.getElementById('fProjectDesc').value= b.project_description||'';
+    setSuretyField(b.surety);
+    document.getElementById('fStatus').value     = b.status             ||'';
+    document.getElementById('fDecDate').value    = b.decision_date      ||'';
+    document.getElementById('fNotes').value      = b.notes              ||'';
+    document.getElementById('fWorkOnHand').value = b.work_on_hand ||'';
+    document.getElementById('fLowBid').checked   = b.low_bid || false;
+
+    // Bid bond percent
+    const isBid = b.bond_type==='Bid Bond';
+    document.getElementById('bidPctRow').style.display = isBid ? '' : 'none';
+    document.getElementById('lowBidRow').style.display  = isBid ? '' : 'none';
+    if (isBid && b.bid_bond_percent) {
+        const pct = +b.bid_bond_percent;
+        if ([5,10,20].includes(pct)) {
+            document.getElementById('fBidPct').value = String(pct);
+            document.getElementById('bidPctCustomRow').style.display='none';
+            document.getElementById('fBidPctCustom').value='';
+        } else {
+            document.getElementById('fBidPct').value='custom';
+            document.getElementById('bidPctCustomRow').style.display='';
+            document.getElementById('fBidPctCustom').value=b.bid_bond_percent;
+        }
+    } else {
+        document.getElementById('fBidPct').value='';
+        document.getElementById('bidPctCustomRow').style.display='none';
+        document.getElementById('fBidPctCustom').value='';
+    }
     open_('bondModal');
 }
 
@@ -846,18 +1141,33 @@ async function saveBond(e) {
     const btn = document.getElementById('saveBondBtn');
     btn.disabled = true;
     btn.innerHTML = '<span class="spinner"></span>Saving...';
+    const bondType = document.getElementById('fType').value;
+    let bidBondPct = null;
+    if (bondType==='Bid Bond') {
+        const pctSel = document.getElementById('fBidPct').value;
+        if (pctSel==='custom') bidBondPct = parseFloat(document.getElementById('fBidPctCustom').value)||null;
+        else if (pctSel) bidBondPct = parseFloat(pctSel);
+    }
+    const suretySel = document.getElementById('fSurety').value;
+    const surety = suretySel==='other' ? document.getElementById('fSuretyCustom').value.trim() : suretySel;
+    const producerSel = document.getElementById('fProducer').value;
+    const producer = producerSel==='other' ? document.getElementById('fProducerCustom').value.trim() : producerSel;
     const body = {
-        bond_number:   document.getElementById('fNum').value.trim(),
-        bond_type:     document.getElementById('fType').value,
-        bond_amount:   document.getElementById('fAmt').value||null,
-        bid_date:        document.getElementById('fBidDate').value||null,
-        expiration_date: document.getElementById('fExpDate').value||null,
-        principal:     document.getElementById('fPrincipal').value.trim(),
-        obligee:       document.getElementById('fObligee').value.trim(),
-        surety:        document.getElementById('fSurety').value.trim(),
-        status:        document.getElementById('fStatus').value,
-        decision_date: document.getElementById('fDecDate').value||null,
-        notes:         document.getElementById('fNotes').value.trim(),
+        bond_type:           bondType,
+        bond_amount:         document.getElementById('fAmt').value||null,
+        bid_bond_percent:    bidBondPct,
+        bid_date:            document.getElementById('fBidDate').value||null,
+        principal:           document.getElementById('fPrincipal').value.trim(),
+        obligee:             document.getElementById('fObligee').value.trim(),
+        producer:            producer,
+        project:             document.getElementById('fProject').value.trim(),
+        project_description: document.getElementById('fProjectDesc').value.trim(),
+        surety:              surety,
+        status:              document.getElementById('fStatus').value,
+        decision_date:       document.getElementById('fDecDate').value||null,
+        notes:               document.getElementById('fNotes').value.trim(),
+        work_on_hand:        document.getElementById('fWorkOnHand').value.trim(),
+        low_bid:             document.getElementById('fLowBid').checked,
     };
     try {
         if (editId) { await api(`/api/bonds/${editId}`,'PUT',body); toast('Bond updated'); }
@@ -880,7 +1190,7 @@ async function saveBond(e) {
 function openDel(id) {
     const b=bonds.find(x=>x.id===id);
     delId=id;
-    document.getElementById('delSub').textContent=`${b.bond_number} — ${b.principal}`;
+    document.getElementById('delSub').textContent=b.principal;
     open_('delModal');
 }
 async function doDelete() {
@@ -890,11 +1200,12 @@ async function doDelete() {
     try {
         await api(`/api/bonds/${delId}`,'DELETE');
         closeModal('delModal');
-        await loadBonds();
+        loadBonds();
         loadActivity();
         toast('Bond deleted');
     } catch(err) {
         toast(err.message,'err');
+    } finally {
         btn.disabled = false;
         btn.innerHTML = 'Yes, Delete';
     }
@@ -914,7 +1225,7 @@ async function loadActivity() {
         let details = '';
         if (l.action==='updated' && l.old_values && l.new_values) {
             const changed = [];
-            const fields = ['bond_number','bond_type','principal','obligee','surety','bond_amount','bid_date','expiration_date','decision_date','status','notes'];
+            const fields = ['bond_number','bond_type','principal','obligee','producer','surety','bond_amount','bid_date','expiration_date','decision_date','status','notes','low_bid'];
             fields.forEach(f=>{
                 const ov=l.old_values[f], nv=l.new_values[f];
                 if(String(ov)!==String(nv)){
@@ -972,47 +1283,155 @@ function open_(id){ document.getElementById(id).classList.add('open'); }
 async function handlePDFUpload(input) {
     const file = input.files[0];
     if (!file) return;
-    const lbl = document.getElementById('uploadLabel');
-    lbl.textContent = '⏳ Reading PDF...';
+    const lbl       = document.getElementById('uploadLabel');
+    const loader    = document.getElementById('aiLoader');
+    const loaderTxt = document.getElementById('aiLoaderText');
+    const showLoader = txt => { loaderTxt.textContent = txt; loader.classList.add('show'); };
+    const hideLoader = ()  => loader.classList.remove('show');
+
+    lbl.textContent = '⏳ Uploading…';
+    showLoader('Reading PDF…');
     try {
         const fd = new FormData();
         fd.append('file', file);
+        showLoader('Analyzing bond with AI…');
         const resp = await fetch('/api/bonds/extract', { method:'POST', body:fd });
         const data = await resp.json();
         if (!resp.ok) throw new Error(data.error || 'Extraction failed');
 
         openAdd();
-        if (data.bond_number)   document.getElementById('fNum').value      = data.bond_number;
-        if (data.bond_type)     document.getElementById('fType').value     = data.bond_type;
-        if (data.principal)     document.getElementById('fPrincipal').value = data.principal;
-        if (data.obligee)       document.getElementById('fObligee').value  = data.obligee;
-        if (data.surety)        document.getElementById('fSurety').value   = data.surety;
-        if (data.bond_amount)   document.getElementById('fAmt').value      = data.bond_amount;
-        if (data.bid_date)      document.getElementById('fBidDate').value  = data.bid_date;
-        if (data.decision_date) document.getElementById('fDecDate').value  = data.decision_date;
+        if (data.bond_type)          { document.getElementById('fType').value = data.bond_type; onBondTypeChange(); }
+        if (data.principal)          document.getElementById('fPrincipal').value    = data.principal;
+        if (data.obligee)            document.getElementById('fObligee').value      = data.obligee;
+        if (data.surety)             setSuretyField(data.surety);
+        if (data.bond_amount)        document.getElementById('fAmt').value          = data.bond_amount;
+        if (data.bid_date)           document.getElementById('fBidDate').value      = data.bid_date;
+        if (data.decision_date)      document.getElementById('fDecDate').value      = data.decision_date;
+        if (data.project)            document.getElementById('fProject').value      = data.project;
+        if (data.project_description)document.getElementById('fProjectDesc').value  = data.project_description;
+
+        // Bid bond percent
+        if (data.bond_type === 'Bid Bond' && data.bid_bond_percent) {
+            const pct = +data.bid_bond_percent;
+            if ([5, 10, 20].includes(pct)) {
+                document.getElementById('fBidPct').value = String(pct);
+                document.getElementById('bidPctCustomRow').style.display = 'none';
+            } else {
+                document.getElementById('fBidPct').value = 'custom';
+                document.getElementById('fBidPctCustom').value = pct;
+                document.getElementById('bidPctCustomRow').style.display = '';
+            }
+        }
+
+        // Work on Hand notes: use extracted work on hand section from document
+        if (data.work_on_hand) document.getElementById('fWorkOnHand').value = data.work_on_hand;
+
         toast('Form filled from PDF — review and save');
     } catch(e) {
         toast(e.message, 'err');
+    } finally {
+        hideLoader();
+        lbl.innerHTML = '&#128196; Upload PDF<input type="file" accept=".pdf" style="display:none;" onchange="handlePDFUpload(this)">';
+        input.value = '';
     }
-    lbl.innerHTML = '&#128196; Upload PDF<input type="file" accept=".pdf" style="display:none;" onchange="handlePDFUpload(this)">';
-    input.value = '';
 }
+
 
 function openReport() {
     document.getElementById('rStatus').value = '';
+    document.getElementById('rType').value   = '';
     document.getElementById('rFrom').value   = '';
     document.getElementById('rTo').value     = '';
     open_('reportModal');
 }
 function reportParams() {
     const status = document.getElementById('rStatus').value;
+    const type   = document.getElementById('rType').value;
     const from   = document.getElementById('rFrom').value;
     const to     = document.getElementById('rTo').value;
     const params = new URLSearchParams();
-    if (status) params.append('status',    status);
-    if (from)   params.append('from_date', from);
-    if (to)     params.append('to_date',   to);
+    if (status) params.append('status',     status);
+    if (type)   params.append('bond_type',  type);
+    if (from)   params.append('from_date',  from);
+    if (to)     params.append('to_date',    to);
     return params.toString();
+}
+
+// ── Bid bond percent helpers ─────────────────────────────────────────────
+function onBondTypeChange() {
+    const t = document.getElementById('fType').value;
+    document.getElementById('bidPctRow').style.display = t==='Bid Bond' ? '' : 'none';
+    document.getElementById('lowBidRow').style.display  = t==='Bid Bond' ? '' : 'none';
+    if (t!=='Bid Bond') {
+        document.getElementById('fBidPct').value='';
+        document.getElementById('fBidPctCustom').value='';
+        document.getElementById('bidPctCustomRow').style.display='none';
+        document.getElementById('fLowBid').checked=false;
+    }
+}
+function onBidPctChange() {
+    const v = document.getElementById('fBidPct').value;
+    document.getElementById('bidPctCustomRow').style.display = v==='custom' ? '' : 'none';
+}
+
+function onSuretyChange() {
+    const v = document.getElementById('fSurety').value;
+    const isOther = v==='other';
+    document.getElementById('suretyCustomRow').style.display = isOther ? '' : 'none';
+    document.getElementById('fSuretyCustom').required = isOther;
+    if (!isOther) document.getElementById('fSuretyCustom').value='';
+}
+
+function setSuretyField(value) {
+    if (value && SURETIES.includes(value)) {
+        document.getElementById('fSurety').value = value;
+        document.getElementById('suretyCustomRow').style.display = 'none';
+        document.getElementById('fSuretyCustom').required = false;
+        document.getElementById('fSuretyCustom').value = '';
+    } else if (value) {
+        document.getElementById('fSurety').value = 'other';
+        document.getElementById('suretyCustomRow').style.display = '';
+        document.getElementById('fSuretyCustom').required = true;
+        document.getElementById('fSuretyCustom').value = value;
+    } else {
+        document.getElementById('fSurety').value = '';
+        document.getElementById('suretyCustomRow').style.display = 'none';
+        document.getElementById('fSuretyCustom').required = false;
+        document.getElementById('fSuretyCustom').value = '';
+    }
+}
+
+function onProducerChange() {
+    const v = document.getElementById('fProducer').value;
+    document.getElementById('producerCustomRow').style.display = v==='other' ? '' : 'none';
+    if (v!=='other') document.getElementById('fProducerCustom').value='';
+}
+
+function setProducerField(value) {
+    if (value && PRODUCERS.includes(value)) {
+        document.getElementById('fProducer').value = value;
+        document.getElementById('producerCustomRow').style.display = 'none';
+        document.getElementById('fProducerCustom').value = '';
+    } else if (value) {
+        document.getElementById('fProducer').value = 'other';
+        document.getElementById('producerCustomRow').style.display = '';
+        document.getElementById('fProducerCustom').value = value;
+    } else {
+        document.getElementById('fProducer').value = '';
+        document.getElementById('producerCustomRow').style.display = 'none';
+        document.getElementById('fProducerCustom').value = '';
+    }
+}
+
+// ── Final Bond ───────────────────────────────────────────────────────────
+async function createFinalBond(id) {
+    try {
+        await api(`/api/bonds/${id}/create-final`, 'POST');
+        closeModal('viewModal');
+        await loadBonds();
+        loadActivity();
+        toast('Final Bond created');
+    } catch(err) { toast(err.message, 'err'); }
 }
 function downloadReport() {
     window.location.href = '/reports/pdf?' + reportParams();
@@ -1060,191 +1479,6 @@ function toggleHomeScreen(){
     const open  = panel.style.display === 'none';
     panel.style.display = open ? 'block' : 'none';
     chev.style.transform = open ? 'rotate(180deg)' : '';
-}
-
-// ── Reconciliation ────────────────────────────────────────────────────
-let recons = [];
-let activeReconId = null;
-let activeItemId  = null;
-
-async function loadRecons() {
-    recons = await api('/api/reconciliations');
-    renderRecons();
-}
-
-function reconStatusBadge(s) {
-    const cls = s==='Complete'?'s-approved':s==='In Progress'?'s-pending':'s-na';
-    return `<span class="badge ${cls}">${s}</span>`;
-}
-function itemBadge(s) {
-    const cls = s==='Matched'?'s-approved':s==='Discrepancy'?'s-na':s==='Missing'?'s-pending':'s-pending';
-    return `<span class="badge ${cls}">${s}</span>`;
-}
-
-function renderRecons() {
-    const tbody = document.getElementById('reconBody');
-    const empty = document.getElementById('emptyRecon');
-    if (!recons.length) { tbody.innerHTML=''; empty.style.display=''; return; }
-    empty.style.display='none';
-    tbody.innerHTML = recons.map(r=>`<tr>
-        <td><strong>${esc(r.carrier)}</strong></td>
-        <td>${r.period ? fmtPeriod(r.period) : '&mdash;'}</td>
-        <td>${reconStatusBadge(r.status)}</td>
-        <td style="text-align:center;">${r.item_count}</td>
-        <td style="text-align:center;color:var(--green);font-weight:600;">${r.matched}</td>
-        <td style="text-align:center;color:var(--red);font-weight:600;">${r.discrepant}</td>
-        <td style="text-align:center;color:var(--amber);font-weight:600;">${r.missing}</td>
-        <td>${esc(r.created_by)}</td>
-        <td><div class="row-acts">
-            <button class="btn btn-secondary btn-sm" onclick="openReconDetail(${r.id})">View</button>
-            <button class="btn btn-secondary btn-sm" onclick="openEditRecon(${r.id})">Edit</button>
-            <button class="btn btn-danger btn-sm"    onclick="deleteRecon(${r.id})">Delete</button>
-        </div></td>
-    </tr>`).join('');
-}
-
-function fmtPeriod(p) {
-    if (!p) return '';
-    const [y,m] = p.split('-');
-    const names = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-    return `${names[+m-1]} ${y}`;
-}
-
-function openNewRecon() {
-    activeReconId = null;
-    document.getElementById('reconModalTitle').textContent = 'New Reconciliation';
-    document.getElementById('reconForm').reset();
-    open_('reconModal');
-}
-
-function openEditRecon(id) {
-    const r = recons.find(x=>x.id===id);
-    if (!r) return;
-    activeReconId = id;
-    document.getElementById('reconModalTitle').textContent = 'Edit Reconciliation';
-    document.getElementById('rCarrier').value    = r.carrier;
-    document.getElementById('rPeriod').value     = r.period;
-    document.getElementById('rRecStatus').value  = r.status;
-    document.getElementById('rNotes').value      = r.notes;
-    open_('reconModal');
-}
-
-async function saveRecon(e) {
-    e.preventDefault();
-    const body = {
-        carrier: document.getElementById('rCarrier').value.trim(),
-        period:  document.getElementById('rPeriod').value,
-        status:  document.getElementById('rRecStatus').value,
-        notes:   document.getElementById('rNotes').value.trim(),
-    };
-    try {
-        if (activeReconId) await api(`/api/reconciliations/${activeReconId}`, 'PUT', body);
-        else               await api('/api/reconciliations', 'POST', body);
-        closeModal('reconModal');
-        await loadRecons();
-        toast(activeReconId ? 'Reconciliation updated' : 'Reconciliation created');
-    } catch(err) { toast(err.message, 'err'); }
-}
-
-async function deleteRecon(id) {
-    if (!confirm('Delete this reconciliation and all its items?')) return;
-    try {
-        await api(`/api/reconciliations/${id}`, 'DELETE');
-        await loadRecons();
-        toast('Deleted');
-    } catch(err) { toast(err.message, 'err'); }
-}
-
-async function openReconDetail(id) {
-    const rec = await api(`/api/reconciliations/${id}`);
-    activeReconId = id;
-    const totalCarrier = rec.items.reduce((s,i)=>s+(+i.carrier_amount||0),0);
-    const totalOur     = rec.items.reduce((s,i)=>s+(+i.our_amount||0),0);
-    const fmt$ = n => n!=null ? '$'+n.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}) : '&mdash;';
-
-    document.getElementById('reconDetailTitle').textContent = `${rec.carrier} — ${rec.period ? fmtPeriod(rec.period) : 'No Period'}`;
-    document.getElementById('reconDetailBody').innerHTML = `
-        <div style="display:flex;gap:16px;margin-bottom:16px;flex-wrap:wrap;">
-            <div style="background:#f5f7fa;border-radius:8px;padding:12px 18px;flex:1;min-width:120px;">
-                <div style="font-size:11px;color:#888;text-transform:uppercase;letter-spacing:0.5px;">Status</div>
-                <div style="margin-top:4px;">${reconStatusBadge(rec.status)}</div>
-            </div>
-            <div style="background:#f5f7fa;border-radius:8px;padding:12px 18px;flex:1;min-width:120px;">
-                <div style="font-size:11px;color:#888;text-transform:uppercase;letter-spacing:0.5px;">Carrier Total</div>
-                <div style="font-size:18px;font-weight:700;color:var(--navy);margin-top:4px;">${fmt$(totalCarrier)}</div>
-            </div>
-            <div style="background:#f5f7fa;border-radius:8px;padding:12px 18px;flex:1;min-width:120px;">
-                <div style="font-size:11px;color:#888;text-transform:uppercase;letter-spacing:0.5px;">Our Total</div>
-                <div style="font-size:18px;font-weight:700;color:var(--navy);margin-top:4px;">${fmt$(totalOur)}</div>
-            </div>
-            <div style="background:${Math.abs(totalCarrier-totalOur)<0.01?'#e8f5e9':'#ffebee'};border-radius:8px;padding:12px 18px;flex:1;min-width:120px;">
-                <div style="font-size:11px;color:#888;text-transform:uppercase;letter-spacing:0.5px;">Difference</div>
-                <div style="font-size:18px;font-weight:700;color:${Math.abs(totalCarrier-totalOur)<0.01?'var(--green)':'var(--red)'};margin-top:4px;">${fmt$(Math.abs(totalCarrier-totalOur))}</div>
-            </div>
-        </div>
-        ${rec.notes ? `<div style="font-size:13px;color:#555;margin-bottom:14px;padding:10px 14px;background:#fffbea;border-radius:6px;border-left:3px solid var(--amber);">${esc(rec.notes)}</div>` : ''}
-        <table style="width:100%;">
-            <thead><tr>
-                <th style="cursor:default;">Bond #</th>
-                <th style="cursor:default;">Principal</th>
-                <th style="cursor:default;">Carrier Amt</th>
-                <th style="cursor:default;">Our Amt</th>
-                <th style="cursor:default;">Status</th>
-                <th style="cursor:default;">Notes</th>
-                <th style="cursor:default;"></th>
-            </tr></thead>
-            <tbody>
-            ${rec.items.length ? rec.items.map(i=>`<tr>
-                <td>${esc(i.bond_number)||'&mdash;'}</td>
-                <td>${esc(i.principal)||'&mdash;'}</td>
-                <td style="text-align:right;">${fmt$(i.carrier_amount)}</td>
-                <td style="text-align:right;">${fmt$(i.our_amount)}</td>
-                <td>${itemBadge(i.status)}</td>
-                <td style="font-size:12px;color:#666;">${esc(i.notes)||''}</td>
-                <td><button class="btn btn-danger btn-sm" onclick="deleteItem(${i.id})">&#x2715;</button></td>
-            </tr>`).join('') : `<tr><td colspan="7" style="text-align:center;padding:20px;color:#aaa;">No items yet — click Add Item below.</td></tr>`}
-            </tbody>
-        </table>`;
-    open_('reconDetailModal');
-}
-
-function openAddItem() {
-    activeItemId = null;
-    document.getElementById('reconItemTitle').textContent = 'Add Line Item';
-    document.getElementById('reconItemForm').reset();
-    open_('reconItemModal');
-}
-
-async function saveItem(e) {
-    e.preventDefault();
-    const btn = document.getElementById('saveItemBtn');
-    btn.disabled = true;
-    const body = {
-        bond_number:    document.getElementById('iNum').value.trim(),
-        principal:      document.getElementById('iPrincipal').value.trim(),
-        carrier_amount: document.getElementById('iCarrier').value || null,
-        our_amount:     document.getElementById('iOur').value     || null,
-        status:         document.getElementById('iStatus').value  || null,
-        notes:          document.getElementById('iNotes').value.trim(),
-    };
-    try {
-        await api(`/api/reconciliations/${activeReconId}/items`, 'POST', body);
-        closeModal('reconItemModal');
-        await openReconDetail(activeReconId);
-        await loadRecons();
-        toast('Item added');
-    } catch(err) { toast(err.message, 'err'); }
-    finally { btn.disabled = false; }
-}
-
-async function deleteItem(itemId) {
-    if (!confirm('Remove this line item?')) return;
-    try {
-        await api(`/api/reconciliations/${activeReconId}/items/${itemId}`, 'DELETE');
-        await openReconDetail(activeReconId);
-        await loadRecons();
-        toast('Item removed');
-    } catch(err) { toast(err.message, 'err'); }
 }
 
 loadBonds();

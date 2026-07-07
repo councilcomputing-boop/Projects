@@ -1,13 +1,14 @@
 <!DOCTYPE html>
 <html lang="en">
+<!-- BetCaddie v2 -->
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Wager">
+<meta name="apple-mobile-web-app-title" content="BetCaddie">
 <meta name="theme-color" content="#1a5c38">
-<title>Wager</title>
+<title>BetCaddie</title>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
@@ -127,6 +128,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .settle-from{font-weight:700;font-size:15px}
 .settle-to{font-weight:700;font-size:15px;color:var(--green)}
 .settle-amt{margin-left:auto;font-size:16px;font-weight:800;color:var(--red)}
+.pay-btn{display:inline-block;padding:5px 12px;border-radius:20px;font-size:12px;font-weight:700;text-decoration:none;border:none;cursor:pointer}
+.pay-venmo{background:#008CFF;color:#fff}
+.pay-cash{background:#00D64F;color:#fff}
 
 /* History */
 .hist-item{padding:12px 0;border-bottom:1px solid var(--border);cursor:pointer}
@@ -221,6 +225,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .auth-sub{text-align:center;font-size:14px;color:var(--muted);margin-bottom:28px}
 .auth-switch{text-align:center;font-size:14px;color:var(--muted);margin-top:16px}
 .auth-switch button{background:none;border:none;color:var(--green);font-weight:700;font-size:14px;cursor:pointer;padding:0;text-decoration:underline}
+.link-btn{background:none;border:none;color:var(--muted);font-size:13px;cursor:pointer;padding:0;text-decoration:underline}
 
 /* Session code */
 .session-code-bar{background:var(--green);color:#fff;border-radius:var(--r);padding:14px 18px;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between}
@@ -263,6 +268,18 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 const KEY='golfbets_v3'
 function db(){try{const r=localStorage.getItem(KEY);const d=r?JSON.parse(r):{};if(!d.players)d.players=[];if(!d.rounds)d.rounds=[];if(!d.courses)d.courses=[];if(!d.groups)d.groups=[];return d}catch(e){return{players:[],rounds:[],courses:[],groups:[]}}}
 function save(d){localStorage.setItem(KEY,JSON.stringify(d))}
+let _voiceRec=null
+let _wakeLock=null
+async function _wakelock(want){
+  if(want){
+    if(_wakeLock)return
+    try{_wakeLock=await navigator.wakeLock?.request('screen')}catch(e){}
+  }else{
+    _wakeLock?.release();_wakeLock=null
+  }
+}
+// re-acquire after phone comes back from sleep mid-round
+document.addEventListener('visibilitychange',()=>{if(!document.hidden&&S.sc==='scorecard')_wakelock(true)})
 function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,5)}
 function $$(n){if(n==null||isNaN(n))return'$0';const a=Math.abs(n);const s=a%1===0?a.toFixed(0):a.toFixed(2);return(n<0?'-':'')+'$'+s}
 function pname(pid){
@@ -284,10 +301,6 @@ const firebaseConfig={
 firebase.initializeApp(firebaseConfig)
 const auth=firebase.auth()
 const fdb=firebase.firestore()
-
-// ── STRIPE ────────────────────────────────────────────
-// Paste your Stripe Payment Link URL here after creating it at stripe.com
-const STRIPE_LINK='https://buy.stripe.com/fZu8wPfzcgnn1CD5M3gnK00'
 
 function genCode(){
   const c='ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
@@ -317,6 +330,37 @@ async function joinRound(code){
     subscribeRound(rid)
     go('scorecard',{rid,hole:0,holeMenu:false})
   }catch(e){toast('Could not join round','error')}
+}
+
+// ── SCAN SCORECARD (Gemini vision) ────────────────────
+async function scanScorecard(file,holes){
+  const key=localStorage.getItem('betcaddie_gemini_key')
+  if(!key){toast('Add your Google AI key in Settings → Scan Scorecard','error');return null}
+  S.aiLoading=true;ren()
+  try{
+    const b64=await new Promise((res,rej)=>{const r=new FileReader();r.onload=e=>res(e.target.result.split(',')[1]);r.onerror=rej;r.readAsDataURL(file)})
+    const resp=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${key}`,{
+      method:'POST',headers:{'content-type':'application/json'},
+      body:JSON.stringify({contents:[{parts:[
+        {text:`This is a golf scorecard. Return ONLY a JSON array of the par for each hole, e.g. [4,3,4,5,4,4,3,5,4]. Return exactly ${holes} integers between 3 and 5. No other text.`},
+        {inline_data:{mime_type:file.type||'image/jpeg',data:b64}}
+      ]}]})
+    })
+    if(!resp.ok){const t=await resp.text();throw new Error(t||resp.statusText)}
+    const data=await resp.json()
+    const text=data.candidates?.[0]?.content?.parts?.[0]?.text||''
+    const m=text.match(/\[[\d,\s]+\]/)
+    if(!m)throw new Error('Could not read pars from image')
+    const pars=JSON.parse(m[0])
+    if(pars.length<holes)throw new Error(`Only found ${pars.length} holes, need ${holes}`)
+    S.aiLoading=false;ren()
+    toast('Pars filled from scorecard!','success')
+    return pars.slice(0,holes).map(p=>Math.min(5,Math.max(3,parseInt(p)||4)))
+  }catch(e){
+    S.aiLoading=false;ren()
+    toast('Scan failed: '+e.message,'error')
+    return null
+  }
 }
 
 async function loadHistory(){
@@ -368,11 +412,11 @@ const BET_TYPES=[
 function betLabel(val){return BET_TYPES.find(t=>t.val===val)?.lbl||val}
 
 // ── STATE ─────────────────────────────────────────────
-let S={sc:'auth',user:null,rid:null,round:null,draft:null,step:1,betHole:null,aiLoading:false,editGroup:null,hole:0,holeMenu:false,authMode:'signin',joinCode:'',historyRounds:null}
+let S={sc:'auth',user:null,rid:null,round:null,draft:null,betHole:null,aiLoading:false,hole:0,holeMenu:false,authMode:'signin',joinCode:'',historyRounds:null,betFormOpen:false,voiceListening:false}
 function go(sc,x){S={...S,sc,...(x||{})};ren();scrollTo(0,0)}
 function nav(sc){
   if(sc==='history')S.historyRounds=null
-  S={...S,sc,rid:null,round:null,draft:null,step:1,betHole:null,hole:0,holeMenu:false}
+  S={...S,sc,rid:null,round:null,draft:null,betHole:null,hole:0,holeMenu:false}
   ren();scrollTo(0,0)
 }
 
@@ -505,17 +549,32 @@ function calcSideBets(round){
   return{payouts:pay,summary}
 }
 
+function strokePlay(round){
+  const pl=round.players,payouts={},totals={},pars=round.pars||[]
+  pl.forEach(p=>payouts[p.id]=0)
+  pl.forEach(p=>{totals[p.id]=round.scores[p.id]?.slice(0,round.holes).reduce((a,b)=>a+(b||0),0)||0})
+  const amount=round.games.strokePlay?.amount||0
+  if(amount>0){
+    const winner=[...pl].sort((a,b)=>totals[a.id]-totals[b.id])[0]
+    pl.forEach(p=>{if(p.id!==winner.id){const d=(totals[p.id]-totals[winner.id])*amount;payouts[p.id]-=d;payouts[winner.id]+=d}})
+  }
+  const totalPar=pars.slice(0,round.holes).reduce((a,b)=>a+b,0)
+  const ranked=[...pl].sort((a,b)=>totals[a.id]-totals[b.id])
+  return{payouts,totals,totalPar,ranked}
+}
+
 function calcAll(round){
   const n=nassau(round)
   const sr=skins(round),sp=sr.payouts||{}
   const mp=matchplay(round)
   const wf=wolf(round)
+  const spw=strokePlay(round)
   const sb=calcSideBets(round)
   const tot={}
   round.players.forEach(p=>{
-    tot[p.id]=(n[p.id]||0)+(sp[p.id]||0)+(mp[p.id]||0)+(wf[p.id]||0)+(sb.payouts[p.id]||0)
+    tot[p.id]=(n[p.id]||0)+(sp[p.id]||0)+(mp[p.id]||0)+(wf[p.id]||0)+(spw.payouts[p.id]||0)+(sb.payouts[p.id]||0)
   })
-  return{tot,nassau:n,skins:sr,matchPlay:mp,wolf:wf,sideBets:sb}
+  return{tot,nassau:n,skins:sr,matchPlay:mp,wolf:wf,strokePlay:spw,sideBets:sb}
 }
 
 function settle(players,net){
@@ -540,71 +599,39 @@ function mpStatus(round){
 
 function scCls(s,p){if(!s||!p)return '';const d=s-p;if(d<=-2)return 'eagle';if(d===-1)return 'birdie';if(d===1)return 'bogey';if(d>=2)return 'dbogey';return ''}
 
+function parseVoice(text,players,pars,hole){
+  text=text.toLowerCase().trim()
+  if(/\bnext hole\b/.test(text))return{action:'nextHole'}
+  const hm=text.match(/\b(?:go to |jump to |)hole (\d+)\b/)
+  if(hm)return{action:'goHole',hole:parseInt(hm[1])}
+  const par=pars[hole]||4,results=[]
+  for(const p of players){
+    const first=p.name.toLowerCase().split(/\s+/)[0]
+    const pos=text.indexOf(first);if(pos===-1)continue
+    const after=text.slice(pos+first.length)
+    const nm=after.match(/\b(\d+)\b/)
+    if(nm){results.push({pid:p.id,score:parseInt(nm[1])});continue}
+    if(/\beagle\b/.test(after))results.push({pid:p.id,score:par-2})
+    else if(/\birdie\b/.test(after))results.push({pid:p.id,score:par-1})
+    else if(/\bpar\b/.test(after))results.push({pid:p.id,score:par})
+    else if(/\bbogey\b/.test(after))results.push({pid:p.id,score:par+1})
+    else if(/\bdouble\b/.test(after))results.push({pid:p.id,score:par+2})
+    else if(/\btriple\b/.test(after))results.push({pid:p.id,score:par+3})
+  }
+  if(results.length)return{action:'scores',results}
+  return null
+}
+
 // ── DRAFT ─────────────────────────────────────────────
-function newDraft(){return{course:'',playerIds:[],holes:18,games:{nassau:{enabled:false,amount:5,autoPress:false},skins:{enabled:false,amount:1,carryTies:true},matchPlay:{enabled:false,amount:10,teams:[]},wolf:{enabled:false,pointValue:1}},pars:Array(18).fill(4)}}
+function newDraft(){return{course:'',location:'',playerIds:[],holes:18,games:{strokePlay:{enabled:false,amount:0},nassau:{enabled:false,amount:5,autoPress:false},skins:{enabled:false,amount:1,carryTies:true},matchPlay:{enabled:false,amount:10,teams:[]},wolf:{enabled:false,pointValue:1}},pars:Array(18).fill(4)}}
 
 function mkRound(d){
-  const D=db(),pl=d.playerIds.map(id=>D.players.find(p=>p.id===id)).filter(Boolean),sc={}
+  const D=db()
+  const pl=d.playerIds.map(id=>D.players.find(p=>p.id===id)).filter(Boolean),sc={}
   pl.forEach(p=>sc[p.id]=Array(18).fill(null))
-  return{id:uid(),date:new Date().toISOString(),course:d.course||'Round',players:pl.map(p=>({id:p.id,name:p.name,handicap:p.handicap||0})),games:JSON.parse(JSON.stringify(d.games)),pars:d.pars,holes:d.holes||18,scores:sc,wolfDecisions:{},sideBets:{},completed:false,payouts:{}}
+  return{id:uid(),date:new Date().toISOString(),course:d.course||'Round',players:pl.map(p=>({id:p.id,name:p.name,venmo:p.venmo||'',cashapp:p.cashapp||''})),games:JSON.parse(JSON.stringify(d.games)),pars:d.pars,holes:d.holes||18,scores:sc,wolfDecisions:{},sideBets:{},completed:false,payouts:{}}
 }
 
-// ── AI COURSE FILL ────────────────────────────────────
-async function fillPars(course, holes){
-  const resp=await fetch('/.netlify/functions/course',{
-    method:'POST',
-    headers:{'content-type':'application/json'},
-    body:JSON.stringify({course,holes})
-  })
-  if(!resp.ok){const e=await resp.text();throw new Error(e||resp.statusText)}
-  const pars=await resp.json()
-  if(!Array.isArray(pars)||pars.length<holes)throw new Error('Wrong number of holes returned')
-  return pars.slice(0,holes).map(p=>Math.min(5,Math.max(3,parseInt(p)||4)))
-}
-
-// ── PAYWALL ───────────────────────────────────────────
-function getWeekKey(){
-  const d=new Date(),jan1=new Date(d.getFullYear(),0,1)
-  const wk=Math.ceil(((d-jan1)/86400000+jan1.getDay()+1)/7)
-  return`${d.getFullYear()}-W${wk}`
-}
-
-function showPaywall(){
-  const uid=S.user?.uid||''
-  const url=STRIPE_LINK+(STRIPE_LINK.includes('?')?'&':'?')+`client_reference_id=${uid}`
-  dialog(
-    `<div style="text-align:center;padding:4px 0">
-      <div style="font-size:36px;margin-bottom:8px">⛳</div>
-      <div style="font-size:18px;font-weight:800;margin-bottom:6px">Upgrade to Wager Pro</div>
-      <div style="font-size:13px;color:var(--muted);margin-bottom:16px">Free plan includes 1 round per week</div>
-      <div style="background:var(--green-pale);border-radius:10px;padding:12px 14px;margin-bottom:16px;text-align:left">
-        <div style="font-size:13px;font-weight:700;color:var(--green2);margin-bottom:5px">✓ Unlimited rounds</div>
-        <div style="font-size:13px;font-weight:700;color:var(--green2);margin-bottom:5px">✓ AI course fill for everyone</div>
-        <div style="font-size:13px;font-weight:700;color:var(--green2)">✓ Full history &amp; ledger</div>
-      </div>
-      <div style="font-size:26px;font-weight:900">$5 <span style="font-size:13px;font-weight:400;color:var(--muted)">one-time</span></div>
-    </div>`,
-    ()=>window.open(url,'_blank'),
-    {confirmText:'Upgrade Now →',cancelText:'Maybe Later'}
-  )
-}
-
-async function verifyPayment(sessionId){
-  try{
-    const resp=await fetch('/.netlify/functions/verify-payment',{
-      method:'POST',headers:{'content-type':'application/json'},
-      body:JSON.stringify({sessionId,uid:S.user?.uid})
-    })
-    if(resp.ok){
-      // Stripe confirmed payment — write isPaid to user's own Firestore doc
-      await fdb.collection('users').doc(S.user.uid).set({isPaid:true},{merge:true})
-      S.user.isPaid=true
-      history.replaceState({},'','/')
-      toast('Welcome to Wager Pro! 🏆','success')
-      ren()
-    }
-  }catch(e){console.error('Payment verify failed:',e)}
-}
 
 // ── RENDER ────────────────────────────────────────────
 function ren(){
@@ -614,12 +641,13 @@ function ren(){
   const ol=document.getElementById('OL')
   if(ol)ol.innerHTML=S.holeMenu&&S.sc==='scorecard'?pg_hole_menu():''
   bind()
+  _wakelock(S.sc==='scorecard')
 }
 
 function nav_bar(){
   if(['auth','join'].includes(S.sc))return''
-  const tabs=[{id:'home',i:'⛳',l:'Home'},{id:'history',i:'📋',l:'History'},{id:'ledger',i:'💰',l:'Ledger'},{id:'players',i:'⚙️',l:'Settings'}]
-  const main=['home','history','ledger','players']
+  const tabs=[{id:'home',i:'⛳',l:'Home'},{id:'history',i:'📋',l:'History'},{id:'players',i:'⚙️',l:'Settings'}]
+  const main=['home','history','players']
   const act=main.includes(S.sc)?S.sc:'home'
   return tabs.map(t=>`<button class="nav-btn ${act===t.id?'active':''}" data-nav="${t.id}"><span class="ni">${t.i}</span>${t.l}</button>`).join('')
 }
@@ -630,10 +658,10 @@ function hdr(){
     const round=S.round,holes=round?.holes||18,h=Math.min(S.hole||0,holes-1)
     return`<div class="hdr"><button class="hdr-back" data-back="home">&#8249;</button><span class="hdr-title">Hole ${h+1} / ${holes}</span><button class="hdr-action" style="margin-right:4px" data-open-hole-menu>&#9776; Holes</button><button class="hdr-action" data-finish>Finish</button></div>`
   }
-  const titles={join:'Join Round',home:'Wager',players:'⚙️ Settings',setup:'🏌️ New Round',results:'🏆 Results',history:'📋 History',ledger:'💰 Ledger','round-detail':'📋 Round Detail',wolf:'🐺 Wolf'}
+  const titles={join:'Enter Code',home:'BetCaddie',players:'⚙️ Settings',setup:'🏌️ New Round',results:'🏆 Results',history:'📋 History',ledger:'💰 Ledger','round-detail':'📋 Round Detail',wolf:'🐺 Wolf'}
   const back_map={join:'home',setup:'home',results:'home','round-detail':'history',wolf:'scorecard'}
   const has_back=['join','setup','results','round-detail','wolf'].includes(S.sc)
-  return`<div class="hdr">${has_back?`<button class="hdr-back" data-back="${back_map[S.sc]||'home'}">&#8249;</button>`:''}<span class="hdr-title">${titles[S.sc]||'Wager'}</span></div>`
+  return`<div class="hdr">${has_back?`<button class="hdr-back" data-back="${back_map[S.sc]||'home'}">&#8249;</button>`:''}<span class="hdr-title">${titles[S.sc]||'BetCaddie'}</span></div>`
 }
 
 function scr(){
@@ -658,23 +686,26 @@ function pg_auth(){
   const up=S.authMode==='signup'
   return`<div class="auth-wrap">
     <div class="auth-logo">⛳</div>
-    <div class="auth-appname">Wager</div>
-    <div class="auth-sub">Golf bets with your group</div>
+    <div class="auth-appname">BetCaddie</div>
+    <div class="auth-sub">Scores, bets, and settle-up for your group</div>
     <div class="card">
-      ${up?`<div class="fg"><label class="flabel">Your Name</label><input class="finput" id="auth-name" placeholder="e.g. Hayes" autocomplete="name"></div>`:''}
+      ${up?`<div class="fg"><label class="flabel">Your Name</label><input class="finput" id="auth-name" placeholder="e.g. Hayes" autocomplete="name"></div>
+      <div class="fg"><label class="flabel">Venmo username <span style="color:var(--muted);font-weight:400">(optional — for quick payments)</span></label><div style="display:flex;align-items:center;gap:6px"><span style="font-weight:700;font-size:16px;color:var(--muted)">@</span><input class="finput" id="auth-venmo" placeholder="your-venmo-username" autocomplete="off"></div></div>
+      <div class="fg"><label class="flabel">Cash App $Cashtag <span style="color:var(--muted);font-weight:400">(optional)</span></label><div style="display:flex;align-items:center;gap:6px"><span style="font-weight:700;font-size:16px;color:var(--muted)">$</span><input class="finput" id="auth-cashapp" placeholder="yourcashtag" autocomplete="off"></div></div>`:''}
       <div class="fg"><label class="flabel">Email</label><input class="finput" id="auth-email" type="email" placeholder="you@example.com" autocomplete="email"></div>
-      <div class="fg" style="margin-bottom:16px"><label class="flabel">Password</label><input class="finput" id="auth-pass" type="password" placeholder="Password" autocomplete="${up?'new-password':'current-password'}"></div>
+      <div class="fg" style="margin-bottom:${up?'16':'8'}px"><label class="flabel">Password</label><input class="finput" id="auth-pass" type="password" placeholder="Password" autocomplete="${up?'new-password':'current-password'}"></div>
+      ${up?'':' <div style="text-align:right;margin-bottom:14px"><button class="link-btn" data-forgot-pw>Forgot password?</button></div>'}
       <button class="btn btn-primary" data-auth-submit>${up?'Create Account':'Sign In'}</button>
     </div>
-    <div class="auth-switch">${up?'Already have an account?':'New to Wager?'} <button data-auth-toggle>${up?'Sign in':'Create account'}</button></div>
+    <div class="auth-switch">${up?'Already have an account?':'New to BetCaddie?'} <button data-auth-toggle>${up?'Sign in':'Create account'}</button></div>
   </div>`
 }
 
 // ── JOIN ──────────────────────────────────────────────
 function pg_join(){
   return`<div class="card" style="margin-top:8px">
-    <div class="card-title">Join a Round</div>
-    <p style="font-size:13px;color:var(--muted);margin-bottom:14px">Get the 5-letter code from whoever started the round</p>
+    <div class="card-title">Enter Code</div>
+    <p style="font-size:13px;color:var(--muted);margin-bottom:14px">Enter a 5-letter code to join a round or a group lobby</p>
     <div class="fg">
       <label class="flabel">Round Code</label>
       <input class="finput" id="join-code" placeholder="e.g. GX7K2" maxlength="5"
@@ -694,181 +725,83 @@ function pg_home(){
   const rec=done.slice(0,3)
   const uname=S.user?.displayName||S.user?.email?.split('@')[0]||'Player'
   const uinitial=uname[0].toUpperCase()
-  const isPro=S.user?.isPaid
-  const userBadge=`<div class="user-badge"><div class="user-avatar">${uinitial}</div><div><div class="user-name">${uname} ${isPro?'<span style="font-size:11px;background:var(--gold);color:#fff;border-radius:6px;padding:1px 6px;font-weight:700;vertical-align:middle">PRO</span>':''}</div><div class="user-email">${S.user?.email||''}</div></div><button class="signout-btn" data-signout>Sign out</button></div>`
+  const userBadge=`<div class="user-badge"><div class="user-avatar">${uinitial}</div><div><div class="user-name">${uname}</div><div class="user-email">${S.user?.email||''}</div></div><button class="signout-btn" data-signout>Sign out</button></div>`
   const banner=act?`<div class="act-banner"><div><div class="act-lbl">In progress</div><div class="act-title">${act.course}</div></div><button class="btn" data-gsc="${act.id}">Continue &#8594;</button></div>`:''
   const rematch=last&&!act?`<button class="btn btn-gold" data-rematch style="margin-bottom:12px">🔁 Quick Rematch — ${last.course}</button>`:''
   const recent=rec.length?`<div class="card"><div class="card-title">Recent Rounds</div>${rec.map(r=>`<div class="hist-item" data-rd="${r.id}"><div class="hist-date">${dt(r.date||r.createdAt)}</div><div class="hist-course">${r.course}</div><div class="hist-tags">${Object.entries(r.games).filter(([,v])=>v.enabled).map(([k])=>k[0].toUpperCase()+k.slice(1)).join(' · ')}</div></div>`).join('')}</div>`:''
-  const nop=!D.players.length?`<div class="card"><div class="empty"><div class="ei">👤</div><p>Add players to get started</p></div><button class="btn btn-secondary" data-nav="players">Add Players</button></div>`:''
+  const nop=!D.players.length?`<div class="card"><div class="empty"><div class="ei">👤</div><p>Add players in Settings to get started</p></div><button class="btn btn-secondary" data-nav="players">Add Players</button></div>`:''
   const isIOS=/iphone|ipad|ipod/i.test(navigator.userAgent)
   const isStandalone=window.navigator.standalone||window.matchMedia('(display-mode: standalone)').matches
   const dismissed=localStorage.getItem('install_dismissed')
-  const installBanner=isIOS&&!isStandalone&&!dismissed?`<div class="install-banner"><div class="ib-icon">⛳</div><div class="ib-text"><div class="ib-title">Add Wager to Home Screen</div>Tap <strong>Share &#8593;</strong> then <strong>"Add to Home Screen"</strong> to install as an app</div><button class="ib-close" data-dismiss-install>&#10005;</button></div>`:''
+  const installBanner=isIOS&&!isStandalone&&!dismissed?`<div class="install-banner"><div class="ib-icon">⛳</div><div class="ib-text"><div class="ib-title">Add BetCaddie to Home Screen</div>Tap <strong>Share &#8593;</strong> → <strong>View More</strong> → <strong>"Add to Home Screen"</strong></div><button class="ib-close" data-dismiss-install>&#10005;</button></div>`:''
   return`${installBanner}${userBadge}${banner}
-  <div class="hero"><h2>Ready to play?</h2><p>${D.players.length} players registered</p>
+  <div class="hero"><h2>Ready to play?</h2><p>${D.players.length} player${D.players.length!==1?'s':''} registered</p>
     <div class="btn-row" style="margin-top:14px">
       <button class="btn" data-start>+ Start Round</button>
       <button class="btn" style="background:rgba(255,255,255,.2);border:1.5px solid rgba(255,255,255,.35)" data-nav="join">Enter Code</button>
     </div>
   </div>
-  ${rematch}
-  <div class="stat-row">
-    <div class="stat-card"><div class="stat-val">${D.players.length}</div><div class="stat-lbl">Players</div></div>
-    <div class="stat-card"><div class="stat-val">${done.length}</div><div class="stat-lbl">Rounds</div></div>
-    <div class="stat-card"><div class="stat-val">${done.reduce((a,r)=>a+Object.values(r.games||{}).filter(g=>g.enabled).length,0)}</div><div class="stat-lbl">Games</div></div>
-  </div>${recent}${nop}`
+  ${rematch}${recent}${nop}`
 }
 
-// ── PLAYERS ───────────────────────────────────────────
+// ── PLAYERS / SETTINGS ────────────────────────────────
 function pg_players(){
   const D=db()
-  const eg=S.editGroup  // null = not editing, 'new' = new group, id = editing existing
-
-  // group editor
-  let groupEditor=''
-  if(eg){
-    const grp=eg==='new'?{id:'new',name:'',playerIds:[]}:D.groups.find(g=>g.id===eg)||{id:eg,name:'',playerIds:[]}
-    groupEditor=`<div class="card" style="border:2px solid var(--green)"><div class="card-title">${eg==='new'?'Create Group':'Edit Group'}</div>
-      <div class="fg"><label class="flabel">Group Name</label><input class="finput" id="gn" placeholder="e.g. Friday Crew" value="${grp.name}"></div>
-      <div class="flabel" style="margin-bottom:6px">Players</div>
-      <div class="pchips" style="margin-bottom:12px">${D.players.map(p=>`<div class="pchip ${grp.playerIds.includes(p.id)?'on':''}" data-tgp="${p.id}">${p.name}</div>`).join('')}</div>
-      <div class="btn-row">
-        <button class="btn btn-outline" data-cancelg>Cancel</button>
-        <button class="btn btn-primary" data-saveg="${eg}">Save Group</button>
-      </div>
-    </div>`
-  }
-
-  const groupsList=D.groups.length?`<div class="card"><div class="card-title">Groups</div>
-    ${D.groups.map(g=>`<div class="list-item"><div>
-      <div class="li-main">${g.name}</div>
-      <div class="li-sub">${g.playerIds.map(id=>pname(id)).join(', ')||'No players'}</div>
-    </div><div style="display:flex;gap:6px">
-      <button class="btn-xs btn-secondary" data-editg="${g.id}">Edit</button>
-      <button class="btn-xs btn-danger" data-delg="${g.id}">&#10005;</button>
-    </div></div>`).join('')}
-    <button class="btn btn-secondary" data-newg style="margin-top:10px">+ New Group</button>
-  </div>`:`<div class="card"><div class="card-title">Groups</div>
-    <div style="font-size:13px;color:var(--muted);margin-bottom:10px">Save a group of players for quick round setup</div>
-    <button class="btn btn-secondary" data-newg>+ New Group</button>
-  </div>`
-
+  const geminiKey=localStorage.getItem('betcaddie_gemini_key')||''
+  const playerList=D.players.length?D.players.map(p=>`<div class="list-item">
+    <div><div class="li-main">${p.name}</div><div class="li-sub">${p.venmo?`@${p.venmo}`:''}${p.cashapp?` · $${p.cashapp}`:''}</div></div>
+    <button class="btn-xs btn-danger" data-delp="${p.id}">Remove</button>
+  </div>`).join(''):`<div style="font-size:13px;color:var(--muted);padding:4px 0">No players yet</div>`
   return`
-  <div style="font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.08em;padding:10px 4px 6px;text-transform:uppercase">Players</div>
-  <div class="card"><div class="card-title">Roster</div>
-    ${!D.players.length?`<div class="empty"><div class="ei">👤</div><p>No players yet</p></div>`:''}
-    ${D.players.map(p=>`<div class="list-item"><div><div class="li-main">${p.name}</div><div class="li-sub">HCP ${p.handicap||0}</div></div><button class="btn-xs btn-danger" data-delp="${p.id}">Remove</button></div>`).join('')}
-  </div>
+  <div class="card"><div class="card-title">Players</div>${playerList}</div>
   <div class="card"><div class="card-title">Add Player</div>
-    <div class="fg"><label class="flabel">Name</label><input class="finput" id="pn" placeholder="Player name"></div>
-    <div class="fg"><label class="flabel">Handicap</label><input class="finput" id="ph" type="number" min="0" max="54" placeholder="0"></div>
+    <div class="fg"><label class="flabel">Name</label><input class="finput" id="pn" placeholder="e.g. Hayes"></div>
+    <div class="fg"><label class="flabel">Venmo <span style="font-weight:400;color:var(--muted)">(optional — for settle-up links)</span></label><div style="display:flex;align-items:center;gap:6px"><span style="color:var(--muted);font-weight:700">@</span><input class="finput" id="pvenmo" placeholder="venmo-username"></div></div>
+    <div class="fg"><label class="flabel">Cash App <span style="font-weight:400;color:var(--muted)">(optional)</span></label><div style="display:flex;align-items:center;gap:6px"><span style="color:var(--muted);font-weight:700">$</span><input class="finput" id="pcashapp" placeholder="cashtag"></div></div>
     <button class="btn btn-primary" data-addp>Add Player</button>
   </div>
-  ${groupEditor}
-  ${!eg?groupsList:''}
-
-  <div style="font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.08em;padding:18px 4px 6px;text-transform:uppercase">Settings</div>
-
-  <div class="card"><div class="card-title">📲 Add to Home Screen</div>
-    <div style="margin-bottom:14px">
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
-        <span style="font-size:22px">🍎</span>
-        <div>
-          <div style="font-size:14px;font-weight:700;margin-bottom:4px">iPhone (Safari only)</div>
-          <div style="font-size:12px;color:var(--muted);line-height:1.7">
-            1. Open Wager in <strong>Safari</strong> — not Chrome<br>
-            2. Tap the <strong>Share</strong> button (box with arrow ↑)<br>
-            3. Scroll down and tap <strong>"Add to Home Screen"</strong><br>
-            4. Tap <strong>Add</strong>
-          </div>
-        </div>
-      </div>
-      <div style="border-top:1px solid var(--border);padding-top:12px;display:flex;align-items:center;gap:10px">
-        <span style="font-size:22px">🤖</span>
-        <div>
-          <div style="font-size:14px;font-weight:700;margin-bottom:4px">Android (Chrome)</div>
-          <div style="font-size:12px;color:var(--muted);line-height:1.7">
-            1. Open Wager in <strong>Chrome</strong><br>
-            2. Tap the <strong>3-dot menu</strong> (⋮) top right<br>
-            3. Tap <strong>"Add to Home screen"</strong><br>
-            4. Tap <strong>Add</strong>
-          </div>
-        </div>
-      </div>
-    </div>
-    <div style="font-size:12px;color:var(--muted);background:var(--green-pale);border-radius:8px;padding:10px">
-      ⚡ Once added, Wager opens full screen like a native app
-    </div>
+  <div class="card"><div class="card-title">📷 Scan Scorecard</div>
+    <div style="font-size:13px;color:var(--muted);margin-bottom:12px;line-height:1.6">Scan a physical scorecard to auto-fill hole pars. Requires a free Google AI key — get one at <strong>aistudio.google.com</strong> → "Get API key".</div>
+    <div class="fg"><label class="flabel">Google AI API Key</label><input class="finput" id="gemini-key" placeholder="AIza..." value="${geminiKey}" autocomplete="off"></div>
+    <button class="btn btn-secondary" data-save-gemini>Save Key</button>
   </div>
-
   <div class="card" style="text-align:center;padding:20px 16px">
     <div style="font-size:22px;margin-bottom:6px">⛳</div>
-    <div style="font-size:15px;font-weight:800;margin-bottom:2px">Wager</div>
-    <div style="font-size:12px;color:var(--muted);margin-bottom:12px">Golf betting with your group</div>
-    <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Support</div>
-    <a href="mailto:councilcomputing@gmail.com" style="font-size:13px;color:var(--green);font-weight:600;text-decoration:none">councilcomputing@gmail.com</a>
-    <div style="font-size:11px;color:var(--muted);margin-top:4px">Questions or feedback? Reach out anytime.</div>
+    <div style="font-size:15px;font-weight:800;margin-bottom:2px">BetCaddie</div>
+    <div style="font-size:12px;color:var(--muted)">Scores, bets, and settle-up</div>
   </div>`
 }
 
 // ── SETUP ─────────────────────────────────────────────
 function pg_setup(){
   const d=S.draft||newDraft(),D=db()
-  if(S.step===1){
-    const saved=D.courses||[]
-    // par grid — tap to cycle 3→4→5→3
-    const parGrid=Array.from({length:d.holes},(_,i)=>{
-      const p=d.pars[i]||4
-      return`<button class="par-cell" data-dp="${i}" style="background:${p===3?'var(--green-pale)':p===5?'var(--gold-pale)':'#f5f5f5'};color:${p===3?'var(--green2)':p===5?'var(--gold)':'var(--muted)'}">
-        <span style="font-size:9px;display:block">${i+1}</span>
-        <span style="font-size:15px;font-weight:800">${p}</span>
-      </button>`
-    }).join('')
-    const totalPar=d.pars.slice(0,d.holes).reduce((a,b)=>a+b,0)
-    const savedCourses=saved.length?`<div class="card"><div class="card-title">Saved Courses</div>
-      <div style="display:flex;flex-direction:column;gap:6px">
-        ${saved.map(c=>`<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border)">
-          <div>
-            <div style="font-weight:700;font-size:15px">${c.name}</div>
-            <div style="font-size:12px;color:var(--muted)">${c.holes} holes &middot; Par ${c.pars.reduce((a,b)=>a+b,0)}</div>
-          </div>
-          <div style="display:flex;gap:6px">
-            <button class="btn-sm btn-secondary" data-loadc="${c.id}">Load</button>
-            <button class="btn-xs btn-danger" data-delc="${c.id}">&#10005;</button>
-          </div>
-        </div>`).join('')}
-      </div>
-    </div>`:''
-    return`${savedCourses}<div class="card"><div class="card-title">Round Info</div>
-      <div class="fg"><label class="flabel">Course Name</label><input class="finput" id="dc" value="${d.course}" placeholder="e.g. Pebble Beach, Oak Tree"></div>
-      <div class="fg"><label class="flabel">Holes</label><select class="finput" id="dh">
-        <option value="9" ${d.holes===9?'selected':''}>9 Holes</option>
-        <option value="18" ${d.holes===18?'selected':''}>18 Holes</option>
-      </select></div>
-      <div style="display:flex;gap:8px;margin-bottom:4px">
-        <button class="btn btn-secondary" data-aifill ${S.aiLoading?'disabled':''} style="flex:1">${S.aiLoading?'⏳ Looking up…':'✨ AI Fill Pars'}</button>
-        <button class="btn btn-outline" data-savec style="flex:1">💾 Save Course</button>
-      </div>
+  const saved=D.courses||[]
+  const parGrid=Array.from({length:d.holes},(_,i)=>{
+    const p=d.pars[i]||4
+    return`<button class="par-cell" data-dp="${i}" style="background:${p===3?'var(--green-pale)':p===5?'var(--gold-pale)':'#f5f5f5'};color:${p===3?'var(--green2)':p===5?'var(--gold)':'var(--muted)'}">
+      <span style="font-size:9px;display:block">${i+1}</span>
+      <span style="font-size:15px;font-weight:800">${p}</span>
+    </button>`
+  }).join('')
+  const totalPar=d.pars.slice(0,d.holes).reduce((a,b)=>a+b,0)
+  const savedCourses=saved.length?`<div class="card"><div class="card-title">Saved Courses</div>
+    <div style="display:flex;flex-direction:column;gap:6px">
+      ${saved.map(c=>`<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border)">
+        <div><div style="font-weight:700;font-size:15px">${c.name}</div><div style="font-size:12px;color:var(--muted)">${c.holes} holes &middot; Par ${c.pars.reduce((a,b)=>a+b,0)}</div></div>
+        <div style="display:flex;gap:6px">
+          <button class="btn-sm btn-secondary" data-loadc="${c.id}">Load</button>
+          <button class="btn-xs btn-danger" data-delc="${c.id}">&#10005;</button>
+        </div>
+      </div>`).join('')}
     </div>
-    <div class="card"><div class="card-title" style="display:flex;align-items:center;justify-content:space-between">Par per Hole <span style="font-weight:800;color:var(--text)">Total: ${totalPar}</span></div>
-      <div style="display:grid;grid-template-columns:repeat(9,1fr);gap:4px">${parGrid}</div>
-      <div style="font-size:11px;color:var(--muted);margin-top:8px;text-align:center">Tap any hole to cycle par 3 → 4 → 5</div>
-    </div>
-    <div class="card"><div class="card-title">Select Players</div>
-      ${D.groups?.length?`<div style="margin-bottom:10px"><div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:6px">LOAD FROM GROUP</div>
-        <div class="pchips">${D.groups.map(g=>`<div class="pchip" data-loadg="${g.id}" style="background:var(--gold-pale);border-color:var(--gold);color:#7a5c00">👥 ${g.name}</div>`).join('')}</div>
-      </div>`:``}
-      ${!D.players.length?`<div style="font-size:13px;color:var(--muted)">No players saved. <button class="btn-xs btn-secondary" data-nav="players">Add Players</button></div>`:''}
-      <div class="pchips">${D.players.map(p=>`<div class="pchip ${d.playerIds.includes(p.id)?'on':''}" data-tp="${p.id}">${p.name}</div>`).join('')}</div>
-      <div style="margin-top:8px;font-size:13px;color:var(--muted)">${d.playerIds.length} selected</div>
-    </div>
-    <button class="btn btn-primary" data-sn>Next: Choose Games &#8594;</button>`
-  }
-  const g=d.games,sp=D.players.filter(p=>d.playerIds.includes(p.id))
+  </div>`:''
+
+  const g=d.games
+  const sp=D.players.filter(p=>d.playerIds.includes(p.id))
   const t1=g.matchPlay.teams[0]||[],t2=g.matchPlay.teams[1]||[]
   const nsub=g.nassau.enabled?`<div class="gsub">
     <div class="fg"><label class="flabel">$ per segment (front/back/18)</label><input class="finput finput-sm" id="na" type="number" min="0" step="0.5" value="${g.nassau.amount}"></div>
-    <div class="tog-row" style="padding:6px 0;border:none"><div><div class="tname" style="font-size:14px">Auto-Press (2 strokes down at midpoint)</div></div>
+    <div class="tog-row" style="padding:6px 0;border:none"><div><div class="tname" style="font-size:14px">Auto-Press (2 strokes down)</div></div>
     <label class="tog"><input type="checkbox" id="np" ${g.nassau.autoPress?'checked':''}><span class="tog-sl"></span></label></div>
   </div>`:''
   const ssub=g.skins.enabled?`<div class="gsub">
@@ -881,14 +814,45 @@ function pg_setup(){
     ${sp.length===4?`<div style="margin-top:4px"><div class="flabel" style="font-size:13px;margin-bottom:6px">Team 1 (pick 2)</div>
     <div class="pchips">${sp.map(p=>`<div class="pchip ${t1.includes(p.id)?'on':''}" data-mpt="${p.id}">${p.name}</div>`).join('')}</div>
     <div style="font-size:12px;color:var(--muted);margin-top:6px">T1: ${t1.map(id=>pname(id)).join(' &amp; ')||'—'} &nbsp;|&nbsp; T2: ${t2.map(id=>pname(id)).join(' &amp; ')||'—'}</div></div>`:
-    `<div style="font-size:12px;color:var(--muted)">${sp.length===2?'Head-to-head match play':sp.length+' players selected'}</div>`}
+    `<div style="font-size:12px;color:var(--muted)">${sp.length===2?'Head-to-head match play':'Select players first'}</div>`}
   </div>`:''
   const wsub=g.wolf.enabled?`<div class="gsub">
     <div class="fg"><label class="flabel">$ per point</label><input class="finput finput-sm" id="wa" type="number" min="0.25" step="0.25" value="${g.wolf.pointValue}"></div>
     <div style="font-size:12px;color:var(--muted)">Regular: 1 pt each side &middot; Lone Wolf win: 2 pts each</div>
   </div>`:''
-  return`<div class="card"><div class="card-title">Choose Games</div>
-    <div class="tog-row"><div><div class="tname">🏌️ Nassau</div><div class="tsub">Front 9 &middot; Back 9 &middot; Total 18</div></div>
+  const spsub=g.strokePlay.enabled?`<div class="gsub">
+    <div class="fg"><label class="flabel">$ per stroke difference (0 = track only)</label><input class="finput finput-sm" id="spa" type="number" min="0" step="0.5" value="${g.strokePlay.amount}"></div>
+  </div>`:''
+
+  return`${savedCourses}
+  <div class="card"><div class="card-title">Round Info</div>
+    <div class="fg"><label class="flabel">Course Name</label><input class="finput" id="dc" value="${d.course}" placeholder="e.g. Pebble Beach"></div>
+    <div class="fg"><label class="flabel">Holes</label><select class="finput" id="dh">
+      <option value="9" ${d.holes===9?'selected':''}>9 Holes</option>
+      <option value="18" ${d.holes===18?'selected':''}>18 Holes</option>
+    </select></div>
+    <div style="display:flex;gap:8px;margin-bottom:8px">
+      <button class="btn btn-outline" data-scan ${S.aiLoading?'disabled':''} style="flex:1">${S.aiLoading?'⏳ Scanning…':'📷 Scan Scorecard'}</button>
+      <button class="btn btn-outline" data-savec style="flex:1">💾 Save Course</button>
+    </div>
+    <input id="cam-input" type="file" accept="image/*" capture="environment" style="display:none">
+  </div>
+  <div class="card"><div class="card-title" style="display:flex;align-items:center;justify-content:space-between">Par per Hole <span style="font-weight:800;color:var(--text)">Total: ${totalPar}</span></div>
+    <div style="display:grid;grid-template-columns:repeat(9,1fr);gap:4px">${parGrid}</div>
+    <div style="font-size:11px;color:var(--muted);margin-top:8px;text-align:center">Tap to cycle 3 → 4 → 5</div>
+  </div>
+  <div class="card"><div class="card-title">Select Players</div>
+    ${D.groups?.length?`<div style="margin-bottom:10px"><div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:6px">GROUPS</div>
+      <div class="pchips">${D.groups.map(grp=>`<div class="pchip" data-loadg="${grp.id}" style="background:var(--gold-pale);border-color:var(--gold);color:#7a5c00">👥 ${grp.name}</div>`).join('')}</div>
+    </div>`:``}
+    ${D.players.length?`<div class="pchips">${D.players.map(p=>`<div class="pchip ${d.playerIds.includes(p.id)?'on':''}" data-tp="${p.id}">${p.name}</div>`).join('')}</div>`:
+    `<div style="font-size:13px;color:var(--muted)">No players yet. <button class="btn-xs btn-secondary" data-nav="players">Add Players →</button></div>`}
+    <div style="margin-top:8px;font-size:13px;color:var(--muted)">${d.playerIds.length} selected</div>
+  </div>
+  <div class="card"><div class="card-title">Choose Games</div>
+    <div class="tog-row"><div><div class="tname">🏌️ Classic</div><div class="tsub">Stroke play · Low total score wins</div></div>
+      <label class="tog"><input type="checkbox" id="tsp" ${g.strokePlay.enabled?'checked':''}><span class="tog-sl"></span></label></div>${spsub}
+    <div class="tog-row"><div><div class="tname">🏌️ Nassau</div><div class="tsub">Front 9 · Back 9 · Total 18</div></div>
       <label class="tog"><input type="checkbox" id="tn" ${g.nassau.enabled?'checked':''}><span class="tog-sl"></span></label></div>${nsub}
     <div class="tog-row"><div><div class="tname">💰 Skins</div><div class="tsub">Win holes outright to collect</div></div>
       <label class="tog"><input type="checkbox" id="ts" ${g.skins.enabled?'checked':''}><span class="tog-sl"></span></label></div>${ssub}
@@ -897,7 +861,7 @@ function pg_setup(){
     <div class="tog-row"><div><div class="tname">🐺 Wolf</div><div class="tsub">Rotating captain picks partner each hole</div></div>
       <label class="tog"><input type="checkbox" id="tw" ${g.wolf.enabled?'checked':''}><span class="tog-sl"></span></label></div>${wsub}
   </div>
-  <div class="btn-row"><button class="btn btn-outline" data-sb>&#8592; Back</button><button class="btn btn-primary" data-sg>Start Round ⛳</button></div>`
+  <button class="btn btn-primary" data-sg>Start Round ⛳</button>`
 }
 
 // ── SCORECARD (hole-by-hole) ──────────────────────────
@@ -909,6 +873,10 @@ function pg_scorecard(){
   const{players:pl,scores:sc,pars}=round,holes=round.holes||18
   const h=Math.min(S.hole||0,holes-1)
   const par=pars[h]||4
+  // pre-fill current hole scores with par if not yet entered
+  let _prefilled=false
+  pl.forEach(p=>{if(sc[p.id]&&sc[p.id][h]==null){sc[p.id][h]=par;_prefilled=true}})
+  if(_prefilled&&S.rid){const _upd={};pl.forEach(p=>{_upd[`scores.${p.id}`]=sc[p.id]});setTimeout(()=>fdb.collection('rounds').doc(S.rid).update(_upd),0)}
   const won=round.games.wolf?.enabled
   const sideBets=round.sideBets||{}
   const hbets=sideBets[h+1]||[]
@@ -986,24 +954,29 @@ function pg_scorecard(){
       </div>
     </div>
     <div class="hh-players">${playerRows}</div>
-    <div class="btn-row" style="margin-top:16px">${prevBtn}${nextBtn}</div>
+    <button class="btn ${S.voiceListening?'btn-danger':'btn-outline'}" data-voice style="width:100%;margin:12px 0 0;font-size:15px">${S.voiceListening?'🔴 Listening…':'🎤 Voice Score'}</button>
+    <div class="btn-row" style="margin-top:12px">${prevBtn}${nextBtn}</div>
   </div>
-  <div class="card">
-    <div class="card-title">💰 Side Bets — Hole ${h+1}</div>
-    ${existingBets||`<div style="font-size:13px;color:var(--muted);margin-bottom:8px">No bets yet for this hole</div>`}
-    <div class="add-bet-form" style="margin-top:${hbets.length?'10':'0'}px">
+  <div class="card" style="padding:12px 16px">
+    <div style="display:flex;align-items:center;justify-content:space-between">
+      <div style="font-size:14px;font-weight:700">💰 Side Bets${hbets.length?` <span style="background:var(--gold);color:#fff;border-radius:10px;padding:1px 7px;font-size:12px">${hbets.length}</span>`:''}</div>
+      <button class="btn-sm ${S.betFormOpen?'btn-secondary':'btn-gold'}" data-toggle-bet>${S.betFormOpen?'Cancel':'＋ Add Bet'}</button>
+    </div>
+    ${existingBets?`<div style="margin-top:10px">${existingBets}</div>`:''}
+    ${S.betFormOpen?`<div class="add-bet-form" style="margin-top:12px">
       <select id="bt-type-${h+1}">${betTypeOpts}</select>
       <div class="bet-form-row">
         <div><div style="font-size:11px;color:var(--muted);margin-bottom:3px">Winner</div><select id="bt-win-${h+1}">${playerOpts}</select></div>
         <div><div style="font-size:11px;color:var(--muted);margin-bottom:3px">$ per player</div><input id="bt-amt-${h+1}" type="number" min="0" step="0.5" placeholder="5"></div>
       </div>
       <input id="bt-note-${h+1}" placeholder="Note (e.g. 40ft putt, back bunker...)">
-      <button class="btn btn-gold" style="padding:10px" data-add-bet="${h+1}">+ Add Bet</button>
-    </div>
+      <button class="btn btn-gold" style="padding:10px" data-add-bet="${h+1}">Save Bet</button>
+    </div>`:''}
   </div>
   <div class="card" style="padding:12px 16px">
     <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Running Totals</div>
     <div style="display:flex;flex-wrap:wrap;gap:6px">${totals}</div>
+    ${(()=>{const lm=calcAll(round);const hasAmt=pl.some(p=>lm.tot[p.id]!==0);if(!hasAmt)return'';return`<div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border)"><div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">💵 Live Money</div><div style="display:flex;flex-wrap:wrap;gap:6px">${pl.map(p=>{const v=lm.tot[p.id]||0;return`<span style="font-size:12px;font-weight:600;color:var(--muted)">${p.name.split(' ')[0]}: <strong style="color:${v>0?'var(--green2)':v<0?'var(--red)':'var(--text)'}">${$$(v)}</strong></span>`}).join('<span style="color:var(--border);margin:0 6px">|</span>')}</div></div>`})()}
   </div>`
 }
 
@@ -1060,7 +1033,8 @@ function pg_results(){
     {key:'nassau',lbl:'🏌️ Nassau',p:res.nassau},
     {key:'skins',lbl:'💰 Skins',p:res.skins.payouts||{}},
     {key:'matchPlay',lbl:'🆚 Match Play',p:res.matchPlay},
-    {key:'wolf',lbl:'🐺 Wolf',p:res.wolf}
+    {key:'wolf',lbl:'🐺 Wolf',p:res.wolf},
+    {key:'strokePlay',lbl:'🏌️ Classic',p:res.strokePlay.payouts}
   ].filter(g=>round.games[g.key]?.enabled)
 
   const sbSummary=res.sideBets.summary||[]
@@ -1070,6 +1044,11 @@ function pg_results(){
   const bkr=games.map(g=>{const c=pl.map(p=>{const v=g.p?.[p.id]||0;return`<td class="${v>0?'mpos':v<0?'mneg':'mzro'}">${$$(v)}</td>`}).join('');return`<tr><td><strong>${g.lbl}</strong></td>${c}</tr>`}).join('')
   const sbRow=hasSB?`<tr><td><strong>💰 Side Bets</strong></td>${pl.map(p=>{const v=res.sideBets.payouts[p.id]||0;return`<td class="${v>0?'mpos':v<0?'mneg':'mzro'}">${$$(v)}</td>`}).join('')}</tr>`:''
   const tr=pl.map(p=>{const v=res.tot[p.id]||0;return`<td class="${v>0?'mpos':v<0?'mneg':'mzro'}"><strong>${$$(v)}</strong></td>`}).join('')
+
+  const medals=['🥇','🥈','🥉']
+  const spDetail=round.games.strokePlay?.enabled?`<div class="card"><div class="card-title">🏌️ Classic Leaderboard</div>
+    ${res.strokePlay.ranked.map((p,i)=>{const strokes=res.strokePlay.totals[p.id];const diff=strokes-(res.strokePlay.totalPar||0);const diffStr=diff===0?'E':diff>0?`+${diff}`:diff;return`<div class="list-item"><div style="display:flex;align-items:center;gap:10px"><div style="font-size:20px;width:28px">${medals[i]||`${i+1}.`}</div><div><div class="li-main">${p.name}</div><div class="li-sub">${strokes} strokes &nbsp;·&nbsp; <span style="font-weight:700;color:${diff<=0?'var(--green2)':'var(--red)'}">${diffStr}</span></div></div></div>${round.games.strokePlay.amount>0?`<div style="font-weight:700;color:${(res.strokePlay.payouts[p.id]||0)>=0?'var(--green2)':'var(--red)'}">${$$(res.strokePlay.payouts[p.id]||0)}</div>`:''}</div>`}).join('')}
+  </div>`:''
 
   const sd=round.games.skins?.enabled?`<div class="card"><div class="card-title">💰 Skins Detail</div>
     ${pl.map(p=>`<div class="list-item"><div class="li-main">${p.name}</div><span class="badge bo">${res.skins.won?.[p.id]||0} skins</span></div>`).join('')}
@@ -1081,13 +1060,13 @@ function pg_results(){
   </div>`:''
 
   const tx=settle(pl,res.tot)
-  const sh=tx.length?`<div class="card"><div class="card-title">💸 Settle Up</div>${tx.map(t=>`<div class="settle-item"><span class="settle-from">${pname(t.from)}</span><span style="color:var(--red)"> &#8594; </span><span class="settle-to">${pname(t.to)}</span><span class="settle-amt">${$$(t.amount)}</span></div>`).join('')}</div>`:`<div class="card"><div style="text-align:center;padding:14px;color:var(--muted)">All square &#8212; no money moves!</div></div>`
+  const sh=tx.length?`<div class="card"><div class="card-title">💸 Settle Up</div>${tx.map(t=>{const amt=t.amount.toFixed(2);const note=encodeURIComponent('Golf bets');const toP=round.players.find(p=>p.id===t.to);const venmoH=toP?.venmo;const cashH=toP?.cashapp;const venmoLink=venmoH?`venmo://paycharge?txn=pay&recipients=${encodeURIComponent(venmoH)}&amount=${amt}&note=${note}`:`venmo://paycharge?txn=pay&amount=${amt}&note=${note}`;const cashLink=cashH?`https://cash.app/$${cashH}`:`https://cash.app/`;return`<div class="settle-item" style="flex-wrap:wrap;gap:6px"><div style="display:flex;align-items:center;gap:8px;flex:1"><span class="settle-from">${pname(t.from)}</span><span style="color:var(--red)">&#8594;</span><span class="settle-to">${pname(t.to)}</span><span class="settle-amt">${$$(t.amount)}</span></div><div style="display:flex;gap:6px;margin-top:4px"><a href="${venmoLink}" class="pay-btn pay-venmo">${venmoH?`Venmo @${venmoH}`:'Venmo'}</a><a href="${cashLink}" class="pay-btn pay-cash">${cashH?`$${cashH}`:'Cash App'}</a></div></div>`}).join('')}</div>`:`<div class="card"><div style="text-align:center;padding:14px;color:var(--muted)">All square &#8212; no money moves!</div></div>`
 
   return`<div class="card"><div class="card-title">Results &#8212; ${round.course}</div>
     ${pl.map(p=>{const v=res.tot[p.id]||0;return`<div class="res-item"><div class="res-name">${p.name}</div><div class="res-amt ${v>0?'mpos':v<0?'mneg':'mzro'}">${$$(v)}</div></div>`}).join('')}
   </div>
   ${(games.length>0||hasSB)?`<div class="card"><div class="card-title">Breakdown</div><div style="overflow-x:auto"><table class="bk-table"><tr><th>Game</th>${ph}</tr>${bkr}${sbRow}<tr style="background:var(--green-pale)"><td><strong>TOTAL</strong></td>${tr}</tr></table></div></div>`:''}
-  ${sd}${sbDetail}${sh}
+  ${spDetail}${sd}${sbDetail}${sh}
   <div class="btn-row"><button class="btn btn-secondary" data-nav="home">Done</button><button class="btn btn-outline" data-gsc="${round.id}">Edit Scores</button></div>`
 }
 
@@ -1154,7 +1133,7 @@ function bind(){
   document.querySelector('[data-back]')?.addEventListener('click',e=>{const t=e.currentTarget.dataset.back;if(t==='scorecard')go('scorecard',{rid:S.rid});else nav(t||'home')})
 
   // home
-  document.querySelector('[data-start]')?.addEventListener('click',()=>{const D=db();if(!D.players.length){nav('players');return}S.draft=newDraft();S.step=1;go('setup')})
+  document.querySelector('[data-start]')?.addEventListener('click',()=>{const D=db();if(!D.players.length){nav('players');return}S.draft=newDraft();go('setup')})
   document.querySelectorAll('[data-gsc]').forEach(el=>el.addEventListener('click',()=>go('scorecard',{rid:el.dataset.gsc})))
   document.querySelectorAll('[data-rd]').forEach(el=>el.addEventListener('click',()=>go('round-detail',{rid:el.dataset.rd})))
 
@@ -1165,45 +1144,26 @@ function bind(){
     d.course=last.course;d.holes=last.holes||18;d.pars=[...last.pars]
     d.playerIds=last.players.map(p=>p.id).filter(id=>D.players.some(pl=>pl.id===id))
     d.games=JSON.parse(JSON.stringify(last.games))
-    S.draft=d;S.step=1;go('setup')
+    S.draft=d;go('setup')
   })
 
-  // group new/edit/delete/cancel/save
-  document.querySelector('[data-newg]')?.addEventListener('click',()=>{S.editGroup='new';ren()})
-  document.querySelector('[data-cancelg]')?.addEventListener('click',()=>{S.editGroup=null;ren()})
-  document.querySelectorAll('[data-editg]').forEach(el=>el.addEventListener('click',()=>{S.editGroup=el.dataset.editg;ren()}))
-  document.querySelectorAll('[data-delg]').forEach(el=>el.addEventListener('click',()=>{
-    dialog('Delete this group?',()=>{const D=db();D.groups=D.groups.filter(g=>g.id!==el.dataset.delg);save(D);ren()},{dangerous:true,confirmText:'Delete'})
-  }))
+  // save Gemini API key
+  document.querySelector('[data-save-gemini]')?.addEventListener('click',()=>{
+    const key=document.getElementById('gemini-key')?.value.trim()
+    localStorage.setItem('betcaddie_gemini_key',key)
+    toast('API key saved','success')
+  })
 
-  // toggle player in group editor
-  document.querySelectorAll('[data-tgp]').forEach(el=>el.addEventListener('click',()=>{
-    const pid=el.dataset.tgp
-    const D=db(),gid=S.editGroup
-    if(gid==='new'){
-      // find current draft state from the DOM
-      const cur=Array.from(document.querySelectorAll('[data-tgp].on')).map(e=>e.dataset.tgp)
-      el.classList.toggle('on')
-      return
-    }
-    const g=D.groups.find(g=>g.id===gid);if(!g)return
-    if(g.playerIds.includes(pid))g.playerIds=g.playerIds.filter(x=>x!==pid);else g.playerIds.push(pid)
-    save(D);ren()
-  }))
-
-  // save group
-  document.querySelector('[data-saveg]')?.addEventListener('click',e=>{
-    const gid=e.currentTarget.dataset.saveg
-    const name=document.getElementById('gn')?.value.trim()
-    if(!name){toast('Enter a group name','error');return}
-    const playerIds=Array.from(document.querySelectorAll('[data-tgp].on')).map(el=>el.dataset.tgp)
-    const D=db()
-    if(gid==='new'){
-      D.groups.push({id:uid(),name,playerIds})
-    }else{
-      const g=D.groups.find(g=>g.id===gid);if(g){g.name=name;g.playerIds=playerIds}
-    }
-    save(D);S.editGroup=null;ren()
+  // scan scorecard (camera → Gemini)
+  document.querySelector('[data-scan]')?.addEventListener('click',()=>{
+    document.getElementById('cam-input')?.click()
+  })
+  document.getElementById('cam-input')?.addEventListener('change',async e=>{
+    const file=e.target.files?.[0];if(!file)return
+    const holes=parseInt(document.getElementById('dh')?.value)||18
+    const pars=await scanScorecard(file,holes)
+    if(pars){S.draft.pars=pars;ren()}
+    e.target.value=''
   })
 
   // load group into setup player selection
@@ -1211,13 +1171,6 @@ function bind(){
     const D=db(),g=D.groups.find(g=>g.id===el.dataset.loadg);if(!g)return
     S.draft.playerIds=[...g.playerIds];ren()
   }))
-
-  // save API key
-  document.querySelector('[data-savekey]')?.addEventListener('click',()=>{
-    const v=document.getElementById('ak')?.value.trim()
-    if(v)localStorage.setItem('golf_apikey',v);else localStorage.removeItem('golf_apikey')
-    ren()
-  })
 
   // draft par grid (setup step 1) — cycle 3→4→5→3
   document.querySelectorAll('[data-dp]').forEach(el=>el.addEventListener('click',()=>{
@@ -1250,38 +1203,29 @@ function bind(){
     dialog('Remove this course?',()=>{const D=db();D.courses=D.courses.filter(c=>c.id!==el.dataset.delc);save(D);ren()},{dangerous:true,confirmText:'Remove'})
   }))
 
-  // AI auto-fill pars
-  document.querySelector('[data-aifill]')?.addEventListener('click',async()=>{
-    if(!S.user?.isPaid){showPaywall();return}
-    const course=document.getElementById('dc')?.value.trim()
-    const holes=parseInt(document.getElementById('dh')?.value)||18
-    if(!course){toast('Enter a course name first','error');return}
-    S.draft.course=course;S.draft.holes=holes;S.aiLoading=true;ren()
-    try{
-      const pars=await fillPars(course,holes)
-      S.draft.pars=pars
-      S.aiLoading=false;ren()
-    }catch(e){
-      S.aiLoading=false;ren()
-      toast('AI lookup failed: '+e.message,'error')
-    }
-  })
 
   // players
   document.querySelector('[data-addp]')?.addEventListener('click',()=>{
-    const n=document.getElementById('pn')?.value.trim(),h=parseInt(document.getElementById('ph')?.value)||0
-    if(!n)return;const D=db();D.players.push({id:uid(),name:n,handicap:h});save(D);ren()
+    const n=document.getElementById('pn')?.value.trim()
+    const v=(document.getElementById('pvenmo')?.value||'').trim().replace(/^@/,'')
+    const c=(document.getElementById('pcashapp')?.value||'').trim().replace(/^\$/,'')
+    if(!n)return;const D=db();const p={id:uid(),name:n};if(v)p.venmo=v;if(c)p.cashapp=c;D.players.push(p);save(D);ren()
   })
   document.querySelectorAll('[data-delp]').forEach(el=>el.addEventListener('click',()=>{
     dialog('Remove this player?',()=>{const D=db();D.players=D.players.filter(p=>p.id!==el.dataset.delp);save(D);ren()},{dangerous:true,confirmText:'Remove'})
   }))
 
-  // setup step 1
-  document.querySelectorAll('[data-tp]').forEach(el=>el.addEventListener('click',()=>{const id=el.dataset.tp,d=S.draft;if(d.playerIds.includes(id))d.playerIds=d.playerIds.filter(x=>x!==id);else d.playerIds.push(id);ren()}))
-  document.querySelector('[data-sn]')?.addEventListener('click',()=>{const d=S.draft;d.course=document.getElementById('dc')?.value||'';d.holes=parseInt(document.getElementById('dh')?.value)||18;if(d.playerIds.length<2){toast('Select at least 2 players','error');return}S.step=2;ren()})
-  document.querySelector('[data-sb]')?.addEventListener('click',()=>{S.step=1;ren()})
+
+  // setup player chips
+  document.querySelectorAll('[data-tp]').forEach(el=>el.addEventListener('click',()=>{
+    const id=el.dataset.tp,d=S.draft
+    if(d.playerIds.includes(id))d.playerIds=d.playerIds.filter(x=>x!==id)
+    else d.playerIds.push(id)
+    ren()
+  }))
 
   // game toggles
+  document.getElementById('tsp')?.addEventListener('change',e=>{S.draft.games.strokePlay.enabled=e.target.checked;ren()})
   document.getElementById('tn')?.addEventListener('change',e=>{S.draft.games.nassau.enabled=e.target.checked;ren()})
   document.getElementById('ts')?.addEventListener('change',e=>{S.draft.games.skins.enabled=e.target.checked;ren()})
   document.getElementById('tm')?.addEventListener('change',e=>{S.draft.games.matchPlay.enabled=e.target.checked;ren()})
@@ -1299,16 +1243,11 @@ function bind(){
   // start round
   document.querySelector('[data-sg]')?.addEventListener('click',()=>{
     const d=S.draft
-    ;[['na','nassau','amount'],['sa','skins','amount'],['ma','matchPlay','amount'],['wa','wolf','pointValue']].forEach(([id,gk,fk])=>{const el=document.getElementById(id);if(el){const v=parseFloat(el.value);if(!isNaN(v)&&v>0)d.games[gk][fk]=v}})
+    d.course=document.getElementById('dc')?.value.trim()||d.course
+    d.holes=parseInt(document.getElementById('dh')?.value)||18
+    ;[['spa','strokePlay','amount'],['na','nassau','amount'],['sa','skins','amount'],['ma','matchPlay','amount'],['wa','wolf','pointValue']].forEach(([id,gk,fk])=>{const el=document.getElementById(id);if(el){const v=parseFloat(el.value);if(!isNaN(v)&&v>=0)d.games[gk][fk]=v}})
+    if(d.playerIds.length<2){toast('Select at least 2 players','error');return}
     if(!Object.values(d.games).some(g=>g.enabled)){toast('Enable at least one game','error');return}
-    // Paywall: free users get 1 round per week
-    if(!S.user?.isPaid){
-      const wk=getWeekKey(),same=S.user?.weekKey===wk,count=same?(S.user?.weekRounds||0):0
-      if(count>=1){showPaywall();return}
-      const newCount=count+1
-      fdb.collection('users').doc(S.user.uid).set({weekRounds:newCount,weekKey:wk},{merge:true})
-      S.user.weekRounds=newCount;S.user.weekKey=wk
-    }
     const round=mkRound(d)
     round.code=genCode()
     round.hostId=S.user?.uid||''
@@ -1336,14 +1275,14 @@ function bind(){
   }))
 
   // finish round
-  document.querySelector('[data-finish]')?.addEventListener('click',()=>{
+  document.querySelectorAll('[data-finish]').forEach(el=>el.addEventListener('click',()=>{
     const r=S.round;if(!r)return
     const res=calcAll(r);r.payouts=res.tot;r.completed=true
     fdb.collection('rounds').doc(S.rid).update({completed:true,payouts:r.payouts})
     if(unsubRound){unsubRound();unsubRound=null}
     S.historyRounds=null  // force reload
     go('results',{rid:S.rid})
-  })
+  }))
 
   // wolf
   document.querySelector('[data-gwolf]')?.addEventListener('click',()=>go('wolf',{rid:S.rid}))
@@ -1372,6 +1311,15 @@ function bind(){
 
   // ── AUTH ──
   document.querySelector('[data-auth-toggle]')?.addEventListener('click',()=>{S.authMode=S.authMode==='signin'?'signup':'signin';ren()})
+  document.querySelector('[data-forgot-pw]')?.addEventListener('click',async()=>{
+    const email=document.getElementById('auth-email')?.value.trim()
+    if(!email){toast('Enter your email first','error');return}
+    try{
+      await auth.sendPasswordResetEmail(email)
+      toast('Check your inbox (and junk folder)')
+    }
+    catch(e){toast(e.code==='auth/user-not-found'?'No account with that email':'Could not send reset email','error')}
+  })
   document.querySelector('[data-auth-submit]')?.addEventListener('click',async()=>{
     const email=document.getElementById('auth-email')?.value.trim()
     const pass=document.getElementById('auth-pass')?.value
@@ -1381,9 +1329,12 @@ function bind(){
     try{
       if(S.authMode==='signup'){
         const name=document.getElementById('auth-name')?.value.trim()||email.split('@')[0]
+        const venmo=document.getElementById('auth-venmo')?.value.trim().replace(/^@/,'')
+        const cashapp=document.getElementById('auth-cashapp')?.value.trim().replace(/^\$/,'')
         const cred=await auth.createUserWithEmailAndPassword(email,pass)
         await cred.user.updateProfile({displayName:name})
-        await fdb.collection('users').doc(cred.user.uid).set({name,email})
+        const ud={name,email};if(venmo)ud.venmo=venmo;if(cashapp)ud.cashapp=cashapp
+        await fdb.collection('users').doc(cred.user.uid).set(ud)
       }else{
         await auth.signInWithEmailAndPassword(email,pass)
       }
@@ -1404,7 +1355,7 @@ function bind(){
     }
   })
   document.querySelector('[data-signout]')?.addEventListener('click',()=>{
-    dialog('Sign out of Wager?',()=>{
+    dialog('Sign out of BetCaddie?',()=>{
       if(unsubRound){unsubRound();unsubRound=null}
       S.round=null;S.historyRounds=null
       auth.signOut()
@@ -1414,9 +1365,10 @@ function bind(){
   // ── JOIN ──
   document.querySelector('[data-join-submit]')?.addEventListener('click',()=>{
     const code=document.getElementById('join-code')?.value.trim().toUpperCase()
-    if(code.length!==5){toast('Enter the 5-letter round code','error');return}
+    if(code.length!==5){toast('Enter a 5-letter code','error');return}
     S.joinCode=code;joinRound(code)
   })
+
 
   // ── COPY CODE ──
   document.querySelectorAll('[data-share-code]').forEach(el=>el.addEventListener('click',()=>{
@@ -1427,8 +1379,62 @@ function bind(){
     })
   }))
 
+  // ── VOICE SCORING ──
+  document.querySelector('[data-voice]')?.addEventListener('click',()=>{
+    // tap while listening = cancel
+    if(S.voiceListening){_voiceRec?.abort();_voiceRec=null;S.voiceListening=false;ren();return}
+    const SR=window.SpeechRecognition||window.webkitSpeechRecognition
+    if(!SR){toast('Voice not supported in this browser','error');return}
+    const rec=new SR();rec.lang='en-US';rec.interimResults=false;rec.maxAlternatives=3
+    _voiceRec=rec;S.voiceListening=true;ren()
+    rec.onresult=e=>{
+      _voiceRec=null;S.voiceListening=false
+      const round=S.round;if(!round){ren();return}
+      const texts=Array.from(e.results[0]).map(r=>r.transcript)
+      let handled=false
+      for(const text of texts){
+        const cmd=parseVoice(text,round.players,round.pars,S.hole||0);if(!cmd)continue
+        if(cmd.action==='nextHole'){
+          const holes=round.holes||18
+          if((S.hole||0)<holes-1){S.hole=(S.hole||0)+1;ren()}
+          else toast('Already on the last hole')
+          handled=true;break
+        }
+        if(cmd.action==='goHole'){
+          S.hole=Math.max(0,Math.min(cmd.hole-1,(round.holes||18)-1));ren()
+          handled=true;break
+        }
+        if(cmd.action==='scores'){
+          const h=S.hole||0,_upd={}
+          cmd.results.forEach(r=>{
+            if(!round.scores[r.pid])round.scores[r.pid]=[]
+            round.scores[r.pid][h]=r.score
+            _upd[`scores.${r.pid}`]=round.scores[r.pid]
+          })
+          if(S.rid)fdb.collection('rounds').doc(S.rid).update(_upd)
+          toast('✓ '+cmd.results.map(r=>{const p=round.players.find(x=>x.id===r.pid);return`${p?.name.split(' ')[0]} → ${r.score}`}).join(', '))
+          ren();handled=true;break
+        }
+      }
+      if(!handled){toast("Didn't catch that — try again",'error');ren()}
+    }
+    rec.onerror=e=>{_voiceRec=null;S.voiceListening=false;ren();if(e.error==='no-speech')toast('No speech detected');else if(e.error!=='aborted')toast('Mic error','error')}
+    rec.onend=()=>{_voiceRec=null;S.voiceListening=false;ren()}
+    rec.start()
+  })
+
   // ── HOLE NAVIGATION ──
-  document.querySelectorAll('[data-go-hole]').forEach(el=>el.addEventListener('click',()=>{S.hole=parseInt(el.dataset.goHole);S.holeMenu=false;ren();scrollTo(0,0)}))
+  document.querySelectorAll('[data-go-hole]').forEach(el=>el.addEventListener('click',()=>{
+    const h=parseInt(el.dataset.goHole)
+    S.hole=h;S.holeMenu=false;S.betFormOpen=false
+    if(S.round){
+      const par=S.round.pars[h]||4
+      let changed=false
+      S.round.players.forEach(p=>{if(S.round.scores[p.id]&&S.round.scores[p.id][h]==null){S.round.scores[p.id][h]=par;changed=true}})
+      if(changed){const _upd={};S.round.players.forEach(p=>{_upd[`scores.${p.id}`]=S.round.scores[p.id]});fdb.collection('rounds').doc(S.rid).update(_upd)}
+    }
+    ren();scrollTo(0,0)
+  }))
   document.querySelector('[data-open-hole-menu]')?.addEventListener('click',()=>{S.holeMenu=true;ren()})
   document.querySelectorAll('[data-close-hole-menu]').forEach(el=>el.addEventListener('click',()=>{S.holeMenu=false;ren()}))
   document.getElementById('hm-ov')?.addEventListener('click',e=>{if(e.target===document.getElementById('hm-ov')){S.holeMenu=false;ren()}})
@@ -1448,6 +1454,8 @@ function bind(){
     ren()
   }))
 
+  document.querySelector('[data-toggle-bet]')?.addEventListener('click',()=>{S.betFormOpen=!S.betFormOpen;ren()})
+
   // Add bet
   document.querySelectorAll('[data-add-bet]').forEach(el=>el.addEventListener('click',()=>{
     const h=parseInt(el.dataset.addBet)
@@ -1460,7 +1468,7 @@ function bind(){
     if(!r.sideBets)r.sideBets={}
     if(!r.sideBets[h])r.sideBets[h]=[]
     r.sideBets[h].push({type,winner,wager,note})
-    fdb.collection('rounds').doc(S.rid).update({sideBets:r.sideBets});ren()
+    fdb.collection('rounds').doc(S.rid).update({sideBets:r.sideBets});S.betFormOpen=false;ren()
   }))
 
   // Delete bet
@@ -1475,16 +1483,12 @@ function bind(){
 // ── AUTH STATE ────────────────────────────────────────
 auth.onAuthStateChanged(async user=>{
   if(user){
-    S.user={uid:user.uid,email:user.email,displayName:user.displayName||user.email.split('@')[0],isPaid:false,weekRounds:0,weekKey:''}
-    // Load paid status + weekly round count from Firestore
+    S.user={uid:user.uid,email:user.email,displayName:user.displayName||user.email.split('@')[0]}
     try{
       const doc=await fdb.collection('users').doc(user.uid).get()
-      if(doc.exists){const d=doc.data();S.user.isPaid=d.isPaid||false;S.user.weekRounds=d.weekRounds||0;S.user.weekKey=d.weekKey||''}
+      if(doc.exists){const d=doc.data();S.user.venmo=d.venmo||'';S.user.cashapp=d.cashapp||''}
     }catch(e){console.warn('Could not load user doc:',e)}
     if(S.sc==='auth')nav('home')
-    // Check if returning from Stripe payment
-    const params=new URLSearchParams(location.search)
-    if(params.get('payment')==='success'){const sid=params.get('session_id');if(sid)verifyPayment(sid)}
   }else{
     if(unsubRound){unsubRound();unsubRound=null}
     S.user=null;S.round=null;S.historyRounds=null
@@ -1493,39 +1497,40 @@ auth.onAuthStateChanged(async user=>{
   ren()
 })
 
+// Show auth screen immediately while Firebase initializes
+ren()
+
 // ── PWA SETUP ─────────────────────────────────────────
 ;(function(){
-  // generate app icon via canvas
-  function makeIcon(size){
-    const c=document.createElement('canvas');c.width=c.height=size
-    const ctx=c.getContext('2d')
-    // rounded green background
-    ctx.fillStyle='#1a5c38'
-    if(ctx.roundRect){ctx.beginPath();ctx.roundRect(0,0,size,size,size*0.18);ctx.fill()}
-    else{ctx.fillRect(0,0,size,size)}
-    // golf emoji centered
-    ctx.font=`${size*0.58}px serif`;ctx.textAlign='center';ctx.textBaseline='middle'
-    ctx.fillText('⛳',size/2,size/2)
+  function rr(ctx,x,y,w,h,r){if(ctx.roundRect){ctx.beginPath();ctx.roundRect(x,y,w,h,r);return}ctx.beginPath();ctx.moveTo(x+r,y);ctx.lineTo(x+w-r,y);ctx.quadraticCurveTo(x+w,y,x+w,y+r);ctx.lineTo(x+w,y+h-r);ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);ctx.lineTo(x+r,y+h);ctx.quadraticCurveTo(x,y+h,x,y+h-r);ctx.lineTo(x,y+r);ctx.quadraticCurveTo(x,y,x+r,y)}
+
+  // Golf flag icon with T
+  function makeIcon(sz){
+    const c=document.createElement('canvas');c.width=c.height=sz;const x=c.getContext('2d')
+    const gr=x.createLinearGradient(0,0,sz,sz)
+    gr.addColorStop(0,'#1e6b42');gr.addColorStop(1,'#0f3622')
+    x.fillStyle=gr;rr(x,0,0,sz,sz,sz*.22);x.fill()
+    const cx=sz*.45,top=sz*.14,bot=sz*.83
+    x.strokeStyle='rgba(255,255,255,.92)';x.lineWidth=sz*.055;x.lineCap='round'
+    x.beginPath();x.moveTo(cx,top);x.lineTo(cx,bot);x.stroke()
+    x.fillStyle='#f0b429';x.beginPath();x.moveTo(cx,top);x.lineTo(cx+sz*.32,sz*.32);x.lineTo(cx,sz*.50);x.closePath();x.fill()
+    x.fillStyle='rgba(255,255,255,.18)';x.beginPath();x.arc(cx,bot,sz*.1,0,Math.PI*2);x.fill()
     return c.toDataURL('image/png')
   }
 
-  const icon192=makeIcon(192)
-  const icon512=makeIcon(512)
+  const icon192=makeIcon(192),icon512=makeIcon(512)
 
-  // apple touch icon
   const al=document.createElement('link');al.rel='apple-touch-icon';al.href=icon512
   document.head.appendChild(al)
+  const fv=document.createElement('link');fv.rel='icon';fv.type='image/png';fv.href=makeIcon(64)
+  document.head.appendChild(fv)
 
-  // web app manifest
-  const manifest={name:'Wager',short_name:'Wager',description:'Golf betting with your group',start_url:'.',display:'standalone',background_color:'#1a5c38',theme_color:'#1a5c38',orientation:'portrait',icons:[{src:icon192,sizes:'192x192',type:'image/png'},{src:icon512,sizes:'512x512',type:'image/png'}]}
+  const manifest={name:'BetCaddie',short_name:'BetCaddie',description:'Scores, bets, and settle-up for your golf group',start_url:'.',display:'standalone',background_color:'#1a5c38',theme_color:'#1a5c38',orientation:'portrait',icons:[{src:icon192,sizes:'192x192',type:'image/png'},{src:icon512,sizes:'512x512',type:'image/png'}]}
   const ml=document.createElement('link');ml.rel='manifest';ml.href='data:application/manifest+json,'+encodeURIComponent(JSON.stringify(manifest))
   document.head.appendChild(ml)
 
-  // dismiss install banner
   document.addEventListener('click',e=>{
-    if(e.target.closest('[data-dismiss-install]')){
-      localStorage.setItem('install_dismissed','1');ren()
-    }
+    if(e.target.closest('[data-dismiss-install]')){localStorage.setItem('install_dismissed','1');ren()}
   })
 })()
 </script>
