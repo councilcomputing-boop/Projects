@@ -33,12 +33,16 @@ if (!fs.existsSync(UPLOADS)) fs.mkdirSync(UPLOADS, { recursive: true });
 
 const app = express();
 
+// Trust Fly.io's proxy so express-rate-limit can read X-Forwarded-For correctly
+app.set('trust proxy', 1);
+
 // ── Security headers ──────────────────────────────────────────────────────────
 app.use(helmet({
   contentSecurityPolicy: {
     directives: {
       defaultSrc:    ["'self'"],
       scriptSrc:     ["'self'", "'unsafe-inline'"],
+      scriptSrcAttr: ["'unsafe-inline'"],
       styleSrc:      ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
       fontSrc:       ["'self'", 'https://fonts.gstatic.com'],
       imgSrc:        ["'self'", 'data:', 'blob:'],
@@ -104,9 +108,15 @@ const upload = multer({
 
 // ── JSON storage ──────────────────────────────────────────────────────────────
 function readDB() {
-  if (!fs.existsSync(DB_FILE)) return { users: [], profiles: [], nextId: 1 };
-  try { return JSON.parse(fs.readFileSync(DB_FILE, 'utf8')); }
-  catch { return { users: [], profiles: [], nextId: 1 }; }
+  let db;
+  if (!fs.existsSync(DB_FILE)) {
+    db = { users: [], profiles: [], prayer_log: [], nextId: 1 };
+  } else {
+    try { db = JSON.parse(fs.readFileSync(DB_FILE, 'utf8')); }
+    catch { db = { users: [], profiles: [], prayer_log: [], nextId: 1 }; }
+  }
+  if (!db.prayer_log) db.prayer_log = [];
+  return db;
 }
 function writeDB(data) {
   fs.writeFileSync(DB_FILE, JSON.stringify(data, null, 2), 'utf8');
@@ -285,11 +295,22 @@ app.put('/api/profiles/:id/pray', requireAuth, (req, res) => {
   const db      = readDB();
   const profile = db.profiles.find(p => p.id === Number(req.params.id) && p.userId === req.user.id);
   if (!profile) return res.status(404).json({ error: 'Not found' });
-  const today = new Date().toISOString().split('T')[0];
-  profile.last_prayed_date = profile.last_prayed_date === today ? null : today;
+  const today       = new Date().toISOString().split('T')[0];
+  const wasUnprayed = profile.last_prayed_date !== today;
+  profile.last_prayed_date = wasUnprayed ? today : null;
   profile.updated_at       = new Date().toISOString();
+  // Upsert into prayer_log when marking as prayed (not when un-marking)
+  if (wasUnprayed && !db.prayer_log.find(e => e.userId === req.user.id && e.date === today)) {
+    db.prayer_log.push({ userId: req.user.id, date: today });
+  }
   writeDB(db);
   res.json(profile);
+});
+
+// ── Prayer Log ────────────────────────────────────────────────────────────────
+app.get('/api/prayer-log', requireAuth, (req, res) => {
+  const db = readDB();
+  res.json((db.prayer_log || []).filter(e => e.userId === req.user.id));
 });
 
 // ── Prayer Notes ──────────────────────────────────────────────────────────────

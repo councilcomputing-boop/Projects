@@ -4,8 +4,8 @@
   "description": "Track prayers for the people you care about",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#0D0E1F",
-  "theme_color": "#0D0E1F",
+  "background_color": "#f5efe2",
+  "theme_color": "#f5efe2",
   "orientation": "portrait-primary",
   "icons": [
     { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
