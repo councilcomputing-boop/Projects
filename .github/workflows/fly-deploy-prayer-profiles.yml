@@ -1,0 +1,27 @@
+name: Deploy Prayer Profiles to Fly.io
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - "PrayerProfiles/**"
+      - ".github/workflows/fly-deploy-prayer-profiles.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: fly-deploy-prayer-profiles
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy app
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: PrayerProfiles
+    steps:
+      - uses: actions/checkout@v4
+      - uses: superfly/flyctl-actions/setup-flyctl@master
+      - run: flyctl deploy --remote-only
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
