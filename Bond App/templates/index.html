@@ -555,6 +555,7 @@
                         <option>Cody McNeill</option>
                         <option>Mike McNeill</option>
                         <option>Kyle Reser</option>
+                        <option>John Rogers</option>
                         <option>Mike Shannon</option>
                         <option>Todd Triplett</option>
                         <option>Kyle Vandruff</option>
@@ -853,7 +854,8 @@ function renderBonds() {
             const amtSub = (b.bond_type==='Bid Bond'&&b.bid_bond_percent&&b.bond_amount)
                 ? `<div class="meta">${b.bid_bond_percent}% = $${(b.bond_amount*b.bid_bond_percent/100).toLocaleString('en-US',{maximumFractionDigits:0})}</div>` : '';
             const lowBidBtn = b.bond_type==='Bid Bond'
-                ? `<button class="btn btn-secondary btn-sm" onclick="toggleLowBid(${b.id})" style="${b.low_bid?'color:#2e7d32;border-color:#2e7d32;':''}">${b.low_bid?'Low Bid ✓':'Mark Low Bid'}</button>`
+                ? `<button class="btn btn-secondary btn-sm" onclick="setLowBid(${b.id}, true)" style="${b.low_bid?'color:#2e7d32;border-color:#2e7d32;':''}">${b.low_bid?'Low Bid ✓':'Mark Low Bid'}</button>
+                <button class="btn btn-secondary btn-sm" onclick="setLowBid(${b.id}, false)" style="${b.low_bid===false?'color:#c62828;border-color:#c62828;':''}">${b.low_bid===false?'Not Low Bid ✓':'Mark Not Low Bid'}</button>`
                 : '';
             return `<tr>
             <td><span class="principal">${esc(b.principal)}</span><div class="meta">Added by ${esc(b.created_by)} &middot; ${b.created_at}</div></td>
@@ -1003,11 +1005,11 @@ function sort(field) {
 }
 
 // ── Low Bid toggle (no need to open the bond form) ─────────────────────
-async function toggleLowBid(id) {
+async function setLowBid(id, value) {
     const b = bonds.find(x=>x.id===id);
-    if (!b) return;
+    if (!b || b.low_bid===value) return;
     const prev = b.low_bid;
-    b.low_bid = !prev;
+    b.low_bid = value;
     renderBonds();
     try {
         await api(`/api/bonds/${id}/low-bid`, 'PUT', { low_bid: b.low_bid });
