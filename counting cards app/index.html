@@ -495,34 +495,14 @@ button{user-select:none;-webkit-user-select:none;touch-action:manipulation}
 
     <button class="btn btn-outline" id="newShoeBtn">Shuffle New Shoe</button>
 
-    <div class="card">
-      <div class="toggle-row-compact">
-        <label class="toggle-label" for="coachingToggle">Strategy coaching</label>
-        <label class="switch"><input type="checkbox" id="coachingToggle" checked><span class="switch-slider"></span></label>
-      </div>
-      <div class="toggle-row-compact">
-        <label class="toggle-label" for="betCoachingToggle">Bet coaching</label>
-        <label class="switch"><input type="checkbox" id="betCoachingToggle" checked><span class="switch-slider"></span></label>
-      </div>
-    </div>
-
-    <div class="card" id="ownCountCard">
-      <div class="toggle-row-compact">
-        <label class="toggle-label" for="ownCountToggle">Keep my own count</label>
-        <label class="switch">
-          <input type="checkbox" id="ownCountToggle">
-          <span class="switch-slider"></span>
-        </label>
-      </div>
-      <div id="ownCountPanel" style="display:none">
-        <div class="own-count-row">
-          <span class="own-count-value zero" id="ownCountValue">0</span>
-          <div class="own-count-btns">
-            <button class="mini-count-btn own-count-btn plus" data-val="1" aria-label="Plus one">+1</button>
-            <button class="mini-count-btn own-count-btn zero" data-val="0" aria-label="Zero">0</button>
-            <button class="mini-count-btn own-count-btn minus" data-val="-1" aria-label="Minus one">-1</button>
-            <button class="mini-count-btn reset" id="ownCountResetBtn">Reset</button>
-          </div>
+    <div class="card" id="ownCountPanel" style="display:none">
+      <div class="own-count-row">
+        <span class="own-count-value zero" id="ownCountValue">0</span>
+        <div class="own-count-btns">
+          <button class="mini-count-btn own-count-btn plus" data-val="1" aria-label="Plus one">+1</button>
+          <button class="mini-count-btn own-count-btn zero" data-val="0" aria-label="Zero">0</button>
+          <button class="mini-count-btn own-count-btn minus" data-val="-1" aria-label="Minus one">-1</button>
+          <button class="mini-count-btn reset" id="ownCountResetBtn">Reset</button>
         </div>
       </div>
     </div>
@@ -643,6 +623,25 @@ button{user-select:none;-webkit-user-select:none;touch-action:manipulation}
 
   <!-- ===================== ACCOUNT VIEW ===================== -->
   <div class="view" id="accountView">
+
+    <div class="card">
+      <div class="card-title">Peek / Quiz Settings</div>
+      <div class="toggle-row-compact">
+        <label class="toggle-label" for="coachingToggle">Strategy coaching</label>
+        <label class="switch"><input type="checkbox" id="coachingToggle" checked><span class="switch-slider"></span></label>
+      </div>
+      <div class="toggle-row-compact">
+        <label class="toggle-label" for="betCoachingToggle">Bet coaching</label>
+        <label class="switch"><input type="checkbox" id="betCoachingToggle" checked><span class="switch-slider"></span></label>
+      </div>
+      <div class="toggle-row-compact">
+        <label class="toggle-label" for="ownCountToggle">Keep my own count</label>
+        <label class="switch">
+          <input type="checkbox" id="ownCountToggle">
+          <span class="switch-slider"></span>
+        </label>
+      </div>
+    </div>
 
     <div class="card">
       <div class="card-title">Overall Stats</div>
@@ -1429,6 +1428,10 @@ document.getElementById('newShoeBtn').addEventListener('click', () => {
 });
 
 document.getElementById('shoeDecks').addEventListener('change', (e) => {
+  if(dealerState.hand && !confirm('Changing deck count starts a new shoe and ends your current hand. Continue?')){
+    e.target.value = dealerState.numDecks;
+    return;
+  }
   dealerState.numDecks = parseInt(e.target.value, 10);
   rebuildShoe();
   saveDealerState();
