@@ -44,16 +44,17 @@ body{
   pointer-events:none;
 }
 button{user-select:none;-webkit-user-select:none;touch-action:manipulation}
-.hdr{background:linear-gradient(180deg,var(--wine),var(--wine-dark));color:#f3e6bf;padding:16px 16px 0;text-align:center;position:sticky;top:0;z-index:200;box-shadow:0 2px 12px rgba(0,0,0,.55);border-bottom:1px solid #4a1420}
-.dracula-mark{width:120px;margin:0 auto 6px;display:block}
+.hdr{background:linear-gradient(180deg,var(--wine),var(--wine-dark));color:#f3e6bf;padding:10px 14px;text-align:center;position:sticky;top:0;z-index:200;box-shadow:0 2px 12px rgba(0,0,0,.55);border-bottom:1px solid #4a1420}
+.hdr-row{display:flex;align-items:center;gap:10px}
+.hdr-text{flex:1;min-width:0;text-align:left}
+.dracula-mark{width:46px;height:auto;flex-shrink:0;margin:0;display:block}
 .dracula-mark.deal-pulse{animation:dealerPulse .5s ease-out}
 .dealer-portrait{display:block;width:150px;margin:0 auto 4px;filter:drop-shadow(0 6px 14px rgba(0,0,0,.5))}
 .dealer-portrait.deal-pulse{animation:dealerPulse .5s ease-out}
 @keyframes dealerPulse{0%{transform:scale(1)}35%{transform:scale(1.06)}70%{transform:scale(.99)}100%{transform:scale(1)}}
-.hdr-title{font-family:var(--display-font);font-size:23px;font-weight:700;letter-spacing:1.5px;color:#f3e6bf;text-shadow:0 0 12px rgba(201,162,39,.35)}
-.hdr-sub{font-size:12px;color:#c9a9a9;margin-top:2px;font-style:italic;letter-spacing:.3px}
-.menu-link-row{margin-top:12px;padding-bottom:12px}
-.menu-link{background:rgba(255,255,255,.15);color:#fff;border:none;border-radius:10px;padding:10px 16px;font-weight:700;font-size:13.5px;cursor:pointer;display:inline-flex;align-items:center;gap:8px}
+.hdr-title{font-family:var(--display-font);font-size:19px;font-weight:700;letter-spacing:1px;color:#f3e6bf;text-shadow:0 0 12px rgba(201,162,39,.35);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hdr-sub{font-size:11px;color:#c9a9a9;margin-top:1px;font-style:italic;letter-spacing:.3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.menu-link{background:rgba(255,255,255,.15);color:#fff;border:none;border-radius:10px;padding:8px 12px;font-weight:700;font-size:12.5px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;flex-shrink:0}
 .menu-link:active{background:rgba(255,255,255,.28)}
 .menu-card{display:flex;align-items:center;gap:14px;background:var(--card);border-radius:var(--r);box-shadow:var(--shadow);padding:16px;margin-bottom:12px;cursor:pointer;border:none;width:100%;text-align:left}
 .menu-card:active{opacity:.75;transform:scale(.99)}
@@ -253,10 +254,12 @@ button{user-select:none;-webkit-user-select:none;touch-action:manipulation}
 <div id="bgDecor" aria-hidden="true"></div>
 
 <div class="hdr">
-  <img src="header-mark.png" class="dracula-mark" id="draculaMark" alt="" aria-hidden="true">
-  <div class="hdr-title">CountDracula</div>
-  <div class="hdr-sub">He never loses count · Hi-Lo System</div>
-  <div class="menu-link-row">
+  <div class="hdr-row">
+    <img src="header-mark.png" class="dracula-mark" id="draculaMark" alt="" aria-hidden="true">
+    <div class="hdr-text">
+      <div class="hdr-title">CountDracula</div>
+      <div class="hdr-sub">He never loses count · Hi-Lo System</div>
+    </div>
     <button class="menu-link" id="menuBtn">☰ Menu</button>
   </div>
 </div>
