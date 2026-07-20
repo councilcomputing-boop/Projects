@@ -44,11 +44,18 @@ body{
   pointer-events:none;
 }
 button{user-select:none;-webkit-user-select:none;touch-action:manipulation}
-.hdr{background:linear-gradient(180deg,var(--wine),var(--wine-dark));color:#f3e6bf;padding:10px 14px;text-align:center;position:sticky;top:0;z-index:200;box-shadow:0 2px 12px rgba(0,0,0,.55);border-bottom:1px solid #4a1420}
-.hdr-row{display:flex;align-items:center;gap:10px}
-.hdr-text{flex:1;min-width:0;text-align:left}
-.dracula-mark{width:46px;height:auto;flex-shrink:0;margin:0;display:block}
+.hdr{background:linear-gradient(180deg,var(--wine),var(--wine-dark));color:#f3e6bf;padding:10px 14px;text-align:center;position:sticky;top:0;z-index:200;box-shadow:0 2px 12px rgba(0,0,0,.55);border-bottom:1px solid #4a1420;transition:padding .25s ease}
+.hdr-row{display:flex;align-items:center;gap:10px;transition:gap .25s ease}
+.hdr-text{flex:1;min-width:0;text-align:left;transition:text-align .25s ease}
+.dracula-mark{width:46px;height:auto;flex-shrink:0;margin:0;display:block;transition:width .25s ease}
 .dracula-mark.deal-pulse{animation:dealerPulse .5s ease-out}
+.hdr.hdr-big{padding:16px 16px 12px}
+.hdr.hdr-big .hdr-row{flex-direction:column;gap:0}
+.hdr.hdr-big .hdr-text{text-align:center}
+.hdr.hdr-big .dracula-mark{width:120px;margin:0 auto 6px}
+.hdr.hdr-big .hdr-title{font-size:23px;letter-spacing:1.5px;white-space:normal}
+.hdr.hdr-big .hdr-sub{font-size:12px;white-space:normal}
+.hdr.hdr-big .menu-link{display:none}
 .dealer-portrait{display:block;width:150px;margin:0 auto 4px;filter:drop-shadow(0 6px 14px rgba(0,0,0,.5))}
 .dealer-portrait.deal-pulse{animation:dealerPulse .5s ease-out}
 @keyframes dealerPulse{0%{transform:scale(1)}35%{transform:scale(1.06)}70%{transform:scale(.99)}100%{transform:scale(1)}}
@@ -838,6 +845,7 @@ let activeTab = 'home';
 function setActiveTab(tab){
   activeTab = tab;
   localStorage.setItem(TAB_KEY, tab);
+  document.querySelector('.hdr').classList.toggle('hdr-big', tab === 'home');
   document.getElementById('homeView').classList.toggle('active', tab === 'home');
   document.getElementById('manualView').classList.toggle('active', tab === 'manual');
   document.getElementById('dealerView').classList.toggle('active', tab === 'peek' || tab === 'quiz');
