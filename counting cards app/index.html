@@ -1,0 +1,1902 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="CountDracula">
+<meta name="theme-color" content="#2a0a12">
+<title>CountDracula — Hi-Lo Card Counting Trainer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=EB+Garamond:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/png" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-512.png">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --green:#16301f;--green2:#3f8a5c;--green-pale:#1c2a20;
+  --gold:#c9a227;--gold-pale:#f3e6bf;
+  --red:#8a0517;--red-pale:#f3d9da;
+  --gray:#584f63;--gray-pale:#e9e6ea;
+  --blue:#6b3a52;--blue-pale:#ecdfe6;
+  --text:#241614;--muted:#6b5a4a;--border:#ded0b0;
+  --bg:#0d0508;--card:#f7f0dd;
+  --wine:#2a0a12;--wine-dark:#150408;
+  --cardback1:#7a0c1e;--cardback2:#170509;
+  --r:12px;--shadow:0 2px 10px rgba(0,0,0,.35);
+  --display-font:'Cinzel',Georgia,serif;--body-font:'EB Garamond',Georgia,'Times New Roman',serif;
+}
+html{background:var(--bg)}
+body{
+  font-family:var(--body-font);color:var(--text);min-height:100vh;max-width:600px;margin:0 auto;overscroll-behavior:none;-webkit-tap-highlight-color:transparent;
+  background-color:var(--bg);
+  background-image: radial-gradient(circle at 50% -10%, #4a1420 0%, transparent 55%);
+  position:relative;
+}
+#bgDecor{position:fixed;inset:0;overflow:hidden;pointer-events:none;z-index:0}
+.bg-card-face{
+  position:absolute;width:42px;height:60px;border:1.5px solid #fff;border-radius:6px;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;
+  font-family:Georgia,'Times New Roman',serif;font-weight:700;font-size:14px;line-height:1;color:#fff;
+  pointer-events:none;
+}
+button{user-select:none;-webkit-user-select:none;touch-action:manipulation}
+.hdr{background:linear-gradient(180deg,var(--wine),var(--wine-dark));color:#f3e6bf;padding:16px 16px 0;text-align:center;position:sticky;top:0;z-index:200;box-shadow:0 2px 12px rgba(0,0,0,.55);border-bottom:1px solid #4a1420}
+.dracula-mark{width:120px;margin:0 auto 6px;display:block}
+.dracula-mark.deal-pulse{animation:dealerPulse .5s ease-out}
+.dealer-portrait{display:block;width:150px;margin:0 auto 4px;filter:drop-shadow(0 6px 14px rgba(0,0,0,.5))}
+.dealer-portrait.deal-pulse{animation:dealerPulse .5s ease-out}
+@keyframes dealerPulse{0%{transform:scale(1)}35%{transform:scale(1.06)}70%{transform:scale(.99)}100%{transform:scale(1)}}
+.hdr-title{font-family:var(--display-font);font-size:23px;font-weight:700;letter-spacing:1.5px;color:#f3e6bf;text-shadow:0 0 12px rgba(201,162,39,.35)}
+.hdr-sub{font-size:12px;color:#c9a9a9;margin-top:2px;font-style:italic;letter-spacing:.3px}
+.menu-link-row{margin-top:12px;padding-bottom:12px}
+.menu-link{background:rgba(255,255,255,.15);color:#fff;border:none;border-radius:10px;padding:10px 16px;font-weight:700;font-size:13.5px;cursor:pointer;display:inline-flex;align-items:center;gap:8px}
+.menu-link:active{background:rgba(255,255,255,.28)}
+.menu-card{display:flex;align-items:center;gap:14px;background:var(--card);border-radius:var(--r);box-shadow:var(--shadow);padding:16px;margin-bottom:12px;cursor:pointer;border:none;width:100%;text-align:left}
+.menu-card:active{opacity:.75;transform:scale(.99)}
+.menu-icon{font-size:28px;flex-shrink:0;width:44px;text-align:center}
+.menu-text{flex:1}
+.menu-title{font-size:16px;font-weight:700;color:var(--text)}
+.menu-desc{font-size:12.5px;color:var(--muted);margin-top:2px;line-height:1.4}
+#C{padding:14px 14px 30px;position:relative}
+.view{display:none}
+.view.active{display:block}
+.card{background:var(--card);border-radius:var(--r);box-shadow:var(--shadow);padding:16px;margin-bottom:12px}
+.card-title{font-family:var(--display-font);font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.9px;margin-bottom:12px}
+
+/* Rules / legend */
+.legend-row{display:flex;align-items:center;gap:12px;padding:9px 0;border-bottom:1px solid var(--border)}
+.legend-row:last-of-type{border-bottom:none}
+.legend-badge{flex-shrink:0;width:42px;height:42px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:16px;color:#fff}
+.legend-badge.plus{background:var(--green2)}
+.legend-badge.zero{background:var(--gray)}
+.legend-badge.minus{background:var(--red)}
+.legend-cards{font-size:15px;font-weight:700}
+.legend-note{font-size:12px;color:var(--muted);margin-top:1px}
+.hint{font-size:12.5px;color:var(--muted);line-height:1.5;margin-top:10px}
+.rules-list{font-size:13.5px;line-height:1.6;color:var(--text);padding-left:18px}
+.rules-list li{margin-bottom:8px}
+
+/* Running count display */
+.count-display{background:var(--card);border-radius:var(--r);box-shadow:var(--shadow);padding:20px 16px;margin-bottom:12px;text-align:center}
+.count-label{font-family:var(--display-font);font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.9px}
+.count-value{font-family:var(--display-font);font-size:64px;font-weight:700;line-height:1.15;transition:color .15s}
+.count-value.pos{color:var(--green2)}
+.count-value.neg{color:var(--red)}
+.count-value.zero{color:var(--gray)}
+.count-value.hidden-val{color:var(--muted)}
+.cards-seen{font-size:13px;color:var(--muted);margin-top:2px}
+
+/* True count */
+.deck-row{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}
+.deck-row label{font-size:14px;font-weight:600}
+.deck-row select{padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:15px;background:#fff}
+.true-count-value{font-family:var(--display-font);font-size:34px;font-weight:700;text-align:center;color:#7a5f00;background:var(--gold-pale);border-radius:10px;padding:10px 0;margin-bottom:10px}
+
+/* Buttons */
+.btn-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:12px}
+.count-btn{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;height:90px;border:none;border-radius:var(--r);font-size:26px;font-weight:800;color:#fff;cursor:pointer;box-shadow:var(--shadow)}
+.count-btn span{font-size:12px;font-weight:600;opacity:.9}
+.count-btn:active{transform:scale(.96);opacity:.85}
+.count-btn.plus{background:var(--green2)}
+.count-btn.zero{background:var(--gray)}
+.count-btn.minus{background:var(--red)}
+
+.btn{display:flex;align-items:center;justify-content:center;gap:8px;padding:13px 20px;border-radius:10px;border:none;font-size:16px;font-weight:600;cursor:pointer;width:100%}
+.btn:active{opacity:.75}
+.btn:disabled{opacity:.4;cursor:default}
+.btn-outline{background:#fff;color:var(--text);border:1px solid var(--border)}
+.btn-row{display:flex;gap:8px;margin-bottom:12px}
+.btn-row .btn{width:auto;flex:1;padding:14px 4px;font-size:13.5px}
+.btn-hit{background:var(--green2);color:#fff}
+.btn-stand{background:var(--gray);color:#fff}
+.btn-double{background:var(--gold);color:#3a2e00}
+.btn-split{background:var(--blue);color:#fff}
+.btn-peek{
+  background:linear-gradient(135deg,var(--gold),#8a6d1a);
+  color:#241a00;
+  font-family:var(--display-font);
+  font-size:16px;
+  font-weight:700;
+  text-transform:uppercase;
+  letter-spacing:.8px;
+  padding:18px;
+  border:2px solid #e8cf7a;
+  animation:peekPulse 2.2s ease-in-out infinite;
+}
+.btn-peek:active{
+  background:linear-gradient(135deg,#b8912a,var(--gold));
+  animation:none;
+  box-shadow:0 0 0 6px rgba(212,175,55,.3) inset;
+}
+@keyframes peekPulse{
+  0%,100%{box-shadow:0 0 0 0 rgba(212,175,55,.5),0 4px 14px rgba(0,0,0,.35)}
+  50%{box-shadow:0 0 0 9px rgba(212,175,55,0),0 4px 14px rgba(0,0,0,.35)}
+}
+
+/* Keep-my-own-count toggle / generic toggle rows */
+.toggle-row{display:flex;align-items:center;justify-content:space-between;background:var(--card);border-radius:var(--r);box-shadow:var(--shadow);padding:14px 16px;margin-bottom:12px}
+.toggle-label{font-size:14.5px;font-weight:600}
+.switch{position:relative;display:inline-block;width:46px;height:26px;flex-shrink:0}
+.switch input{opacity:0;width:0;height:0}
+.switch-slider{position:absolute;cursor:pointer;inset:0;background:#ccc;border-radius:26px;transition:.2s}
+.switch-slider::before{position:absolute;content:"";height:20px;width:20px;left:3px;bottom:3px;background:#fff;border-radius:50%;transition:.2s;box-shadow:0 1px 3px rgba(0,0,0,.3)}
+.switch input:checked + .switch-slider{background:var(--green2)}
+.switch input:checked + .switch-slider::before{transform:translateX(20px)}
+.toggle-row-compact{display:flex;align-items:center;justify-content:space-between}
+.toggle-row-compact + .toggle-row-compact{margin-top:12px}
+.own-count-row{display:flex;align-items:center;gap:10px;margin-top:14px}
+.own-count-value{font-family:var(--display-font);font-size:26px;font-weight:700;min-width:40px;text-align:center;flex-shrink:0}
+.own-count-value.pos{color:var(--green2)}
+.own-count-value.neg{color:var(--red)}
+.own-count-value.zero{color:var(--gray)}
+.own-count-btns{display:flex;gap:6px;flex:1}
+.mini-count-btn{flex:1;padding:9px 4px;border:none;border-radius:8px;font-size:13px;font-weight:700;color:#fff;cursor:pointer}
+.mini-count-btn.plus{background:var(--green2)}
+.mini-count-btn.zero{background:var(--gray)}
+.mini-count-btn.minus{background:var(--red)}
+.mini-count-btn.reset{flex:0 0 auto;padding:9px 12px;background:#fff;color:var(--text);border:1px solid var(--border)}
+.chip-btn{background:var(--gold);color:#3a2e00}
+
+/* Dealer game */
+.shoe-row{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:13px;color:var(--muted);margin-bottom:4px}
+.shoe-row select{padding:6px 8px;border:1.5px solid var(--border);border-radius:8px;font-size:14px;background:#fff}
+.table-label{font-size:12px;font-weight:700;text-transform:uppercase;color:var(--muted);letter-spacing:.5px;text-align:center;margin-bottom:6px}
+.card-row{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-bottom:6px;min-height:74px}
+.playing-card{width:50px;height:72px;border-radius:6px;background:#fff;border:1px solid #ccc;display:flex;flex-direction:column;align-items:center;justify-content:center;font-weight:800;font-size:15px;box-shadow:0 1px 3px rgba(0,0,0,.2)}
+.playing-card.red{color:var(--red)}
+.playing-card.black{color:#1a1a1a}
+.playing-card.hidden-card{background:repeating-linear-gradient(45deg,var(--cardback1),var(--cardback1) 6px,var(--cardback2) 6px,var(--cardback2) 12px);color:transparent;font-size:20px}
+@keyframes dealIn{from{opacity:0;transform:translate(210px,-150px) scale(.55) rotate(14deg)}to{opacity:1;transform:translate(0,0) scale(1) rotate(0deg)}}
+@keyframes flipIn{from{opacity:.5;transform:rotateY(90deg)}to{opacity:1;transform:rotateY(0)}}
+.playing-card.deal-in{animation:dealIn .6s cubic-bezier(.16,.68,.3,1) both}
+.playing-card.flip-in{animation:flipIn .32s ease-out both}
+.hand-total{font-size:15px;font-weight:700;text-align:center;color:var(--text);margin-bottom:14px}
+.hand-total .muted{color:var(--muted);font-weight:600}
+.hand-block{margin-bottom:10px;padding:8px;border-radius:10px}
+.hand-block.active-hand{background:var(--gold-pale)}
+.hand-badge{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);text-align:center;margin-bottom:4px}
+.result-banner{text-align:center;font-size:18px;font-weight:800;border-radius:10px;padding:12px;margin-bottom:12px}
+.result-banner.win{background:var(--green-pale);color:var(--green2)}
+.result-banner.lose{background:var(--red-pale);color:var(--red)}
+.result-banner.push{background:var(--gray-pale);color:var(--gray)}
+.result-banner.blackjack{background:var(--gold-pale);color:#8a6d00}
+.hh-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 0;border-bottom:1px solid var(--border)}
+.hh-row:last-child{border-bottom:none}
+.hh-badge{flex-shrink:0;font-family:var(--display-font);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;padding:4px 10px;border-radius:20px}
+.hh-badge.win{background:var(--green-pale);color:var(--green2)}
+.hh-badge.lose{background:var(--red-pale);color:var(--red)}
+.hh-badge.push{background:var(--gray-pale);color:var(--gray)}
+.hh-badge.blackjack{background:var(--gold-pale);color:#8a6d00}
+.hh-moves{font-size:12.5px;color:var(--muted)}
+.hh-empty{font-size:13px;color:var(--muted);text-align:center;padding:8px 0}
+.lesson-card{border-top:2px solid var(--gold)}
+.lesson-intro{font-style:italic;font-size:14.5px;line-height:1.6;color:var(--text);margin-bottom:14px}
+.lesson-signature{display:flex;align-items:center;gap:14px;margin-top:16px;padding-top:14px;border-top:1px solid var(--border)}
+.wax-seal{
+  flex-shrink:0;width:46px;height:46px;border-radius:50%;
+  background:radial-gradient(circle at 35% 30%, #a3182b, var(--red) 60%, #5c0410 100%);
+  border:1.5px solid #5c0410;
+  display:flex;align-items:center;justify-content:center;
+  font-family:var(--display-font);font-weight:700;font-size:19px;color:var(--gold-pale);
+  box-shadow:0 2px 5px rgba(0,0,0,.4), inset 0 0 4px rgba(0,0,0,.5);
+  transform:rotate(-6deg);
+}
+.signature-text{font-size:13.5px;color:var(--muted);line-height:1.5}
+.signature-text em{font-family:var(--display-font);font-style:normal;font-size:15px;color:var(--text)}
+.stats-bar{display:flex;background:var(--card);border-radius:var(--r);box-shadow:var(--shadow);padding:10px 4px;margin-bottom:12px}
+.stats-bar-item{flex:1;text-align:center;border-left:1px solid var(--border)}
+.stats-bar-item:first-child{border-left:none}
+.stats-bar-value{display:block;font-family:var(--display-font);font-size:17px;font-weight:700;color:var(--text)}
+.stats-bar-label{display:block;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-top:1px}
+.quiz-score{text-align:center;font-size:13px;color:var(--muted);margin-bottom:10px}
+.bankroll-badge{position:absolute;top:12px;right:12px;font-family:var(--display-font);font-size:12.5px;font-weight:700;background:var(--gold-pale);color:#7a5f00;padding:5px 11px;border-radius:20px;white-space:nowrap}
+
+/* Quiz modal */
+.quiz-overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;z-index:500;padding:20px}
+.quiz-box{background:#fff;border-radius:var(--r);padding:22px;width:min(320px,100%);text-align:center;box-shadow:0 8px 30px rgba(0,0,0,.3)}
+.quiz-title{font-family:var(--display-font);font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px}
+.quiz-question{font-size:16px;font-weight:700;margin-bottom:14px}
+.quiz-input{width:100%;font-size:22px;text-align:center;padding:10px;border:1.5px solid var(--border);border-radius:8px;margin-bottom:12px}
+.quiz-feedback{font-size:14.5px;font-weight:700;margin:10px 0;min-height:20px}
+.quiz-feedback.correct{color:var(--green2)}
+.quiz-feedback.incorrect{color:var(--red)}
+
+/* Deck Math tab */
+.example-table{width:100%;border-collapse:collapse;font-size:13.5px;margin-top:10px}
+.example-table th,.example-table td{padding:7px 4px;text-align:center;border-bottom:1px solid var(--border)}
+.example-table th{color:var(--muted);font-weight:700;font-size:11.5px;text-transform:uppercase}
+.example-table td:first-child{text-align:left;font-weight:600}
+.example-table td:last-child{font-family:var(--display-font);font-weight:700}
+.calc-row{display:flex;gap:10px;margin-bottom:12px}
+.calc-field{flex:1}
+.calc-field label{display:block;font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px}
+.calc-field select,.calc-field input{width:100%;padding:10px;border:1.5px solid var(--border);border-radius:8px;font-size:16px;background:#fff;text-align:center}
+.calc-output{font-family:var(--display-font);font-size:17px;font-weight:700;text-align:center;color:#7a5f00;background:var(--gold-pale);border-radius:10px;padding:14px 10px;line-height:1.5}
+.problem-display{display:flex;gap:10px;margin-bottom:14px}
+.problem-box{flex:1;background:var(--gray-pale);border-radius:10px;padding:14px 10px;text-align:center}
+.problem-box .problem-label{font-family:var(--display-font);font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px}
+.problem-box .problem-value{font-family:var(--display-font);font-size:26px;font-weight:700;color:var(--text)}
+.math-score{text-align:center;font-size:13px;color:var(--muted);margin-top:10px}
+
+/* Speed Drill tab */
+.speed-countdown{font-family:var(--display-font);font-size:48px;font-weight:700;color:var(--gold);text-align:center}
+.speed-stage-body{text-align:center}
+.speed-history{font-size:12.5px;color:var(--muted);margin-top:8px;line-height:1.6}
+</style>
+</head>
+<body>
+
+<div id="bgDecor" aria-hidden="true"></div>
+
+<div class="hdr">
+  <img src="header-mark.png" class="dracula-mark" id="draculaMark" alt="" aria-hidden="true">
+  <div class="hdr-title">CountDracula</div>
+  <div class="hdr-sub">He never loses count · Hi-Lo System</div>
+  <div class="menu-link-row">
+    <button class="menu-link" id="menuBtn">☰ Menu</button>
+  </div>
+</div>
+
+<div id="C">
+
+  <!-- ===================== HOME MENU ===================== -->
+  <div class="view" id="homeView">
+    <button class="menu-card" data-tab="manual">
+      <div class="menu-icon">🃏</div>
+      <div class="menu-text">
+        <div class="menu-title">Manual</div>
+        <div class="menu-desc">Tap along while counting a real, physical deck.</div>
+      </div>
+    </button>
+    <button class="menu-card" data-tab="peek">
+      <div class="menu-icon">👁</div>
+      <div class="menu-text">
+        <div class="menu-title">Peek Practice</div>
+        <div class="menu-desc">Play simulated hands vs. a dealer — hold a button to check your count.</div>
+      </div>
+    </button>
+    <button class="menu-card" data-tab="quiz">
+      <div class="menu-icon">❓</div>
+      <div class="menu-text">
+        <div class="menu-title">Quiz Practice</div>
+        <div class="menu-desc">Same hands, count hidden — randomly quizzed on running or true count.</div>
+      </div>
+    </button>
+    <button class="menu-card" data-tab="math">
+      <div class="menu-icon">➗</div>
+      <div class="menu-text">
+        <div class="menu-title">Deck Math</div>
+        <div class="menu-desc">Learn and drill the true-count formula for multi-deck shoes.</div>
+      </div>
+    </button>
+    <button class="menu-card" data-tab="speed">
+      <div class="menu-icon">⚡</div>
+      <div class="menu-text">
+        <div class="menu-title">Speed Drill</div>
+        <div class="menu-desc">Flash through a full deck at speed and recall the final count.</div>
+      </div>
+    </button>
+    <button class="menu-card" data-tab="stats">
+      <div class="menu-icon">📊</div>
+      <div class="menu-text">
+        <div class="menu-title">Stats</div>
+        <div class="menu-desc">Your accuracy, bankroll, and best times across every mode.</div>
+      </div>
+    </button>
+    <button class="menu-card" data-tab="rules">
+      <div class="menu-icon">📖</div>
+      <div class="menu-text">
+        <div class="menu-title">Rules</div>
+        <div class="menu-desc">A lesson from the Count himself — Hi-Lo counting, and what every mode does.</div>
+      </div>
+    </button>
+  </div>
+
+  <!-- ===================== RULES VIEW ===================== -->
+  <div class="view" id="rulesView">
+
+    <div class="card lesson-card">
+      <div class="card-title">A Lesson From The Count</div>
+      <p class="lesson-intro">Sit. Listen well. In three centuries at the tables of Europe, I have never once lost the thread of a shoe. Tonight I teach you the method that keeps me... comfortable: the Hi-Lo count.</p>
+      <div class="legend-row">
+        <div class="legend-badge plus">+1</div>
+        <div>
+          <div class="legend-cards">2, 3, 4, 5, 6</div>
+          <div class="legend-note">Low cards — count goes up</div>
+        </div>
+      </div>
+      <div class="legend-row">
+        <div class="legend-badge zero">0</div>
+        <div>
+          <div class="legend-cards">7, 8, 9</div>
+          <div class="legend-note">Neutral — no change</div>
+        </div>
+      </div>
+      <div class="legend-row">
+        <div class="legend-badge minus">-1</div>
+        <div>
+          <div class="legend-cards">10, J, Q, K, A</div>
+          <div class="legend-note">High cards — count goes down</div>
+        </div>
+      </div>
+      <ol class="rules-list" style="margin-top:12px">
+        <li>Every card dealt — yours, the dealer's, or any other soul at the table — feeds the <b>Running Count</b>.</li>
+        <li>When it climbs positive, the deck grows heavy with high cards and aces. The house trembles. Wager boldly.</li>
+        <li>When it falls negative, only the low cards remain, and fortune favors the house. Wager little, or not at all.</li>
+        <li>But the Running Count alone is a crude instrument — meaningless without context. Divide it by the decks remaining, and you have the <b>True Count</b>, the number I actually act upon. Visit the Deck Math tab to master this division.</li>
+      </ol>
+    </div>
+
+    <div class="card lesson-card">
+      <div class="card-title">The Curriculum</div>
+      <p class="lesson-intro">I have prepared six chambers of instruction. Enter each in turn, or as you please — I am patient. I have centuries.</p>
+      <ol class="rules-list">
+        <li><b>Manual</b> — tap +1/0/-1 yourself while counting an actual physical deck.</li>
+        <li><b>Peek Practice</b> — play simulated hands against a dealer with betting, splits, and my coaching; hold the peek button to test your count against my own.</li>
+        <li><b>Quiz Practice</b> — the same game, but the count stays hidden, and I will demand it of you at moments of my choosing.</li>
+        <li><b>Deck Math</b> — a calculator and drill for converting running count to true count.</li>
+        <li><b>Speed Drill</b> — a full deck flashes before you at speed; keep the count in your head and answer for it at the end.</li>
+        <li><b>Stats</b> — your accuracy, your fortune, and a record of every hand you have played under my watch.</li>
+      </ol>
+      <div class="lesson-signature">
+        <div class="wax-seal" aria-hidden="true">D</div>
+        <div class="signature-text">Until the shoe is empty,<br><em>— Count Dracula</em></div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ===================== MANUAL VIEW (physical deck) ===================== -->
+  <div class="view" id="manualView">
+
+    <div class="card">
+      <div class="card-title">The Rules</div>
+      <div class="legend-row">
+        <div class="legend-badge plus">+1</div>
+        <div>
+          <div class="legend-cards">2, 3, 4, 5, 6</div>
+          <div class="legend-note">Low cards — count goes up</div>
+        </div>
+      </div>
+      <div class="legend-row">
+        <div class="legend-badge zero">0</div>
+        <div>
+          <div class="legend-cards">7, 8, 9</div>
+          <div class="legend-note">Neutral — no change</div>
+        </div>
+      </div>
+      <div class="legend-row">
+        <div class="legend-badge minus">-1</div>
+        <div>
+          <div class="legend-cards">10, J, Q, K, A</div>
+          <div class="legend-note">High cards — count goes down</div>
+        </div>
+      </div>
+      <ol class="rules-list" style="margin-top:12px">
+        <li>Every time a card is dealt (yours, the dealer's, or anyone else's), tap the button below that matches it.</li>
+        <li>The <b>Running Count</b> is just the sum of every card you've tapped so far.</li>
+        <li>A positive count means more high cards are still left in the deck — the deck favors the player, so bet more.</li>
+        <li>A negative count means more low cards are left — the deck favors the house, so bet less.</li>
+        <li>The <b>True Count</b> divides the running count by the decks remaining, since a +4 count means a lot more in a single deck than in a six-deck shoe. True count is what you actually act on.</li>
+        <li>Keyboard: <b>↑</b> = +1, <b>↓</b> = -1, <b>→</b> = 0.</li>
+      </ol>
+    </div>
+
+    <div class="count-display">
+      <div class="count-label">Running Count</div>
+      <div class="count-value zero" id="runningCount">0</div>
+      <div class="cards-seen" id="cardsSeen">0 cards counted</div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">True Count</div>
+      <div class="deck-row">
+        <label for="decksLeft">Decks remaining</label>
+        <select id="decksLeft"></select>
+      </div>
+      <div class="true-count-value" id="trueCount">0.0</div>
+      <div class="hint">True Count = Running Count ÷ Decks Remaining. Update "decks remaining" as the shoe gets played through to keep it accurate.</div>
+    </div>
+
+    <div class="btn-grid">
+      <button class="count-btn plus" data-val="1" aria-label="Plus one, cards 2 through 6">+1<span>2–6</span></button>
+      <button class="count-btn zero" data-val="0" aria-label="Zero, cards 7 through 9">0<span>7–9</span></button>
+      <button class="count-btn minus" data-val="-1" aria-label="Minus one, cards 10 through Ace">-1<span>10–A</span></button>
+    </div>
+
+    <button class="btn btn-outline" id="resetBtn">Reset Count</button>
+
+  </div>
+
+  <!-- ===================== DEALER VIEW (peek + quiz share this) ===================== -->
+  <div class="view" id="dealerView">
+
+    <div class="card">
+      <div class="shoe-row">
+        <span id="shoeInfo">6 decks in shoe · 312 cards left</span>
+        <select id="shoeDecks">
+          <option value="1">1 deck</option>
+          <option value="2">2 decks</option>
+          <option value="4">4 decks</option>
+          <option value="6" selected>6 decks</option>
+          <option value="8">8 decks</option>
+        </select>
+      </div>
+      <div class="hint" id="dealerModeHint">Hold the button below to peek at the count.</div>
+      <div class="quiz-feedback" id="betFeedback"></div>
+    </div>
+
+    <div class="stats-bar" id="statsBar">
+      <div class="stats-bar-item"><span class="stats-bar-value" id="sbHands">0</span><span class="stats-bar-label">Hands</span></div>
+      <div class="stats-bar-item"><span class="stats-bar-value" id="sbRecord">0-0-0</span><span class="stats-bar-label">W-L-P</span></div>
+      <div class="stats-bar-item"><span class="stats-bar-value" id="sbStrategy">—</span><span class="stats-bar-label">Strategy</span></div>
+    </div>
+
+    <div class="card" id="betCard" style="display:none">
+      <div class="shoe-row">
+        <span>Choose your bet</span>
+        <button class="btn btn-outline" id="resetBankrollBtn" style="width:auto;padding:6px 10px;font-size:12px">Reset Bankroll</button>
+      </div>
+      <div class="own-count-btns" style="margin-top:10px">
+        <button class="mini-count-btn chip-btn" data-bet="5">5</button>
+        <button class="mini-count-btn chip-btn" data-bet="10">10</button>
+        <button class="mini-count-btn chip-btn" data-bet="25">25</button>
+        <button class="mini-count-btn chip-btn" data-bet="50">50</button>
+        <button class="mini-count-btn chip-btn" data-bet="100">100</button>
+      </div>
+      <div class="hint" style="margin-top:8px">Current bet: <b id="currentBetValue">25</b> chips</div>
+    </div>
+
+    <div class="count-display">
+      <div class="count-label">Running Count</div>
+      <div class="count-value hidden-val" id="dealerRunningCount">•••</div>
+      <div class="cards-seen" id="dealerTrueCount"></div>
+    </div>
+
+    <button class="btn btn-peek" id="peekBtn" aria-label="Hold to reveal the running count">👁 Hold to Peek Count</button>
+    <div class="quiz-score" id="quizScore" style="display:none">Running: 0/0 · True: 0/0</div>
+
+    <div class="card" style="position:relative">
+      <div class="bankroll-badge" id="bankrollBadge">💰 1000 · Bet 25</div>
+      <div id="resultBanner"></div>
+
+      <img src="dealer-dracula.png" alt="Count Dracula, your dealer" class="dealer-portrait" id="dealerPortrait">
+      <div class="table-label">Dealer</div>
+      <div class="card-row" id="dealerCards"></div>
+      <div class="hand-total" id="dealerTotal">&nbsp;</div>
+
+      <div class="table-label">You</div>
+      <div id="playerHandsArea"></div>
+
+      <div class="quiz-feedback" id="strategyFeedback"></div>
+      <div class="btn-row" id="playActions">
+        <button class="btn btn-hit" id="hitBtn">Hit</button>
+        <button class="btn btn-stand" id="standBtn">Stand</button>
+        <button class="btn btn-double" id="doubleBtn">Double</button>
+        <button class="btn btn-split" id="splitBtn" style="display:none">Split</button>
+      </div>
+      <button class="btn btn-outline" id="dealBtn">Deal Hand</button>
+    </div>
+
+    <button class="btn btn-outline" id="newShoeBtn">Shuffle New Shoe</button>
+
+    <div class="card">
+      <div class="toggle-row-compact">
+        <label class="toggle-label" for="coachingToggle">Strategy coaching</label>
+        <label class="switch"><input type="checkbox" id="coachingToggle" checked><span class="switch-slider"></span></label>
+      </div>
+      <div class="toggle-row-compact">
+        <label class="toggle-label" for="betCoachingToggle">Bet coaching</label>
+        <label class="switch"><input type="checkbox" id="betCoachingToggle" checked><span class="switch-slider"></span></label>
+      </div>
+    </div>
+
+    <div class="card" id="ownCountCard">
+      <div class="toggle-row-compact">
+        <label class="toggle-label" for="ownCountToggle">Keep my own count</label>
+        <label class="switch">
+          <input type="checkbox" id="ownCountToggle">
+          <span class="switch-slider"></span>
+        </label>
+      </div>
+      <div id="ownCountPanel" style="display:none">
+        <div class="own-count-row">
+          <span class="own-count-value zero" id="ownCountValue">0</span>
+          <div class="own-count-btns">
+            <button class="mini-count-btn own-count-btn plus" data-val="1" aria-label="Plus one">+1</button>
+            <button class="mini-count-btn own-count-btn zero" data-val="0" aria-label="Zero">0</button>
+            <button class="mini-count-btn own-count-btn minus" data-val="-1" aria-label="Minus one">-1</button>
+            <button class="mini-count-btn reset" id="ownCountResetBtn">Reset</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ===================== DECK MATH VIEW ===================== -->
+  <div class="view" id="deckMathView">
+
+    <div class="card">
+      <div class="card-title">Why True Count?</div>
+      <div class="hint" style="margin-top:0">
+        The <b>Running Count</b> alone doesn't tell you much once more than one deck is in play. A running count of +6 means the deck is loaded with high cards if there's only <b>1 deck</b> left — but it's barely a blip if there are <b>6 decks</b> left. To compare fairly (and know how much to bet), divide the running count by how many decks remain:
+      </div>
+      <div class="true-count-value" style="margin-top:12px">Running Count ÷ Decks Remaining = True Count</div>
+      <table class="example-table">
+        <tr><th>Running</th><th>Decks Left</th><th>True Count</th></tr>
+        <tr><td>+4</td><td>2</td><td>+2.0</td></tr>
+        <tr><td>+4</td><td>8</td><td>+0.5</td></tr>
+        <tr><td>-6</td><td>1.5</td><td>-4.0</td></tr>
+      </table>
+      <div class="hint">The true count — not the running count — is what tells you when the deck actually favors the player.</div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Calculator</div>
+      <div class="calc-row">
+        <div class="calc-field">
+          <label for="mathDecks">Decks remaining</label>
+          <select id="mathDecks"></select>
+        </div>
+        <div class="calc-field">
+          <label for="mathRunningCount">Running count</label>
+          <input type="number" id="mathRunningCount" value="0">
+        </div>
+      </div>
+      <div class="calc-output" id="calcOutput">0 ÷ 6 decks = +0.0 true count</div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Practice</div>
+      <div class="hint" style="margin-top:0">You're given a running count and decks remaining — work out the true count yourself.</div>
+      <div class="problem-display" style="margin-top:12px">
+        <div class="problem-box">
+          <div class="problem-label">Running Count</div>
+          <div class="problem-value" id="problemRunning">—</div>
+        </div>
+        <div class="problem-box">
+          <div class="problem-label">Decks Left</div>
+          <div class="problem-value" id="problemDecks">—</div>
+        </div>
+      </div>
+      <div class="calc-row">
+        <div class="calc-field">
+          <label for="mathAnswerInput">Your true count</label>
+          <input type="number" step="0.5" id="mathAnswerInput" placeholder="e.g. -1.5">
+        </div>
+      </div>
+      <div class="quiz-feedback" id="mathFeedback"></div>
+      <div class="btn-row">
+        <button class="btn btn-outline" id="mathCheckBtn">Check</button>
+        <button class="btn btn-outline" id="mathNewProblemBtn">New Problem</button>
+      </div>
+      <div class="math-score" id="mathScore">Practice score: 0/0</div>
+    </div>
+
+  </div>
+
+  <!-- ===================== SPEED DRILL VIEW ===================== -->
+  <div class="view" id="speedView">
+
+    <div class="card">
+      <div class="card-title">Speed Drill</div>
+      <div class="hint" style="margin-top:0">Cards flash one at a time from a shuffled deck — keep the running count in your head. One card is secretly held back; at the end you'll be asked for the count of the cards you saw.</div>
+      <div class="deck-row" style="margin-top:12px">
+        <label for="speedPace">Pace</label>
+        <select id="speedPace">
+          <option value="2000">1 card / 2s</option>
+          <option value="1000" selected>1 card / 1s</option>
+          <option value="700">1 card / 0.7s</option>
+          <option value="500">1 card / 0.5s</option>
+          <option value="manual">Manual (tap to advance)</option>
+        </select>
+      </div>
+      <button class="btn btn-outline" id="speedStartBtn" style="margin-top:6px">Start Drill</button>
+    </div>
+
+    <div class="card speed-stage-body" id="speedStage" style="display:none">
+      <div class="speed-countdown" id="speedCountdown"></div>
+      <div class="card-row" id="speedCardArea" style="justify-content:center"></div>
+      <div class="hint" id="speedElapsed"></div>
+      <button class="btn btn-outline" id="speedTapBtn" style="display:none;margin-top:10px">Tap for Next Card</button>
+    </div>
+
+    <div class="card" id="speedAnswerCard" style="display:none">
+      <div class="card-title">What's the count?</div>
+      <div class="hint" style="margin-top:0">Running count of the 51 cards you just saw.</div>
+      <input type="number" id="speedAnswerInput" class="quiz-input" style="margin-top:10px" placeholder="e.g. -3">
+      <button class="btn" id="speedSubmitBtn" style="background:var(--green2);color:#fff">Submit</button>
+      <div class="quiz-feedback" id="speedFeedback"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Best Time</div>
+      <div class="true-count-value" id="speedBestTime">—</div>
+      <div class="speed-history" id="speedHistory">No runs yet.</div>
+    </div>
+
+  </div>
+
+  <!-- ===================== STATS VIEW ===================== -->
+  <div class="view" id="statsView">
+
+    <div class="card">
+      <div class="card-title">Overall Stats</div>
+      <table class="example-table">
+        <tr><td>Hands played</td><td id="statHands">0</td></tr>
+        <tr><td>Wins</td><td id="statWin">0</td></tr>
+        <tr><td>Losses</td><td id="statLose">0</td></tr>
+        <tr><td>Pushes</td><td id="statPush">0</td></tr>
+        <tr><td>Blackjacks</td><td id="statBlackjack">0</td></tr>
+        <tr><td>Strategy accuracy</td><td id="statStrategy">—</td></tr>
+        <tr><td>Running-count quiz accuracy</td><td id="statQuizRunning">—</td></tr>
+        <tr><td>True-count quiz accuracy</td><td id="statQuizTrue">—</td></tr>
+        <tr><td>Speed drill best time</td><td id="statSpeedBest">—</td></tr>
+        <tr><td>Bankroll (current / high)</td><td id="statBankroll">—</td></tr>
+      </table>
+      <button class="btn btn-outline" id="resetStatsBtn" style="margin-top:12px">Reset All Stats</button>
+      <div class="hint" id="resetStatsConfirm" style="display:none">Tap again to confirm — this clears all stats, bankroll, and history.</div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Hand History</div>
+      <div class="hint" style="margin-top:0">Most recent hands first, from Peek/Quiz Practice. Shows the outcome and how many of your decisions matched basic strategy.</div>
+      <div id="handHistoryList" style="margin-top:10px"></div>
+    </div>
+
+  </div>
+
+</div>
+
+<!-- Quiz modal -->
+<div class="quiz-overlay" id="quizOverlay" style="display:none">
+  <div class="quiz-box">
+    <div class="quiz-title">Quick Check</div>
+    <div class="quiz-question" id="quizQuestion">What's the running count right now?</div>
+    <input type="number" id="quizInput" class="quiz-input" inputmode="numeric" placeholder="e.g. -3">
+    <button class="btn" id="quizSubmitBtn" style="background:var(--green2);color:#fff">Submit</button>
+    <div class="quiz-feedback" id="quizFeedback"></div>
+    <button class="btn btn-outline" id="quizContinueBtn" style="display:none;margin-top:8px">Continue</button>
+  </div>
+</div>
+
+<script>
+/* ============================================================ */
+/* Shared Hi-Lo helpers                                          */
+/* ============================================================ */
+const SUITS = ['♠','♥','♦','♣'];
+const RANKS = ['2','3','4','5','6','7','8','9','10','J','Q','K','A'];
+
+function hiLoValue(rank){
+  if(['2','3','4','5','6'].includes(rank)) return 1;
+  if(['7','8','9'].includes(rank)) return 0;
+  return -1; // 10, J, Q, K, A
+}
+function blackjackValue(rank){
+  if(rank === 'A') return 11;
+  if(['J','Q','K'].includes(rank)) return 10;
+  return parseInt(rank, 10);
+}
+function handTotal(cards){
+  let total = 0, aces = 0;
+  cards.forEach(c => { total += blackjackValue(c.rank); if(c.rank === 'A') aces++; });
+  while(total > 21 && aces > 0){ total -= 10; aces--; }
+  return total;
+}
+function softTotalInfo(cards){
+  let total = 0, aces = 0;
+  cards.forEach(c => { total += blackjackValue(c.rank); if(c.rank === 'A') aces++; });
+  while(total > 21 && aces > 0){ total -= 10; aces--; }
+  return { total, soft: aces > 0 && total <= 21 };
+}
+const draculaMarkEl = document.getElementById('draculaMark');
+let draculaPulseTimer = null;
+function animateDracula(){
+  if(draculaMarkEl){
+    draculaMarkEl.classList.remove('deal-pulse');
+    void draculaMarkEl.offsetWidth; // restart animation
+    draculaMarkEl.classList.add('deal-pulse');
+    clearTimeout(draculaPulseTimer);
+    draculaPulseTimer = setTimeout(() => draculaMarkEl.classList.remove('deal-pulse'), 550);
+  }
+  const portrait = document.getElementById('dealerPortrait');
+  if(portrait){
+    portrait.classList.remove('deal-pulse');
+    void portrait.offsetWidth;
+    portrait.classList.add('deal-pulse');
+    clearTimeout(portrait._pulseTimer);
+    portrait._pulseTimer = setTimeout(() => portrait.classList.remove('deal-pulse'), 550);
+  }
+}
+function cardHTML(card, hidden, animClass, delayMs){
+  const cls = ['playing-card'];
+  cls.push(hidden ? 'hidden-card' : ((card.suit === '♥' || card.suit === '♦') ? 'red' : 'black'));
+  if(animClass) cls.push(animClass);
+  const style = animClass ? ' style="animation-delay:' + (delayMs || 0) + 'ms"' : '';
+  const inner = hidden ? '?' : '<div>' + card.rank + '</div><div>' + card.suit + '</div>';
+  return '<div class="' + cls.join(' ') + '"' + style + '>' + inner + '</div>';
+}
+function fmtSigned(n){ return n > 0 ? '+' + n : String(n); }
+
+/* --- The Count's voice: small phrase pools so his lines don't repeat every hand --- */
+function draculaSay(pool){ return pool[Math.floor(Math.random() * pool.length)]; }
+const DRACULA_STRATEGY_CORRECT = [
+  '✓ Precisely as I would have played it.',
+  '✓ Correct — you learn quickly, mortal.',
+  '✓ Well played. Even I could not fault that.'
+];
+function draculaStrategyIncorrect(recLabel){
+  return draculaSay([
+    '✗ No — I would have played ' + recLabel + ' here.',
+    '✗ A mistake. Basic strategy demands ' + recLabel + '.',
+    '✗ Wrong. Remember: ' + recLabel + ' is correct here.'
+  ]);
+}
+function draculaQuizCorrect(kind, val){
+  return draculaSay([
+    'Correct. The ' + kind + ' stands at ' + val + ', exactly as I sensed it.',
+    'Precisely right — ' + val + '. Your instincts sharpen.',
+    'Yes, ' + val + ' — I could not have counted it better myself.'
+  ]);
+}
+function draculaQuizIncorrect(kind, val){
+  return draculaSay([
+    'Not quite, mortal. The ' + kind + ' is ' + val + '.',
+    'Wrong — I have counted every card. It is ' + val + '.',
+    'No. Listen closer next time; the ' + kind + ' is ' + val + '.'
+  ]);
+}
+const DRACULA_ENTER_NUMBER = 'Speak a number first, mortal.';
+const DRACULA_BET_MATCHED = [
+  'Your wager matches the moment. Well judged.',
+  'A wise stake — you sense the shoe as I do.'
+];
+const DRACULA_BET_NOT_MATCHED_QUIZ = "Your wager did not match the count's true favor.";
+function draculaBetNotMatched(tcLabel, recUnits){
+  return 'The count favors you at ' + tcLabel + ' — a bolder wager was warranted, ~' + recUnits + ' unit' + (recUnits > 1 ? 's' : '') + ' (' + (recUnits * 5) + ' chips).';
+}
+
+/* ============================================================ */
+/* Basic strategy engine (multi-deck, S17, DAS off, no surrender) */
+/* ============================================================ */
+// Each string is indexed by dealer upcard 2,3,4,5,6,7,8,9,10,A -> 0..9
+const HARD_STRATEGY = {
+  8:'HHHHHHHHHH', 9:'HDDDDHHHHH', 10:'DDDDDDDDHH', 11:'DDDDDDDDDH',
+  12:'HHSSSHHHHH', 13:'SSSSSHHHHH', 14:'SSSSSHHHHH', 15:'SSSSSHHHHH',
+  16:'SSSSSHHHHH', 17:'SSSSSSSSSS'
+};
+const SOFT_STRATEGY = {
+  13:'HHHDDHHHHH', 14:'HHHDDHHHHH', 15:'HHDDDHHHHH', 16:'HHDDDHHHHH',
+  17:'HDDDDHHHHH', 18:'DDDDDSSHHH', 19:'SSSSSSSSSS', 20:'SSSSSSSSSS'
+};
+const PAIR_STRATEGY = {
+  'A':'PPPPPPPPPP', '10':'SSSSSSSSSS', '9':'PPPPPSPPSS', '8':'PPPPPPPPPP',
+  '7':'PPPPPPHHHH', '6':'HPPPPHHHHH', '4':'HHHHHHHHHH',
+  '3':'HHPPPPHHHH', '2':'HHPPPPHHHH'
+};
+function pairKey(rank){ return ['10','J','Q','K'].includes(rank) ? '10' : rank; }
+function dealerIdx(rank){
+  if(rank === 'A') return 9;
+  if(['10','J','Q','K'].includes(rank)) return 8;
+  return parseInt(rank, 10) - 2;
+}
+function basicStrategyAction(cards, dealerUpRank, canDouble, canSplit){
+  const idx = dealerIdx(dealerUpRank);
+  if(canSplit && cards.length === 2 && pairKey(cards[0].rank) === pairKey(cards[1].rank)){
+    const key = pairKey(cards[0].rank);
+    if(key !== '5' && PAIR_STRATEGY[key]){
+      const action = PAIR_STRATEGY[key][idx];
+      if(action === 'P') return 'P';
+      if(action === 'D') return canDouble ? 'D' : 'H';
+      return action;
+    }
+  }
+  const { total, soft } = softTotalInfo(cards);
+  if(soft && total >= 13 && total <= 20){
+    const action = SOFT_STRATEGY[Math.min(total, 20)][idx];
+    return action === 'D' ? (canDouble ? 'D' : 'H') : action;
+  }
+  const capped = Math.max(8, Math.min(total, 17));
+  const action = HARD_STRATEGY[capped][idx];
+  return action === 'D' ? (canDouble ? 'D' : 'H') : action;
+}
+
+/* ============================================================ */
+/* Tab switching                                                 */
+/* ============================================================ */
+const TAB_KEY = 'cardCountingActiveTab';
+let activeTab = 'home';
+
+function setActiveTab(tab){
+  activeTab = tab;
+  localStorage.setItem(TAB_KEY, tab);
+  document.getElementById('homeView').classList.toggle('active', tab === 'home');
+  document.getElementById('manualView').classList.toggle('active', tab === 'manual');
+  document.getElementById('dealerView').classList.toggle('active', tab === 'peek' || tab === 'quiz');
+  document.getElementById('deckMathView').classList.toggle('active', tab === 'math');
+  document.getElementById('speedView').classList.toggle('active', tab === 'speed');
+  document.getElementById('statsView').classList.toggle('active', tab === 'stats');
+  document.getElementById('rulesView').classList.toggle('active', tab === 'rules');
+  if(tab === 'peek' || tab === 'quiz'){
+    document.getElementById('peekBtn').style.display = (tab === 'peek') ? 'block' : 'none';
+    document.getElementById('quizScore').style.display = (tab === 'quiz') ? 'block' : 'none';
+    document.getElementById('dealerModeHint').textContent = (tab === 'peek')
+      ? 'Hold the button below to peek at the count.'
+      : "Count stays hidden — you'll be quizzed on it at random moments.";
+    isPeeking = false;
+    renderDealer();
+  }
+  if(tab === 'stats'){ renderStats(); }
+}
+
+document.querySelectorAll('.menu-card').forEach(card => {
+  card.addEventListener('click', () => setActiveTab(card.dataset.tab));
+});
+document.getElementById('menuBtn').addEventListener('click', () => setActiveTab('home'));
+
+/* ============================================================ */
+/* MANUAL MODE (physical deck)                                    */
+/* ============================================================ */
+const runningCountEl = document.getElementById('runningCount');
+const cardsSeenEl = document.getElementById('cardsSeen');
+const trueCountEl = document.getElementById('trueCount');
+const decksLeftEl = document.getElementById('decksLeft');
+const resetBtn = document.getElementById('resetBtn');
+
+const STORAGE_KEY = 'cardCountingTrainerState';
+
+for (let d = 8; d >= 0.5; d -= 0.5) {
+  const opt = document.createElement('option');
+  opt.value = d;
+  opt.textContent = d;
+  decksLeftEl.appendChild(opt);
+}
+
+function loadState() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
+    if (saved && typeof saved.runningCount === 'number') return saved;
+  } catch (e) {}
+  return { runningCount: 0, cardsSeen: 0, decksLeft: 6 };
+}
+
+let state = loadState();
+decksLeftEl.value = state.decksLeft;
+
+function saveState() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+}
+
+function render() {
+  const rc = state.runningCount;
+  runningCountEl.textContent = rc > 0 ? '+' + rc : String(rc);
+  runningCountEl.className = 'count-value ' + (rc > 0 ? 'pos' : rc < 0 ? 'neg' : 'zero');
+  cardsSeenEl.textContent = state.cardsSeen + (state.cardsSeen === 1 ? ' card counted' : ' cards counted');
+
+  const decks = parseFloat(decksLeftEl.value) || 0.5;
+  const tc = rc / decks;
+  trueCountEl.textContent = (tc > 0 ? '+' : '') + tc.toFixed(1);
+}
+
+function tapManualCount(val){
+  state.runningCount += val;
+  state.cardsSeen += 1;
+  saveState();
+  render();
+  animateDracula();
+}
+
+document.querySelectorAll('#manualView .count-btn').forEach(btn => {
+  btn.addEventListener('click', () => tapManualCount(parseInt(btn.dataset.val, 10)));
+});
+
+decksLeftEl.addEventListener('change', () => {
+  state.decksLeft = parseFloat(decksLeftEl.value);
+  saveState();
+  render();
+});
+
+resetBtn.addEventListener('click', () => {
+  state.runningCount = 0;
+  state.cardsSeen = 0;
+  saveState();
+  render();
+});
+
+render();
+
+/* ============================================================ */
+/* DEALER ENGINE (shared by Peek Practice & Quiz Practice)       */
+/* ============================================================ */
+const DEALER_KEY = 'cardCountingTrainerDealerState';
+
+function buildShoe(numDecks){
+  const shoe = [];
+  for(let d = 0; d < numDecks; d++){
+    for(const suit of SUITS){
+      for(const rank of RANKS){
+        shoe.push({ rank, suit });
+      }
+    }
+  }
+  for(let i = shoe.length - 1; i > 0; i--){
+    const j = Math.floor(Math.random() * (i + 1));
+    [shoe[i], shoe[j]] = [shoe[j], shoe[i]];
+  }
+  return shoe;
+}
+
+function defaultDealerState(){
+  const numDecks = 6;
+  return {
+    numDecks, shoe: buildShoe(numDecks), runningCount: 0, cardsSeen: 0, hand: null,
+    quiz: { correct: 0, total: 0 }, quizTrue: { correct: 0, total: 0 },
+    myCount: 0, trackOwnCount: false,
+    strategy: { correct: 0, total: 0 }, coachingEnabled: true,
+    bankroll: 1000, bankrollHigh: 1000, currentBet: 25, betCoachingEnabled: true,
+    stats: { hands: 0, win: 0, lose: 0, push: 0, blackjack: 0 },
+    handHistory: []
+  };
+}
+
+function loadDealerState(){
+  try {
+    const saved = JSON.parse(localStorage.getItem(DEALER_KEY));
+    if(saved && Array.isArray(saved.shoe)){
+      if(typeof saved.myCount !== 'number') saved.myCount = 0;
+      if(typeof saved.trackOwnCount !== 'boolean') saved.trackOwnCount = false;
+      if(!saved.quizTrue) saved.quizTrue = { correct: 0, total: 0 };
+      if(!saved.strategy) saved.strategy = { correct: 0, total: 0 };
+      if(typeof saved.coachingEnabled !== 'boolean') saved.coachingEnabled = true;
+      if(typeof saved.bankroll !== 'number') saved.bankroll = 1000;
+      if(typeof saved.bankrollHigh !== 'number') saved.bankrollHigh = saved.bankroll;
+      if(typeof saved.currentBet !== 'number') saved.currentBet = 25;
+      if(typeof saved.betCoachingEnabled !== 'boolean') saved.betCoachingEnabled = true;
+      if(!saved.stats) saved.stats = { hands: 0, win: 0, lose: 0, push: 0, blackjack: 0 };
+      if(!Array.isArray(saved.handHistory)) saved.handHistory = [];
+      if(saved.hand && !saved.hand.hands) saved.hand = null; // drop incompatible old-shape in-progress hand
+      return saved;
+    }
+  } catch(e) {}
+  return defaultDealerState();
+}
+
+let dealerState = loadDealerState();
+document.getElementById('shoeDecks').value = dealerState.numDecks;
+document.getElementById('ownCountToggle').checked = dealerState.trackOwnCount;
+document.getElementById('coachingToggle').checked = dealerState.coachingEnabled;
+document.getElementById('betCoachingToggle').checked = dealerState.betCoachingEnabled;
+
+function saveDealerState(){
+  localStorage.setItem(DEALER_KEY, JSON.stringify(dealerState));
+}
+
+function rebuildShoe(){
+  dealerState.shoe = buildShoe(dealerState.numDecks);
+  dealerState.runningCount = 0;
+  dealerState.cardsSeen = 0;
+  dealerState.myCount = 0;
+  dealerState.hand = null;
+}
+
+function maybeReshuffle(){
+  if(dealerState.shoe.length < dealerState.numDecks * 52 * 0.25){
+    rebuildShoe();
+  }
+}
+
+function drawCard(countIt){
+  if(dealerState.shoe.length === 0){
+    // Shoe ran dry mid-hand: silently top it up without resetting count or the hand in progress.
+    // Full reshuffle-with-reset only ever happens between hands, via maybeReshuffle().
+    dealerState.shoe = dealerState.shoe.concat(buildShoe(dealerState.numDecks));
+  }
+  const card = dealerState.shoe.pop();
+  if(countIt){
+    dealerState.runningCount += hiLoValue(card.rank);
+    dealerState.cardsSeen += 1;
+  }
+  animateDracula();
+  return card;
+}
+
+function revealHole(){
+  const h = dealerState.hand;
+  if(!h.holeRevealed){
+    dealerState.runningCount += hiLoValue(h.dealerHole.rank);
+    dealerState.cardsSeen += 1;
+    animateDracula();
+    h.holeRevealed = true;
+  }
+}
+
+/* --- Own count toggle --- */
+document.getElementById('ownCountToggle').addEventListener('change', (e) => {
+  dealerState.trackOwnCount = e.target.checked;
+  saveDealerState();
+  renderDealer();
+});
+document.querySelectorAll('.own-count-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    dealerState.myCount += parseInt(btn.dataset.val, 10);
+    saveDealerState();
+    renderDealer();
+  });
+});
+document.getElementById('ownCountResetBtn').addEventListener('click', () => {
+  dealerState.myCount = 0;
+  saveDealerState();
+  renderDealer();
+});
+
+/* --- Coaching toggles --- */
+document.getElementById('coachingToggle').addEventListener('change', (e) => {
+  dealerState.coachingEnabled = e.target.checked;
+  saveDealerState();
+  renderDealer();
+});
+document.getElementById('betCoachingToggle').addEventListener('change', (e) => {
+  dealerState.betCoachingEnabled = e.target.checked;
+  saveDealerState();
+});
+
+/* --- Betting --- */
+document.querySelectorAll('.chip-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    dealerState.currentBet = parseInt(btn.dataset.bet, 10);
+    saveDealerState();
+    renderDealer();
+  });
+});
+document.getElementById('resetBankrollBtn').addEventListener('click', () => {
+  dealerState.bankroll = 1000;
+  dealerState.bankrollHigh = Math.max(dealerState.bankrollHigh, 1000);
+  saveDealerState();
+  renderDealer();
+});
+function showBetFeedback(msg, positive){
+  const el = document.getElementById('betFeedback');
+  el.textContent = msg;
+  el.className = 'quiz-feedback ' + (positive === false ? 'incorrect' : positive === true ? 'correct' : '');
+}
+function recommendedUnits(tc){
+  if(tc >= 4) return 8;
+  if(tc >= 3) return 4;
+  if(tc >= 2) return 2;
+  return 1;
+}
+function gradeBet(tc, bet){
+  const actualUnits = Math.max(1, Math.round(bet / 5));
+  const recUnits = recommendedUnits(tc);
+  const matched = Math.abs(actualUnits - recUnits) <= 1;
+  if(activeTab === 'quiz'){
+    showBetFeedback(matched ? draculaSay(DRACULA_BET_MATCHED) : DRACULA_BET_NOT_MATCHED_QUIZ, matched);
+  } else {
+    const tcLabel = fmtSigned(Math.round(tc * 10) / 10);
+    showBetFeedback(
+      matched
+        ? draculaSay(DRACULA_BET_MATCHED) + ' (TC ' + tcLabel + '.)'
+        : draculaBetNotMatched(tcLabel, recUnits),
+      matched
+    );
+  }
+}
+
+/* --- Quiz trigger (Quiz Practice tab only) --- */
+let isPeeking = false;
+let quizPending = false;
+let cardsSinceQuiz = 0;
+let currentQuizType = 'running';
+
+function checkQuiz(){
+  if(activeTab !== 'quiz' || quizPending) return;
+  cardsSinceQuiz++;
+  if(cardsSinceQuiz >= 3 && Math.random() < 0.35){
+    cardsSinceQuiz = 0;
+    openQuizModal();
+  }
+}
+
+function openQuizModal(){
+  quizPending = true;
+  currentQuizType = Math.random() < 0.5 ? 'true' : 'running';
+  document.getElementById('quizQuestion').textContent = currentQuizType === 'true'
+    ? "What's the true count? (nearest 0.5)"
+    : "What's the running count right now?";
+  document.getElementById('quizInput').step = currentQuizType === 'true' ? '0.5' : '1';
+  document.getElementById('quizInput').value = '';
+  document.getElementById('quizFeedback').textContent = '';
+  document.getElementById('quizFeedback').className = 'quiz-feedback';
+  document.getElementById('quizSubmitBtn').style.display = 'block';
+  document.getElementById('quizInput').style.display = 'block';
+  document.getElementById('quizContinueBtn').style.display = 'none';
+  document.getElementById('quizOverlay').style.display = 'flex';
+  renderDealer();
+  document.getElementById('quizInput').focus();
+}
+
+function submitQuizAnswer(){
+  const raw = document.getElementById('quizInput').value;
+  const feedback = document.getElementById('quizFeedback');
+
+  if(currentQuizType === 'true'){
+    const val = parseFloat(raw);
+    if(isNaN(val)){ feedback.textContent = DRACULA_ENTER_NUMBER; feedback.className = 'quiz-feedback incorrect'; return; }
+    const decksRemaining = Math.max(dealerState.shoe.length / 52, 0.5);
+    const exact = dealerState.runningCount / decksRemaining;
+    const roundedCorrect = Math.round(exact * 2) / 2;
+    const roundedUser = Math.round(val * 2) / 2;
+    const correct = roundedUser === roundedCorrect;
+    dealerState.quizTrue.total += 1;
+    if(correct) dealerState.quizTrue.correct += 1;
+    feedback.textContent = correct
+      ? draculaQuizCorrect('true count', fmtSigned(roundedCorrect))
+      : draculaQuizIncorrect('true count', fmtSigned(roundedCorrect));
+    feedback.className = 'quiz-feedback ' + (correct ? 'correct' : 'incorrect');
+  } else {
+    const val = parseInt(raw, 10);
+    if(isNaN(val)){ feedback.textContent = DRACULA_ENTER_NUMBER; feedback.className = 'quiz-feedback incorrect'; return; }
+    dealerState.quiz.total += 1;
+    const correct = val === dealerState.runningCount;
+    if(correct) dealerState.quiz.correct += 1;
+    feedback.textContent = correct
+      ? draculaQuizCorrect('running count', fmtSigned(dealerState.runningCount))
+      : draculaQuizIncorrect('running count', fmtSigned(dealerState.runningCount));
+    feedback.className = 'quiz-feedback ' + (correct ? 'correct' : 'incorrect');
+  }
+
+  document.getElementById('quizSubmitBtn').style.display = 'none';
+  document.getElementById('quizInput').style.display = 'none';
+  document.getElementById('quizContinueBtn').style.display = 'block';
+  saveDealerState();
+}
+
+function closeQuizModal(){
+  quizPending = false;
+  document.getElementById('quizOverlay').style.display = 'none';
+  renderDealer();
+}
+
+document.getElementById('quizSubmitBtn').addEventListener('click', submitQuizAnswer);
+document.getElementById('quizInput').addEventListener('keydown', e => { if(e.key === 'Enter') submitQuizAnswer(); });
+document.getElementById('quizContinueBtn').addEventListener('click', closeQuizModal);
+
+/* --- Peek button (Peek Practice tab only) --- */
+const peekBtn = document.getElementById('peekBtn');
+function startPeek(e){ e.preventDefault(); isPeeking = true; renderDealer(); }
+function stopPeek(){ isPeeking = false; renderDealer(); }
+peekBtn.addEventListener('pointerdown', startPeek);
+peekBtn.addEventListener('pointerup', stopPeek);
+peekBtn.addEventListener('pointerleave', stopPeek);
+peekBtn.addEventListener('pointercancel', stopPeek);
+
+/* --- Strategy coaching --- */
+function showStrategyFeedback(correct, recLabel){
+  const el = document.getElementById('strategyFeedback');
+  if(!dealerState.coachingEnabled){ el.textContent = ''; return; }
+  el.textContent = correct ? draculaSay(DRACULA_STRATEGY_CORRECT) : draculaStrategyIncorrect(recLabel);
+  el.className = 'quiz-feedback ' + (correct ? 'correct' : 'incorrect');
+}
+function gradeAndShowStrategy(cur, actionTaken, canDouble, canSplit){
+  const rec = basicStrategyAction(cur.cards, dealerState.hand.dealerUp.rank, canDouble, canSplit);
+  const recLabel = { H: 'Hit', S: 'Stand', D: 'Double', P: 'Split' }[rec];
+  const correct = rec === actionTaken;
+  dealerState.strategy.total++;
+  if(correct) dealerState.strategy.correct++;
+  cur.movesTotal++;
+  if(correct) cur.movesCorrect++;
+  showStrategyFeedback(correct, recLabel);
+}
+function canDoubleNow(h, cur){ return cur.cards.length === 2 && h.hands.length === 1; }
+function canSplitNow(h, cur){ return cur.cards.length === 2 && h.hands.length === 1 && pairKey(cur.cards[0].rank) === pairKey(cur.cards[1].rank); }
+
+/* --- Hand flow --- */
+let handIdCounter = 0;
+let lastRender = { handId: null, dealerExtra: 0, hole: false, upAnimated: false, handsCounts: [0, 0] };
+
+function dealNewHand(){
+  if(dealerState.bankroll < dealerState.currentBet){
+    showBetFeedback('Your coffers run dry, mortal — lower your wager or restore your fortune.', false);
+    return;
+  }
+  maybeReshuffle();
+  const decksRemaining = Math.max(dealerState.shoe.length / 52, 0.5);
+  const trueCountAtBet = dealerState.runningCount / decksRemaining;
+  dealerState.bankroll -= dealerState.currentBet;
+
+  const hand = {
+    id: ++handIdCounter,
+    dealerUp: null, dealerHole: null, dealerExtra: [],
+    holeRevealed: false,
+    stage: 'player',
+    hands: [ { cards: [], doubled: false, stage: 'active', result: null, bet: dealerState.currentBet, isAceSplit: false, movesCorrect: 0, movesTotal: 0 } ],
+    activeIndex: 0
+  };
+  hand.hands[0].cards.push(drawCard(true), drawCard(true));
+  hand.dealerUp = drawCard(true);
+  hand.dealerHole = drawCard(false);
+  dealerState.hand = hand;
+
+  if(dealerState.betCoachingEnabled){
+    gradeBet(trueCountAtBet, dealerState.currentBet);
+  } else {
+    document.getElementById('betFeedback').textContent = '';
+  }
+  document.getElementById('strategyFeedback').textContent = '';
+
+  const dealerNatural = handTotal([hand.dealerUp, hand.dealerHole]) === 21;
+  const playerNatural = handTotal(hand.hands[0].cards) === 21;
+  if(dealerNatural || playerNatural){
+    revealHole();
+    resolveHand();
+    return;
+  }
+  checkQuiz();
+  if(dealerState.bankroll > dealerState.bankrollHigh) dealerState.bankrollHigh = dealerState.bankroll;
+  saveDealerState();
+  renderDealer();
+}
+
+function advanceOrFinish(){
+  const h = dealerState.hand;
+  if(h.activeIndex === 0 && h.hands.length === 2 && h.hands[1].stage === 'pending'){
+    h.activeIndex = 1;
+    h.hands[1].stage = 'active';
+  } else {
+    finishPlayerTurn();
+  }
+}
+
+function playerHit(){
+  const h = dealerState.hand;
+  if(!h || h.stage !== 'player') return;
+  const cur = h.hands[h.activeIndex];
+  if(cur.stage !== 'active') return;
+  gradeAndShowStrategy(cur, 'H', canDoubleNow(h, cur), canSplitNow(h, cur));
+  cur.cards.push(drawCard(true));
+  const total = handTotal(cur.cards);
+  if(total >= 21){
+    cur.stage = total > 21 ? 'bust' : 'stood';
+    checkQuiz();
+    advanceOrFinish();
+  } else {
+    checkQuiz();
+  }
+  saveDealerState();
+  renderDealer();
+}
+
+function playerStand(){
+  const h = dealerState.hand;
+  if(!h || h.stage !== 'player') return;
+  const cur = h.hands[h.activeIndex];
+  if(cur.stage !== 'active') return;
+  gradeAndShowStrategy(cur, 'S', canDoubleNow(h, cur), canSplitNow(h, cur));
+  cur.stage = 'stood';
+  advanceOrFinish();
+  saveDealerState();
+  renderDealer();
+}
+
+function playerDouble(){
+  const h = dealerState.hand;
+  if(!h || h.stage !== 'player') return;
+  const cur = h.hands[h.activeIndex];
+  if(cur.stage !== 'active' || !canDoubleNow(h, cur)) return;
+  if(dealerState.bankroll < cur.bet){ showBetFeedback('Insufficient gold to double this hand.', false); return; }
+  gradeAndShowStrategy(cur, 'D', true, canSplitNow(h, cur));
+  dealerState.bankroll -= cur.bet;
+  cur.bet *= 2;
+  cur.doubled = true;
+  cur.cards.push(drawCard(true));
+  cur.stage = handTotal(cur.cards) > 21 ? 'bust' : 'stood';
+  checkQuiz();
+  advanceOrFinish();
+  saveDealerState();
+  renderDealer();
+}
+
+function playerSplit(){
+  const h = dealerState.hand;
+  if(!h || h.stage !== 'player') return;
+  const cur = h.hands[h.activeIndex];
+  if(cur.stage !== 'active' || !canSplitNow(h, cur)) return;
+  if(dealerState.bankroll < cur.bet){ showBetFeedback('Insufficient gold to split this hand.', false); return; }
+  gradeAndShowStrategy(cur, 'P', canDoubleNow(h, cur), true);
+  dealerState.bankroll -= cur.bet;
+
+  const isAcePair = cur.cards[0].rank === 'A';
+  const movedCard = cur.cards.pop();
+  const hand2 = { cards: [movedCard], doubled: false, stage: 'pending', result: null, bet: cur.bet, isAceSplit: isAcePair, movesCorrect: 0, movesTotal: 0 };
+  h.hands.push(hand2);
+
+  cur.cards.push(drawCard(true));
+  hand2.cards.push(drawCard(true));
+
+  if(isAcePair){
+    cur.stage = 'stood';
+    hand2.stage = 'stood';
+  }
+
+  checkQuiz();
+  if(cur.stage === 'stood' || cur.stage === 'bust'){
+    advanceOrFinish();
+  }
+  saveDealerState();
+  renderDealer();
+}
+
+function finishPlayerTurn(){
+  const h = dealerState.hand;
+  h.stage = 'dealer';
+  revealHole();
+  const anyLive = h.hands.some(hd => hd.stage !== 'bust');
+  if(anyLive){
+    let dealerCards = [h.dealerUp, h.dealerHole, ...h.dealerExtra];
+    while(handTotal(dealerCards) < 17){
+      const c = drawCard(true);
+      h.dealerExtra.push(c);
+      dealerCards.push(c);
+    }
+  }
+  resolveHand();
+}
+
+function resolveHand(){
+  const h = dealerState.hand;
+  h.stage = 'done';
+  const dealerCards = [h.dealerUp, h.dealerHole, ...h.dealerExtra];
+  const dealerTotal = handTotal(dealerCards);
+  const dealerBJ = dealerCards.length === 2 && dealerTotal === 21;
+
+  h.hands.forEach(hd => {
+    const playerTotal = handTotal(hd.cards);
+    const playerBJ = h.hands.length === 1 && hd.cards.length === 2 && playerTotal === 21;
+    let result, payout;
+    if(playerTotal > 21){ result = 'lose'; payout = 0; }
+    else if(dealerBJ && playerBJ){ result = 'push'; payout = hd.bet; }
+    else if(dealerBJ){ result = 'lose'; payout = 0; }
+    else if(playerBJ){ result = 'blackjack'; payout = hd.bet * 2.5; }
+    else if(dealerTotal > 21){ result = 'win'; payout = hd.bet * 2; }
+    else if(playerTotal > dealerTotal){ result = 'win'; payout = hd.bet * 2; }
+    else if(playerTotal < dealerTotal){ result = 'lose'; payout = 0; }
+    else { result = 'push'; payout = hd.bet; }
+    hd.result = result;
+    dealerState.bankroll += payout;
+    dealerState.stats.hands++;
+    dealerState.stats[result] = (dealerState.stats[result] || 0) + 1;
+    dealerState.handHistory.unshift({ result, correct: hd.movesCorrect, total: hd.movesTotal });
+  });
+  if(dealerState.handHistory.length > 30) dealerState.handHistory.length = 30;
+
+  if(dealerState.bankroll > dealerState.bankrollHigh) dealerState.bankrollHigh = dealerState.bankroll;
+
+  checkQuiz();
+  saveDealerState();
+  renderDealer();
+}
+
+document.getElementById('dealBtn').addEventListener('click', dealNewHand);
+document.getElementById('hitBtn').addEventListener('click', playerHit);
+document.getElementById('standBtn').addEventListener('click', playerStand);
+document.getElementById('doubleBtn').addEventListener('click', playerDouble);
+document.getElementById('splitBtn').addEventListener('click', playerSplit);
+
+document.getElementById('newShoeBtn').addEventListener('click', () => {
+  rebuildShoe();
+  saveDealerState();
+  renderDealer();
+});
+
+document.getElementById('shoeDecks').addEventListener('change', (e) => {
+  dealerState.numDecks = parseInt(e.target.value, 10);
+  rebuildShoe();
+  saveDealerState();
+  renderDealer();
+});
+
+function renderDealer(){
+  const decksRemaining = dealerState.shoe.length / 52;
+  document.getElementById('shoeInfo').textContent =
+    dealerState.numDecks + ' deck shoe · ' + dealerState.shoe.length + ' cards left';
+
+  const st = dealerState.stats;
+  document.getElementById('sbHands').textContent = st.hands;
+  document.getElementById('sbRecord').textContent = st.win + '-' + st.lose + '-' + st.push;
+  document.getElementById('sbStrategy').textContent = dealerState.strategy.total
+    ? Math.round(dealerState.strategy.correct / dealerState.strategy.total * 100) + '%'
+    : '—';
+
+  document.getElementById('ownCountPanel').style.display = dealerState.trackOwnCount ? 'block' : 'none';
+  const mc = dealerState.myCount;
+  const ownCountEl = document.getElementById('ownCountValue');
+  ownCountEl.textContent = fmtSigned(mc);
+  ownCountEl.className = 'own-count-value ' + (mc > 0 ? 'pos' : mc < 0 ? 'neg' : 'zero');
+
+  const showCount = (activeTab === 'peek' && isPeeking);
+  const rc = dealerState.runningCount;
+  const rcEl = document.getElementById('dealerRunningCount');
+  const tcEl = document.getElementById('dealerTrueCount');
+  if(showCount){
+    rcEl.textContent = fmtSigned(rc);
+    rcEl.className = 'count-value ' + (rc > 0 ? 'pos' : rc < 0 ? 'neg' : 'zero');
+    const tc = rc / Math.max(decksRemaining, 0.5);
+    tcEl.textContent = 'True count ' + fmtSigned(Math.round(tc * 10) / 10);
+  } else {
+    rcEl.textContent = '•••';
+    rcEl.className = 'count-value hidden-val';
+    tcEl.textContent = '';
+  }
+
+  if(activeTab === 'quiz'){
+    document.getElementById('quizScore').textContent =
+      'Running: ' + dealerState.quiz.correct + '/' + dealerState.quiz.total +
+      '  ·  True: ' + dealerState.quizTrue.correct + '/' + dealerState.quizTrue.total;
+  }
+
+  document.getElementById('currentBetValue').textContent = dealerState.currentBet;
+  document.getElementById('bankrollBadge').textContent = '💰 ' + dealerState.bankroll + ' · Bet ' + dealerState.currentBet;
+
+  const h = dealerState.hand;
+  document.getElementById('betCard').style.display = h ? 'none' : 'block';
+
+  const dealerCardsEl = document.getElementById('dealerCards');
+  const handsAreaEl = document.getElementById('playerHandsArea');
+  const dealerTotalEl = document.getElementById('dealerTotal');
+  const bannerEl = document.getElementById('resultBanner');
+  const playActionsEl = document.getElementById('playActions');
+  const dealBtnEl = document.getElementById('dealBtn');
+  const hitBtnEl = document.getElementById('hitBtn');
+  const standBtnEl = document.getElementById('standBtn');
+  const doubleBtnEl = document.getElementById('doubleBtn');
+  const splitBtnEl = document.getElementById('splitBtn');
+
+  if(!h){
+    dealerCardsEl.innerHTML = '';
+    handsAreaEl.innerHTML = '';
+    dealerTotalEl.innerHTML = '&nbsp;';
+    bannerEl.innerHTML = '';
+    playActionsEl.style.display = 'none';
+    dealBtnEl.style.display = 'block';
+    dealBtnEl.textContent = 'Deal Hand';
+    dealBtnEl.disabled = dealerState.bankroll < dealerState.currentBet;
+    return;
+  }
+
+  if(h.id !== lastRender.handId){
+    lastRender = { handId: h.id, dealerExtra: 0, hole: false, upAnimated: false, handsCounts: [0, 0] };
+  }
+  const isFirstRenderOfHand = !lastRender.upAnimated;
+
+  let dealerRow = cardHTML(h.dealerUp, false, isFirstRenderOfHand ? 'deal-in' : null, 0);
+  let holeAnim = null, holeDelay = 0;
+  if(!h.holeRevealed && isFirstRenderOfHand){ holeAnim = 'deal-in'; holeDelay = 160; }
+  else if(h.holeRevealed && !lastRender.hole){ holeAnim = 'flip-in'; holeDelay = 0; }
+  dealerRow += cardHTML(h.dealerHole, !h.holeRevealed, holeAnim, holeDelay);
+  for(let i = 0; i < h.dealerExtra.length; i++){
+    const isNewExtra = i >= lastRender.dealerExtra;
+    dealerRow += cardHTML(h.dealerExtra[i], false, isNewExtra ? 'deal-in' : null, isNewExtra ? (i - lastRender.dealerExtra) * 220 + 320 : 0);
+  }
+  dealerCardsEl.innerHTML = dealerRow;
+
+  let handsHTML = '';
+  const resultLabels = { win: 'Win', lose: 'Lose', push: 'Push', blackjack: 'Blackjack!' };
+  h.hands.forEach((hd, idx) => {
+    const prevCount = lastRender.handsCounts[idx] || 0;
+    let row = '';
+    hd.cards.forEach((c, i) => {
+      const isNew = i >= prevCount;
+      row += cardHTML(c, false, isNew ? 'deal-in' : null, isNew ? (i - prevCount) * 220 : 0);
+    });
+    const isActive = h.stage === 'player' && idx === h.activeIndex && hd.stage === 'active';
+    const total = handTotal(hd.cards);
+    const label = h.hands.length > 1 ? ('Hand ' + (idx + 1) + (isActive ? ' (active)' : '')) : '';
+    const resultText = hd.result ? ' — ' + resultLabels[hd.result] : '';
+    handsHTML += '<div class="hand-block' + (isActive ? ' active-hand' : '') + '">' +
+      (label ? '<div class="hand-badge">' + label + '</div>' : '') +
+      '<div class="card-row">' + row + '</div>' +
+      '<div class="hand-total">Total: ' + total + (hd.doubled ? ' (doubled)' : '') + ' · Bet: ' + hd.bet + resultText + '</div>' +
+      '</div>';
+  });
+  handsAreaEl.innerHTML = handsHTML;
+
+  lastRender = {
+    handId: h.id,
+    dealerExtra: h.dealerExtra.length,
+    hole: h.holeRevealed,
+    upAnimated: true,
+    handsCounts: h.hands.map(hd => hd.cards.length)
+  };
+
+  if(h.holeRevealed){
+    const dTotal = handTotal([h.dealerUp, h.dealerHole, ...h.dealerExtra]);
+    if(h.stage === 'done' && dTotal < 17 && h.dealerExtra.length === 0){
+      const hasNaturalBJ = h.hands.some(hd => hd.result === 'blackjack');
+      const reason = hasNaturalBJ
+        ? 'your natural blackjack ends the hand instantly'
+        : 'every hand already busted';
+      dealerTotalEl.textContent = 'Dealer: ' + dTotal + ' (stopped here — ' + reason + ', so the dealer never plays out)';
+    } else {
+      dealerTotalEl.textContent = 'Dealer total: ' + dTotal;
+    }
+  } else {
+    dealerTotalEl.innerHTML = 'Dealer showing: ' + h.dealerUp.rank + ' <span class="muted">+ ?</span>';
+  }
+
+  const cur = h.hands[h.activeIndex];
+
+  if(h.stage === 'done'){
+    bannerEl.innerHTML = h.hands.map(hd => {
+      const label = h.hands.length > 1 ? 'Hand ' + (h.hands.indexOf(hd) + 1) + ': ' : '';
+      const text = hd.result === 'win' ? 'You Win' : hd.result === 'lose' ? 'Dealer Wins' : hd.result === 'push' ? 'Push' : 'Blackjack! You Win';
+      return '<div class="result-banner ' + hd.result + '">' + label + text + '</div>';
+    }).join('');
+    playActionsEl.style.display = 'none';
+    dealBtnEl.style.display = 'block';
+    dealBtnEl.textContent = 'Next Hand';
+    dealBtnEl.disabled = false;
+  } else {
+    bannerEl.innerHTML = '';
+    playActionsEl.style.display = 'flex';
+    dealBtnEl.style.display = 'none';
+    doubleBtnEl.disabled = quizPending || !canDoubleNow(h, cur) || dealerState.bankroll < cur.bet;
+    splitBtnEl.style.display = canSplitNow(h, cur) ? 'flex' : 'none';
+    splitBtnEl.disabled = quizPending || dealerState.bankroll < cur.bet;
+  }
+
+  hitBtnEl.disabled = quizPending;
+  standBtnEl.disabled = quizPending;
+}
+
+/* ============================================================ */
+/* DECK MATH tab (calculator + practice drill)                   */
+/* ============================================================ */
+const MATH_KEY = 'cardCountingTrainerMathState';
+
+function loadMathState(){
+  try {
+    const saved = JSON.parse(localStorage.getItem(MATH_KEY));
+    if(saved && typeof saved.correct === 'number') return saved;
+  } catch(e) {}
+  return { correct: 0, total: 0 };
+}
+
+let mathState = loadMathState();
+
+function saveMathState(){
+  localStorage.setItem(MATH_KEY, JSON.stringify(mathState));
+}
+
+const mathDecksEl = document.getElementById('mathDecks');
+const mathRunningCountEl = document.getElementById('mathRunningCount');
+const calcOutputEl = document.getElementById('calcOutput');
+
+for (let d = 8; d >= 0.5; d -= 0.5) {
+  const opt = document.createElement('option');
+  opt.value = d;
+  opt.textContent = d;
+  mathDecksEl.appendChild(opt);
+}
+mathDecksEl.value = 6;
+
+function updateCalcOutput(){
+  const decks = parseFloat(mathDecksEl.value) || 0.5;
+  const rc = parseFloat(mathRunningCountEl.value) || 0;
+  const tc = rc / decks;
+  calcOutputEl.textContent = fmtSigned(rc) + ' ÷ ' + decks + ' decks = ' + fmtSigned(Math.round(tc * 10) / 10) + ' true count';
+}
+mathDecksEl.addEventListener('change', updateCalcOutput);
+mathRunningCountEl.addEventListener('input', updateCalcOutput);
+updateCalcOutput();
+
+const DECK_OPTIONS = [0.5,1,1.5,2,2.5,3,3.5,4,4.5,5,5.5,6,6.5,7,7.5,8];
+let currentProblem = null;
+
+function newMathProblem(){
+  const rc = Math.floor(Math.random() * 25) - 12; // -12..+12
+  const decks = DECK_OPTIONS[Math.floor(Math.random() * DECK_OPTIONS.length)];
+  currentProblem = { rc, decks };
+  document.getElementById('problemRunning').textContent = fmtSigned(rc);
+  document.getElementById('problemDecks').textContent = decks;
+  const feedback = document.getElementById('mathFeedback');
+  feedback.textContent = '';
+  feedback.className = 'quiz-feedback';
+  document.getElementById('mathAnswerInput').value = '';
+}
+
+function checkMathAnswer(){
+  if(!currentProblem) return;
+  const val = parseFloat(document.getElementById('mathAnswerInput').value);
+  const feedback = document.getElementById('mathFeedback');
+  if(isNaN(val)){
+    feedback.textContent = DRACULA_ENTER_NUMBER;
+    feedback.className = 'quiz-feedback incorrect';
+    return;
+  }
+  const exact = currentProblem.rc / currentProblem.decks;
+  const roundedCorrect = Math.round(exact * 2) / 2;
+  const roundedUser = Math.round(val * 2) / 2;
+  const correct = roundedUser === roundedCorrect;
+
+  mathState.total += 1;
+  if(correct) mathState.correct += 1;
+  saveMathState();
+
+  feedback.textContent = correct
+    ? draculaQuizCorrect('true count', fmtSigned(roundedCorrect))
+    : draculaQuizIncorrect('true count', fmtSigned(roundedCorrect) + ' (' + fmtSigned(currentProblem.rc) + ' ÷ ' + currentProblem.decks + ')');
+  feedback.className = 'quiz-feedback ' + (correct ? 'correct' : 'incorrect');
+  document.getElementById('mathScore').textContent = 'Practice score: ' + mathState.correct + '/' + mathState.total;
+}
+
+document.getElementById('mathCheckBtn').addEventListener('click', checkMathAnswer);
+document.getElementById('mathNewProblemBtn').addEventListener('click', newMathProblem);
+document.getElementById('mathAnswerInput').addEventListener('keydown', e => { if(e.key === 'Enter') checkMathAnswer(); });
+
+document.getElementById('mathScore').textContent = 'Practice score: ' + mathState.correct + '/' + mathState.total;
+newMathProblem();
+
+/* ============================================================ */
+/* SPEED DRILL tab                                                */
+/* ============================================================ */
+const SPEED_KEY = 'cardCountingTrainerSpeedState';
+
+function loadSpeedState(){
+  try { const s = JSON.parse(localStorage.getItem(SPEED_KEY)); if(s) return s; } catch(e) {}
+  return { bestTimeMs: null, history: [] };
+}
+let speedState = loadSpeedState();
+function saveSpeedState(){ localStorage.setItem(SPEED_KEY, JSON.stringify(speedState)); }
+
+function renderSpeedBest(){
+  document.getElementById('speedBestTime').textContent = speedState.bestTimeMs ? (speedState.bestTimeMs / 1000).toFixed(2) + 's' : '—';
+  const hist = speedState.history.slice(-6).reverse();
+  document.getElementById('speedHistory').textContent = hist.length
+    ? hist.map(r => (r.ms / 1000).toFixed(1) + 's (' + (r.correct ? '✓' : '✗') + ')').join('  ·  ')
+    : 'No runs yet.';
+}
+renderSpeedBest();
+
+let speedDeck = [], speedIndex = 0, speedStartTime = 0;
+
+function startSpeedDrill(){
+  speedDeck = buildShoe(1); // single shuffled 52-card deck
+  speedDeck.splice(Math.floor(Math.random() * 52), 1); // hold one card back, secretly
+  speedIndex = 0;
+  document.getElementById('speedStage').style.display = 'block';
+  document.getElementById('speedAnswerCard').style.display = 'none';
+  document.getElementById('speedCardArea').innerHTML = '';
+  document.getElementById('speedElapsed').textContent = '';
+  document.getElementById('speedTapBtn').style.display = 'none';
+  const pace = document.getElementById('speedPace').value;
+  const cd = document.getElementById('speedCountdown');
+  let n = 3;
+  cd.textContent = n;
+  const cdInterval = setInterval(() => {
+    n--;
+    if(n > 0){ cd.textContent = n; }
+    else { clearInterval(cdInterval); cd.textContent = ''; runSpeedSequence(pace); }
+  }, 700);
+}
+
+function runSpeedSequence(pace){
+  speedStartTime = performance.now();
+  const area = document.getElementById('speedCardArea');
+  const tapBtn = document.getElementById('speedTapBtn');
+  tapBtn.style.display = pace === 'manual' ? 'block' : 'none';
+
+  function showNext(){
+    if(speedIndex >= speedDeck.length){
+      finishSpeedDrill();
+      return;
+    }
+    const card = speedDeck[speedIndex];
+    area.innerHTML = cardHTML(card, false, 'deal-in', 0);
+    speedIndex++;
+    animateDracula();
+    if(pace !== 'manual'){
+      setTimeout(showNext, parseInt(pace, 10));
+    }
+  }
+  tapBtn.onclick = showNext;
+  showNext();
+}
+
+function finishSpeedDrill(){
+  const elapsedMs = performance.now() - speedStartTime;
+  document.getElementById('speedElapsed').textContent = 'Elapsed: ' + (elapsedMs / 1000).toFixed(2) + 's';
+  document.getElementById('speedTapBtn').style.display = 'none';
+  const answerCard = document.getElementById('speedAnswerCard');
+  answerCard.style.display = 'block';
+  answerCard.dataset.elapsed = elapsedMs;
+  document.getElementById('speedAnswerInput').value = '';
+  document.getElementById('speedFeedback').textContent = '';
+}
+
+document.getElementById('speedStartBtn').addEventListener('click', startSpeedDrill);
+
+document.getElementById('speedSubmitBtn').addEventListener('click', () => {
+  const val = parseInt(document.getElementById('speedAnswerInput').value, 10);
+  const feedback = document.getElementById('speedFeedback');
+  if(isNaN(val)){ feedback.textContent = DRACULA_ENTER_NUMBER; feedback.className = 'quiz-feedback incorrect'; return; }
+  const shownSum = speedDeck.reduce((s, c) => s + hiLoValue(c.rank), 0);
+  const correct = val === shownSum;
+  const elapsedMs = parseFloat(document.getElementById('speedAnswerCard').dataset.elapsed);
+  feedback.textContent = correct ? draculaQuizCorrect('count', fmtSigned(shownSum)) : draculaQuizIncorrect('count', fmtSigned(shownSum));
+  feedback.className = 'quiz-feedback ' + (correct ? 'correct' : 'incorrect');
+  speedState.history.push({ ms: elapsedMs, correct });
+  if(speedState.history.length > 20) speedState.history.shift();
+  if(correct && (!speedState.bestTimeMs || elapsedMs < speedState.bestTimeMs)){
+    speedState.bestTimeMs = elapsedMs;
+  }
+  saveSpeedState();
+  renderSpeedBest();
+});
+
+/* ============================================================ */
+/* STATS tab                                                      */
+/* ============================================================ */
+function pct(part, total){ return total ? Math.round(part / total * 100) + '% (' + part + '/' + total + ')' : '—'; }
+
+function renderStats(){
+  const s = dealerState.stats;
+  document.getElementById('statHands').textContent = s.hands;
+  document.getElementById('statWin').textContent = s.win;
+  document.getElementById('statLose').textContent = s.lose;
+  document.getElementById('statPush').textContent = s.push;
+  document.getElementById('statBlackjack').textContent = s.blackjack;
+  document.getElementById('statStrategy').textContent = pct(dealerState.strategy.correct, dealerState.strategy.total);
+  document.getElementById('statQuizRunning').textContent = pct(dealerState.quiz.correct, dealerState.quiz.total);
+  document.getElementById('statQuizTrue').textContent = pct(dealerState.quizTrue.correct, dealerState.quizTrue.total);
+  document.getElementById('statSpeedBest').textContent = speedState.bestTimeMs ? (speedState.bestTimeMs / 1000).toFixed(2) + 's' : '—';
+  document.getElementById('statBankroll').textContent = dealerState.bankroll + ' / ' + dealerState.bankrollHigh;
+  renderHandHistory();
+}
+
+function renderHandHistory(){
+  const list = document.getElementById('handHistoryList');
+  const history = dealerState.handHistory;
+  if(!history.length){
+    list.innerHTML = '<div class="hh-empty">No hands played yet.</div>';
+    return;
+  }
+  const labels = { win: 'Win', lose: 'Loss', push: 'Push', blackjack: 'Blackjack' };
+  list.innerHTML = history.map(h => {
+    const movesText = h.total > 0 ? h.correct + '/' + h.total + ' moves correct' : 'No decisions (natural)';
+    return '<div class="hh-row"><span class="hh-badge ' + h.result + '">' + labels[h.result] + '</span><span class="hh-moves">' + movesText + '</span></div>';
+  }).join('');
+}
+
+let statsResetArmed = false;
+document.getElementById('resetStatsBtn').addEventListener('click', () => {
+  const btn = document.getElementById('resetStatsBtn');
+  const confirmHint = document.getElementById('resetStatsConfirm');
+  if(!statsResetArmed){
+    statsResetArmed = true;
+    btn.textContent = 'Tap again to confirm';
+    confirmHint.style.display = 'block';
+    setTimeout(() => {
+      if(statsResetArmed){
+        statsResetArmed = false;
+        btn.textContent = 'Reset All Stats';
+        confirmHint.style.display = 'none';
+      }
+    }, 4000);
+    return;
+  }
+  dealerState.stats = { hands: 0, win: 0, lose: 0, push: 0, blackjack: 0 };
+  dealerState.strategy = { correct: 0, total: 0 };
+  dealerState.quiz = { correct: 0, total: 0 };
+  dealerState.quizTrue = { correct: 0, total: 0 };
+  dealerState.bankroll = 1000;
+  dealerState.bankrollHigh = 1000;
+  dealerState.handHistory = [];
+  speedState = { bestTimeMs: null, history: [] };
+  saveDealerState();
+  saveSpeedState();
+  statsResetArmed = false;
+  btn.textContent = 'Reset All Stats';
+  confirmHint.style.display = 'none';
+  renderStats();
+  renderSpeedBest();
+  renderDealer();
+});
+
+/* ============================================================ */
+/* Keyboard shortcuts                                             */
+/* ============================================================ */
+document.addEventListener('keydown', (e) => {
+  const tag = document.activeElement && document.activeElement.tagName;
+  if(tag === 'INPUT' || tag === 'TEXTAREA') return;
+  if(document.getElementById('quizOverlay').style.display === 'flex') return;
+
+  if(activeTab === 'manual'){
+    if(e.key === 'ArrowUp'){ tapManualCount(1); e.preventDefault(); }
+    else if(e.key === 'ArrowDown'){ tapManualCount(-1); e.preventDefault(); }
+    else if(e.key === 'ArrowRight'){ tapManualCount(0); e.preventDefault(); }
+    return;
+  }
+
+  if(activeTab === 'peek' || activeTab === 'quiz'){
+    const k = e.key.toLowerCase();
+    if(k === 'h'){ playerHit(); }
+    else if(k === 's'){ playerStand(); }
+    else if(k === 'd'){ playerDouble(); }
+    else if(k === 'p'){ playerSplit(); }
+    else if(e.key === ' ' || e.key === 'Enter'){
+      if(!dealerState.hand || dealerState.hand.stage === 'done') dealNewHand();
+      e.preventDefault();
+    }
+  }
+});
+
+
+/* ============================================================ */
+/* PWA registration                                               */
+/* ============================================================ */
+if('serviceWorker' in navigator){
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').catch(() => {});
+  });
+}
+
+/* ============================================================ */
+/* Scattered card-face background decoration                     */
+/* ============================================================ */
+(function scatterBackgroundCards(){
+  const container = document.getElementById('bgDecor');
+  const cellW = 140, cellH = 170;
+  const cols = Math.ceil(window.innerWidth / cellW);
+  const rows = Math.ceil(window.innerHeight / cellH);
+  for(let r = 0; r < rows; r++){
+    for(let c = 0; c < cols; c++){
+      if(Math.random() < 0.4) continue;
+      const rank = RANKS[Math.floor(Math.random() * RANKS.length)];
+      const suit = SUITS[Math.floor(Math.random() * SUITS.length)];
+      const div = document.createElement('div');
+      div.className = 'bg-card-face';
+      div.innerHTML = '<div>' + rank + '</div><div>' + suit + '</div>';
+      const jitterX = Math.random() * (cellW - 60);
+      const jitterY = Math.random() * (cellH - 80);
+      div.style.left = (c * cellW + jitterX) + 'px';
+      div.style.top = (r * cellH + jitterY) + 'px';
+      div.style.opacity = (0.09 + Math.random() * 0.09).toFixed(2);
+      div.style.transform = 'rotate(' + Math.round(Math.random() * 40 - 20) + 'deg)';
+      container.appendChild(div);
+    }
+  }
+})();
+
+/* ============================================================ */
+/* Init                                                           */
+/* ============================================================ */
+setActiveTab(activeTab);
+</script>
+
+</body>
+</html>
