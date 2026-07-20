@@ -49,12 +49,12 @@ button{user-select:none;-webkit-user-select:none;touch-action:manipulation}
 .hdr-text{flex:1;min-width:0;text-align:left;transition:text-align .25s ease}
 .dracula-mark{width:46px;height:auto;flex-shrink:0;margin:0;display:block;transition:width .25s ease}
 .dracula-mark.deal-pulse{animation:dealerPulse .5s ease-out}
-.hdr.hdr-big{padding:16px 16px 12px}
+.hdr.hdr-big{padding:10px 16px 8px}
 .hdr.hdr-big .hdr-row{flex-direction:column;gap:0}
 .hdr.hdr-big .hdr-text{text-align:center}
-.hdr.hdr-big .dracula-mark{width:120px;margin:0 auto 6px}
-.hdr.hdr-big .hdr-title{font-size:23px;letter-spacing:1.5px;white-space:normal}
-.hdr.hdr-big .hdr-sub{font-size:12px;white-space:normal}
+.hdr.hdr-big .dracula-mark{width:84px;margin:0 auto 4px}
+.hdr.hdr-big .hdr-title{font-size:20px;letter-spacing:1.5px;white-space:normal}
+.hdr.hdr-big .hdr-sub{font-size:11px;white-space:normal}
 .hdr.hdr-big .menu-link{display:none}
 .dealer-portrait{display:block;width:150px;margin:0 auto 4px;filter:drop-shadow(0 6px 14px rgba(0,0,0,.5))}
 .dealer-portrait.deal-pulse{animation:dealerPulse .5s ease-out}
@@ -63,13 +63,17 @@ button{user-select:none;-webkit-user-select:none;touch-action:manipulation}
 .hdr-sub{font-size:11px;color:#c9a9a9;margin-top:1px;font-style:italic;letter-spacing:.3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .menu-link{background:rgba(255,255,255,.15);color:#fff;border:none;border-radius:10px;padding:8px 12px;font-weight:700;font-size:12.5px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;flex-shrink:0}
 .menu-link:active{background:rgba(255,255,255,.28)}
-.menu-card{display:flex;align-items:center;gap:14px;background:var(--card);border-radius:var(--r);box-shadow:var(--shadow);padding:16px;margin-bottom:12px;cursor:pointer;border:none;width:100%;text-align:left}
+.home-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.menu-card{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;background:var(--card);border-radius:var(--r);box-shadow:var(--shadow);padding:14px 4px;cursor:pointer;border:none;text-align:center;min-width:0;overflow:hidden}
 .menu-card:active{opacity:.75;transform:scale(.99)}
-.menu-icon{font-size:28px;flex-shrink:0;width:44px;text-align:center}
-.menu-text{flex:1}
-.menu-title{font-size:16px;font-weight:700;color:var(--text)}
-.menu-desc{font-size:12.5px;color:var(--muted);margin-top:2px;line-height:1.4}
-#C{padding:14px 14px 30px;position:relative}
+.menu-icon{font-size:26px}
+.menu-title{font-size:11.5px;font-weight:700;color:var(--text)}
+#C{padding:14px 14px 90px;position:relative}
+.bottom-nav{position:fixed;left:0;right:0;bottom:0;max-width:600px;margin:0 auto;display:none;justify-content:space-around;align-items:center;background:linear-gradient(0deg,var(--wine-dark),var(--wine));border-top:1px solid #4a1420;box-shadow:0 -2px 12px rgba(0,0,0,.5);z-index:200;padding:8px 0 calc(8px + env(safe-area-inset-bottom))}
+.bottom-nav.show{display:flex}
+.nav-btn{background:none;border:none;color:#c9a9a9;display:flex;flex-direction:column;align-items:center;gap:2px;font-size:10.5px;font-weight:700;padding:4px 18px;cursor:pointer}
+.nav-btn .nav-icon{font-size:22px}
+.nav-btn.active{color:var(--gold)}
 .view{display:none}
 .view.active{display:block}
 .card{background:var(--card);border-radius:var(--r);box-shadow:var(--shadow);padding:16px;margin-bottom:12px}
@@ -267,7 +271,7 @@ button{user-select:none;-webkit-user-select:none;touch-action:manipulation}
       <div class="hdr-title">CountDracula</div>
       <div class="hdr-sub">He never loses count · Hi-Lo System</div>
     </div>
-    <button class="menu-link" id="menuBtn">☰ Menu</button>
+    <button class="menu-link" id="menuBtn">← Home</button>
   </div>
 </div>
 
@@ -275,55 +279,32 @@ button{user-select:none;-webkit-user-select:none;touch-action:manipulation}
 
   <!-- ===================== HOME MENU ===================== -->
   <div class="view" id="homeView">
-    <button class="menu-card" data-tab="manual">
-      <div class="menu-icon">🃏</div>
-      <div class="menu-text">
+    <div class="home-grid">
+      <button class="menu-card" data-tab="manual">
+        <div class="menu-icon">🃏</div>
         <div class="menu-title">Manual</div>
-        <div class="menu-desc">Tap along while counting a real, physical deck.</div>
-      </div>
-    </button>
-    <button class="menu-card" data-tab="peek">
-      <div class="menu-icon">👁</div>
-      <div class="menu-text">
+      </button>
+      <button class="menu-card" data-tab="peek">
+        <div class="menu-icon">👁</div>
         <div class="menu-title">Peek Practice</div>
-        <div class="menu-desc">Play simulated hands vs. a dealer — hold a button to check your count.</div>
-      </div>
-    </button>
-    <button class="menu-card" data-tab="quiz">
-      <div class="menu-icon">❓</div>
-      <div class="menu-text">
+      </button>
+      <button class="menu-card" data-tab="quiz">
+        <div class="menu-icon">❓</div>
         <div class="menu-title">Quiz Practice</div>
-        <div class="menu-desc">Same hands, count hidden — randomly quizzed on running or true count.</div>
-      </div>
-    </button>
-    <button class="menu-card" data-tab="math">
-      <div class="menu-icon">➗</div>
-      <div class="menu-text">
+      </button>
+      <button class="menu-card" data-tab="math">
+        <div class="menu-icon">➗</div>
         <div class="menu-title">Deck Math</div>
-        <div class="menu-desc">Learn and drill the true-count formula for multi-deck shoes.</div>
-      </div>
-    </button>
-    <button class="menu-card" data-tab="speed">
-      <div class="menu-icon">⚡</div>
-      <div class="menu-text">
+      </button>
+      <button class="menu-card" data-tab="speed">
+        <div class="menu-icon">⚡</div>
         <div class="menu-title">Speed Drill</div>
-        <div class="menu-desc">Flash through a full deck at speed and recall the final count.</div>
-      </div>
-    </button>
-    <button class="menu-card" data-tab="stats">
-      <div class="menu-icon">📊</div>
-      <div class="menu-text">
-        <div class="menu-title">Stats</div>
-        <div class="menu-desc">Your accuracy, bankroll, and best times across every mode.</div>
-      </div>
-    </button>
-    <button class="menu-card" data-tab="rules">
-      <div class="menu-icon">📖</div>
-      <div class="menu-text">
+      </button>
+      <button class="menu-card" data-tab="rules">
+        <div class="menu-icon">📖</div>
         <div class="menu-title">Rules</div>
-        <div class="menu-desc">A lesson from the Count himself — Hi-Lo counting, and what every mode does.</div>
-      </div>
-    </button>
+      </button>
+    </div>
   </div>
 
   <!-- ===================== RULES VIEW ===================== -->
@@ -652,8 +633,16 @@ button{user-select:none;-webkit-user-select:none;touch-action:manipulation}
 
   </div>
 
-  <!-- ===================== STATS VIEW ===================== -->
-  <div class="view" id="statsView">
+  <!-- ===================== STORE VIEW ===================== -->
+  <div class="view" id="storeView">
+    <div class="card">
+      <div class="card-title">Blood Drops</div>
+      <div class="hint">The Store is being prepared — daily bonuses, chests, and more are coming soon.</div>
+    </div>
+  </div>
+
+  <!-- ===================== ACCOUNT VIEW ===================== -->
+  <div class="view" id="accountView">
 
     <div class="card">
       <div class="card-title">Overall Stats</div>
@@ -681,6 +670,12 @@ button{user-select:none;-webkit-user-select:none;touch-action:manipulation}
 
   </div>
 
+</div>
+
+<div class="bottom-nav" id="bottomNav">
+  <button class="nav-btn" data-tab="home"><span class="nav-icon">🏠</span><span class="nav-label">Home</span></button>
+  <button class="nav-btn" data-tab="store"><span class="nav-icon">🩸</span><span class="nav-label">Store</span></button>
+  <button class="nav-btn" data-tab="account"><span class="nav-icon">👤</span><span class="nav-label">Account</span></button>
 </div>
 
 <!-- Quiz modal -->
@@ -842,16 +837,22 @@ function basicStrategyAction(cards, dealerUpRank, canDouble, canSplit){
 const TAB_KEY = 'cardCountingActiveTab';
 let activeTab = 'home';
 
+const TOP_LEVEL_TABS = ['home','store','account'];
+
 function setActiveTab(tab){
   activeTab = tab;
   localStorage.setItem(TAB_KEY, tab);
   document.querySelector('.hdr').classList.toggle('hdr-big', tab === 'home');
+  document.getElementById('menuBtn').style.display = TOP_LEVEL_TABS.includes(tab) ? 'none' : 'inline-flex';
+  document.getElementById('bottomNav').classList.toggle('show', TOP_LEVEL_TABS.includes(tab));
+  document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.toggle('active', btn.dataset.tab === tab));
   document.getElementById('homeView').classList.toggle('active', tab === 'home');
+  document.getElementById('storeView').classList.toggle('active', tab === 'store');
+  document.getElementById('accountView').classList.toggle('active', tab === 'account');
   document.getElementById('manualView').classList.toggle('active', tab === 'manual');
   document.getElementById('dealerView').classList.toggle('active', tab === 'peek' || tab === 'quiz');
   document.getElementById('deckMathView').classList.toggle('active', tab === 'math');
   document.getElementById('speedView').classList.toggle('active', tab === 'speed');
-  document.getElementById('statsView').classList.toggle('active', tab === 'stats');
   document.getElementById('rulesView').classList.toggle('active', tab === 'rules');
   if(tab === 'peek' || tab === 'quiz'){
     document.getElementById('peekBtn').style.display = (tab === 'peek') ? 'block' : 'none';
@@ -862,11 +863,14 @@ function setActiveTab(tab){
     isPeeking = false;
     renderDealer();
   }
-  if(tab === 'stats'){ renderStats(); }
+  if(tab === 'account'){ renderStats(); }
 }
 
 document.querySelectorAll('.menu-card').forEach(card => {
   card.addEventListener('click', () => setActiveTab(card.dataset.tab));
+});
+document.querySelectorAll('.nav-btn').forEach(btn => {
+  btn.addEventListener('click', () => setActiveTab(btn.dataset.tab));
 });
 document.getElementById('menuBtn').addEventListener('click', () => setActiveTab('home'));
 
