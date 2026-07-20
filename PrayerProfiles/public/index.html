@@ -543,16 +543,26 @@
     .add-verse-actions { display: flex; justify-content: flex-end; gap: 8px; align-items: center; }
 
     /* ═══ PRAYER ITEMS ═══ */
+    /* Active requests share one uniform shade; answered ones are dimmed on a darker wash */
     .prayer-item {
       padding: 16px 24px; border-bottom: 1px solid var(--border);
       display: flex; gap: 16px; align-items: flex-start; transition: background 0.12s;
-      border-left: 3px solid transparent;
+      background: var(--surface);
     }
-    .prayer-item:not(.answered) { border-left-color: rgba(123,108,174,0.40); }
     .prayer-item:last-child { border-bottom: none; }
     .prayer-item:hover { background: var(--surface2); }
-    .prayer-item.answered { background: rgba(61,92,74,0.04); border-left-color: rgba(61,92,74,0.30); }
-    .prayer-item.answered:hover { background: rgba(61,92,74,0.08); }
+    .prayer-item.answered { background: var(--surface3); }
+    .prayer-item.answered:hover { background: var(--surface4); }
+    .prayer-item.answered .prayer-date-day { color: var(--text3); }
+    .answered-stamp { font-size: 10.5px; color: var(--text3); font-weight: 600; }
+    .answered-note {
+      margin-top: 8px; font-size: 13px; color: var(--text2); font-style: italic;
+      background: var(--gold-bg); border-left: 2px solid var(--gold);
+      padding: 8px 12px; border-radius: 0 8px 8px 0; line-height: 1.6;
+      word-break: break-word; white-space: pre-wrap;
+    }
+    .ans-form { margin-top: 10px; display: flex; flex-direction: column; gap: 8px; }
+    .ans-form-acts { display: flex; gap: 6px; justify-content: flex-end; }
     .prayer-date-col { flex-shrink: 0; text-align: center; width: 36px; padding-top: 2px; }
     .prayer-date-day { font-size: 18px; font-weight: 700; color: var(--gold); line-height: 1; }
     .prayer-date-mon { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; color: var(--text3); margin-top: 2px; }
@@ -562,7 +572,7 @@
       font-size: 15px; line-height: 1.9; color: var(--text);
       word-break: break-word; white-space: pre-wrap;
     }
-    .prayer-text.answered-text { color: var(--text3); text-decoration: line-through; text-decoration-color: rgba(168,147,124,0.6); }
+    .prayer-text.answered-text { color: var(--text3); }
     .prayer-meta { display: flex; align-items: center; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
     .prayer-acts { display: flex; gap: 5px; margin-left: auto; }
     .badge { display: inline-flex; align-items: center; gap: 4px; padding: 2px 9px; border-radius: 20px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; }
@@ -814,6 +824,89 @@
     }
     .remove-photo-btn:hover { text-decoration: underline; }
 
+    /* ═══ TODAY'S PROGRESS CARD ═══ */
+    .prog-card {
+      background: var(--surface); border: 1px solid var(--border2);
+      border-radius: var(--rl); padding: 16px 18px; margin-bottom: 16px;
+    }
+    .prog-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; }
+    .prog-title { font-family: var(--font-serif); font-weight: 650; font-size: 16px; color: var(--text); }
+    .prog-total { font-size: 10.5px; color: var(--text2); font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; }
+    .prog-main-label { font-size: 13px; color: var(--text2); margin-bottom: 7px; }
+    .prog-main-label strong { color: var(--text); font-weight: 700; }
+    .prog-bar { height: 6px; border-radius: 4px; background: var(--surface3); overflow: hidden; }
+    .prog-bar span { display: block; height: 100%; background: var(--gold); border-radius: 4px; transition: width 0.3s; }
+    .prog-groups { margin-top: 12px; display: flex; flex-direction: column; }
+    .prog-row {
+      display: flex; align-items: center; gap: 10px; padding: 9px 0;
+      border-top: 1px solid var(--border); cursor: pointer;
+    }
+    .prog-row:hover .prog-row-name { color: var(--gold-deep); }
+    .prog-row-name {
+      font-size: 13px; font-weight: 600; color: var(--text); flex: 1; min-width: 0;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis; transition: color 0.15s;
+    }
+    .prog-row-count { font-size: 11.5px; color: var(--text2); white-space: nowrap; }
+    .prog-row .prog-bar { width: 64px; flex-shrink: 0; }
+
+    /* ═══ LAST-PRAYED STAMPS ═══ */
+    .pli-last { font-size: 10.5px; color: var(--text3); margin-top: 2px; }
+    .cc-lastprayed { margin-top: 10px; font-size: 11.5px; color: var(--text3); }
+    .cc-lastprayed strong { color: var(--text2); font-weight: 600; }
+
+    /* ═══ UNDO TOAST ═══ */
+    .toast {
+      position: fixed; left: 50%; bottom: 28px;
+      transform: translateX(-50%) translateY(16px);
+      background: var(--text); color: var(--surface); border-radius: 30px;
+      padding: 11px 20px; display: flex; align-items: center; gap: 16px;
+      font-size: 13.5px; font-weight: 500; z-index: 500;
+      opacity: 0; pointer-events: none;
+      transition: opacity 0.2s, transform 0.2s;
+      box-shadow: 0 8px 30px rgba(0,0,0,0.25);
+      max-width: calc(100vw - 32px); white-space: nowrap;
+    }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); pointer-events: auto; }
+    .toast .toast-msg { overflow: hidden; text-overflow: ellipsis; }
+    .toast button {
+      background: none; border: none; color: var(--gold-wash); font-weight: 700;
+      font-size: 12px; cursor: pointer; font-family: inherit;
+      letter-spacing: 0.06em; text-transform: uppercase; flex-shrink: 0; padding: 2px 0;
+    }
+
+    /* ═══ REMINDERS (settings panel) ═══ */
+    .rem-status { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 6px 0 10px; }
+    .rem-status-text { font-size: 12.5px; color: var(--text2); line-height: 1.5; }
+    .rem-row { display: flex; align-items: center; gap: 10px; padding: 10px 2px; border-bottom: 1px solid var(--border); }
+    .rem-row:last-child { border-bottom: none; }
+    .rem-row-main { flex: 1; min-width: 0; }
+    .rem-row-title { font-size: 13px; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .rem-row-sub { font-size: 11px; color: var(--text3); margin-top: 1px; }
+    .rem-del {
+      background: none; border: none; color: var(--text3); cursor: pointer;
+      padding: 5px 7px; border-radius: 6px; font-size: 13px; line-height: 1; flex-shrink: 0;
+    }
+    .rem-del:hover { color: var(--red); background: var(--red-bg); }
+    .rem-form {
+      display: flex; flex-direction: column; gap: 8px;
+      background: var(--surface); border: 1px solid var(--border2);
+      border-radius: 14px; padding: 12px; margin-top: 10px;
+    }
+    .rem-form select, .rem-form input[type="time"] {
+      border: 1px solid var(--border2); border-radius: 10px; padding: 9px 10px;
+      font-family: inherit; font-size: 13px; color: var(--text);
+      background: var(--surface3); outline: none; width: 100%;
+    }
+    .rem-form select:focus, .rem-form input[type="time"]:focus { border-color: var(--gold); }
+    .day-picker { display: flex; gap: 5px; }
+    .day-chip {
+      flex: 1; text-align: center; padding: 7px 0; border-radius: 9px;
+      border: 1px solid var(--border2); background: var(--surface3);
+      font-size: 11px; font-weight: 700; color: var(--text3); cursor: pointer; user-select: none;
+      transition: background 0.12s, color 0.12s;
+    }
+    .day-chip.on { background: var(--gold); border-color: var(--gold); color: var(--surface); }
+
     /* ═══ RESPONSIVE / MOBILE ═══ */
     @media (max-width: 740px) {
       .main-content { padding: 16px 16px 64px; }
@@ -966,7 +1059,7 @@
         </button>
       </div>
       <div class="header-right">
-        <button class="icon-btn" aria-label="Notifications" title="Notifications">
+        <button class="icon-btn" onclick="openSettingsPanel()" aria-label="Reminders" title="Reminders">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M6 8a6 6 0 1 1 12 0c0 5 2 6 2 6H4s2-1 2-6Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M10 20a2 2 0 0 0 4 0" stroke="currentColor" stroke-width="1.6"/></svg>
         </button>
         <button class="icon-btn" id="settings-btn" onclick="openSettingsPanel()" aria-label="Open settings" title="Settings">
@@ -997,9 +1090,6 @@
         <div class="select-wrap">
           <select id="rel-filter" onchange="setFilter(this.value)">
             <option value="">All profiles</option>
-            <option>Family</option><option>Friend</option><option>Colleague</option>
-            <option>Church Member</option><option>Neighbor</option>
-            <option>Mentor / Mentee</option><option>Acquaintance</option><option>Other</option>
           </select>
           <svg class="chevron" width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="m6 9 6 6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
         </div>
@@ -1009,12 +1099,14 @@
         </button>
         <div class="p-add-form" id="quick-add-form">
           <input id="qa-name" type="text" placeholder="Name">
-          <select id="qa-rel">
-            <option value="">— Relationship —</option>
+          <select id="qa-rel" onchange="onRelChange('qa')">
+            <option value="">— Group / Relationship —</option>
             <option>Family</option><option>Friend</option><option>Colleague</option>
             <option>Church Member</option><option>Neighbor</option>
             <option>Mentor / Mentee</option><option>Acquaintance</option><option>Other</option>
+            <option value="__custom">Custom group…</option>
           </select>
+          <input id="qa-rel-custom" type="text" placeholder="e.g. Tuesday Night" maxlength="50" style="display:none">
           <div class="p-add-form-actions">
             <button class="btn-sec" type="button" style="flex:1" onclick="toggleQuickAdd()">Cancel</button>
             <button class="btn-prim" type="button" style="flex:1;justify-content:center" onclick="quickAddProfile()">Add profile</button>
@@ -1047,6 +1139,25 @@
               <div class="settings-sub">Signed in</div>
             </div>
           </div>
+        </div>
+
+        <div class="group-label" style="margin-top:20px">Reminders</div>
+        <div class="rem-status">
+          <span class="rem-status-text" id="push-status">Checking notification support…</span>
+          <button class="btn-prim" id="push-enable-btn" style="display:none;padding:7px 12px;font-size:12px" onclick="enableNotifications()">Enable</button>
+        </div>
+        <div id="reminder-list"></div>
+        <div class="rem-form" id="reminder-form">
+          <select id="rem-type" onchange="onRemTypeChange()">
+            <option value="profile">Remind me about a person</option>
+            <option value="group">Remind me about a group</option>
+          </select>
+          <select id="rem-target"></select>
+          <div class="day-picker" id="rem-days">
+            <span class="day-chip" data-day="0">S</span><span class="day-chip" data-day="1">M</span><span class="day-chip" data-day="2">T</span><span class="day-chip" data-day="3">W</span><span class="day-chip" data-day="4">T</span><span class="day-chip" data-day="5">F</span><span class="day-chip" data-day="6">S</span>
+          </div>
+          <input type="time" id="rem-time" value="09:00">
+          <button class="btn-prim" type="button" style="justify-content:center" onclick="addReminder()">Add reminder</button>
         </div>
 
         <div class="group-label" style="margin-top:20px">App</div>
@@ -1119,6 +1230,16 @@
           </div>
         </div>
 
+        <div class="prog-card" id="prog-card" style="display:none">
+          <div class="prog-head">
+            <span class="prog-title">Today&rsquo;s progress</span>
+            <span class="prog-total" id="prog-total"></span>
+          </div>
+          <div class="prog-main-label" id="prog-main-label"></div>
+          <div class="prog-bar"><span id="prog-main-bar" style="width:0%"></span></div>
+          <div class="prog-groups" id="prog-groups"></div>
+        </div>
+
         <div class="quote">
           <span class="quote-mark">&ldquo;</span>
           <p class="quote-text">I urge, then, first of all, that petitions, prayers, intercession and thanksgiving be made for all people.</p>
@@ -1154,6 +1275,7 @@
               <div class="contact-info" id="contact-info"></div>
               <!-- Action buttons -->
               <div class="cc-action-row" id="cc-action-row"></div>
+              <div class="cc-lastprayed" id="cc-lastprayed"></div>
             </div>
           </div>
           <hr class="cc-divider">
@@ -1181,7 +1303,7 @@
               <input type="date" id="new-prayer-date">
               <button class="btn-prim" onclick="addPrayer()" style="margin-left:auto">
                 <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                Add Note
+                Add Prayer Request
               </button>
             </div>
           </div>
@@ -1201,12 +1323,10 @@
           </div>
           <div class="add-verse-form">
             <div class="add-verse-ref-row">
-              <input type="text" id="new-verse-ref" placeholder="John 3:16"
-                onblur="autoFetchVerse()"
-                onkeydown="if(event.key==='Enter'){event.preventDefault();autoFetchVerse()}">
-              <span id="verse-fetch-badge" class="verse-fetch-badge" style="display:none"></span>
+              <input type="text" id="new-verse-ref" placeholder="Reference — e.g. John 3:16">
             </div>
-            <input type="text" id="new-verse-text" placeholder="Verse text auto-fills — or type it manually">
+            <textarea id="new-verse-text" rows="3" placeholder="Paste or type the verse text — any translation"
+              style="border:1px solid var(--border2);border-radius:6px;padding:8px 12px;font-size:13px;outline:none;font-family:inherit;color:var(--text);background:var(--surface3);resize:vertical;min-height:64px;line-height:1.6;transition:border-color 0.15s"></textarea>
             <div class="add-verse-actions">
               <button class="btn-prim" onclick="addVerse()">
                 <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
@@ -1277,13 +1397,15 @@
         <span class="err-msg" id="err-name">Name is required</span>
       </div>
       <div class="fg">
-        <label>Relationship</label>
-        <select id="f-rel">
+        <label>Group / Relationship</label>
+        <select id="f-rel" onchange="onRelChange('f')">
           <option value="">— Select —</option>
           <option>Family</option><option>Friend</option><option>Colleague</option>
           <option>Church Member</option><option>Neighbor</option>
           <option>Mentor / Mentee</option><option>Acquaintance</option><option>Other</option>
+          <option value="__custom">Custom group…</option>
         </select>
+        <input id="f-rel-custom" type="text" placeholder="e.g. Tuesday Night" maxlength="50" style="display:none">
       </div>
       <div class="fg-row">
         <div class="fg">
@@ -1467,6 +1589,7 @@
     document.getElementById('sidebar').classList.remove('open');
     document.getElementById('settings-panel').classList.add('open');
     document.getElementById('panel-backdrop').classList.add('open');
+    loadReminders();
   }
   function closePanels() {
     document.getElementById('sidebar').classList.remove('open');
@@ -1557,6 +1680,7 @@
       const still = profiles.find(p => p.id === selectedId);
       if (still) renderDetail(still); else showHome();
     }
+    handleDeepLink();
   }
 
   function calcStats() {
@@ -1571,6 +1695,62 @@
     setText('st-active',   active);
     setText('st-answered', answered);
     setText('st-verses',   verses);
+    renderProgress(prayed);
+    renderFilterOptions();
+  }
+
+  // ── Today's progress (overall + per group) ──
+  let _progGroups = [];
+
+  function renderProgress(prayedCount) {
+    const card = document.getElementById('prog-card');
+    if (!profiles.length) { card.style.display = 'none'; return; }
+    card.style.display = 'block';
+    const total = profiles.length;
+    const today = todayStr();
+    setText('prog-total', `${total} profile${total !== 1 ? 's' : ''}`);
+    document.getElementById('prog-main-label').innerHTML =
+      `<strong>${prayedCount} of ${total}</strong> prayed for today`;
+    document.getElementById('prog-main-bar').style.width = `${Math.round(prayedCount / total * 100)}%`;
+
+    const groups = {};
+    profiles.forEach(p => {
+      const g = p.relationship || 'Ungrouped';
+      if (!groups[g]) groups[g] = { total: 0, prayed: 0 };
+      groups[g].total++;
+      if (p.last_prayed_date === today) groups[g].prayed++;
+    });
+    _progGroups = Object.keys(groups).sort((a, b) => a.localeCompare(b));
+    document.getElementById('prog-groups').innerHTML = _progGroups.map((g, i) => {
+      const { total: t, prayed: pr } = groups[g];
+      return `<div class="prog-row" onclick="openGroupFromHome(${i})">
+        <span class="prog-row-name">${esc(g)}</span>
+        <span class="prog-row-count">${pr} of ${t} prayed</span>
+        <div class="prog-bar"><span style="width:${Math.round(pr / t * 100)}%"></span></div>
+      </div>`;
+    }).join('');
+  }
+
+  function openGroupFromHome(i) {
+    const g = _progGroups[i];
+    setFilterUI(g === 'Ungrouped' ? '' : g);
+    openProfilesPanel();
+  }
+
+  // ── Group filter options (built from real data so custom groups appear) ──
+  function renderFilterOptions() {
+    const sel    = document.getElementById('rel-filter');
+    const groups = [...new Set(profiles.map(p => p.relationship).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+    if (_filterRel && !groups.includes(_filterRel)) _filterRel = '';
+    sel.innerHTML = `<option value="">All profiles</option>` +
+      groups.map(g => `<option>${esc(g)}</option>`).join('');
+    sel.value = _filterRel;
+  }
+
+  function setFilterUI(val) {
+    _filterRel = val || '';
+    renderFilterOptions();
+    renderSidebar();
   }
 
   // ── Streak ──
@@ -1615,6 +1795,34 @@
     renderSidebar();
   }
 
+  // ── Custom groups ──
+  const DEFAULT_GROUPS = ['Family','Friend','Colleague','Church Member','Neighbor','Mentor / Mentee','Acquaintance','Other'];
+
+  function onRelChange(prefix) {
+    const custom = document.getElementById(prefix + '-rel-custom');
+    const isCustom = document.getElementById(prefix + '-rel').value === '__custom';
+    custom.style.display = isCustom ? 'block' : 'none';
+    if (isCustom) custom.focus();
+  }
+
+  function relValue(prefix) {
+    const sel = document.getElementById(prefix + '-rel');
+    return sel.value === '__custom'
+      ? document.getElementById(prefix + '-rel-custom').value.trim().slice(0, 50)
+      : sel.value;
+  }
+
+  function setRelInputs(prefix, rel) {
+    const sel    = document.getElementById(prefix + '-rel');
+    const custom = document.getElementById(prefix + '-rel-custom');
+    if (rel && !DEFAULT_GROUPS.includes(rel)) {
+      sel.value = '__custom'; custom.value = rel;
+    } else {
+      sel.value = rel || ''; custom.value = '';
+    }
+    onRelChange(prefix);
+  }
+
   // ── Quick add (profiles panel) ──
   function toggleQuickAdd() {
     const form = document.getElementById('quick-add-form');
@@ -1629,12 +1837,12 @@
     if (!name) { nameEl.focus(); return; }
     const fd = new FormData();
     fd.append('name',         name);
-    fd.append('relationship', document.getElementById('qa-rel').value);
+    fd.append('relationship', relValue('qa'));
     const r = await api('/api/profiles', { method: 'POST', body: fd });
     if (!r) return;
     if (!r.ok) { const e = await r.json(); alert('Error: ' + e.error); return; }
     nameEl.value = '';
-    document.getElementById('qa-rel').value = '';
+    setRelInputs('qa', '');
     document.getElementById('quick-add-form').classList.remove('open');
     await load();
   }
@@ -1657,11 +1865,13 @@
       return;
     }
     const today = todayStr();
+    _visibleList = list.map(p => p.id);
     wrap.innerHTML = list.map(p => {
       const [fg, bg] = palette(p.name);
       const active   = p.prayer_notes.filter(n => !n.answered).length;
       const done     = p.prayer_notes.filter(n =>  n.answered).length;
       const prayed   = p.last_prayed_date === today;
+      const last     = fmtLastPrayed(p);
       const av = p.photo_url
         ? `<img src="${p.photo_url}" alt="">`
         : `<span style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;border-radius:50%;background:${bg};color:${fg}">${initials(p.name)}</span>`;
@@ -1680,6 +1890,7 @@
             ${prayed ? `<span class="pli-prayed-badge">✓ Prayed</span>` : ''}
           </div>
           ${p.relationship ? `<div class="pli-rel">${esc(p.relationship)}</div>` : ''}
+          ${last ? `<div class="pli-last">Last prayed ${last}</div>` : ''}
           ${pills ? `<div class="pli-pills">${pills}</div>` : ''}
         </div>
       </div>`;
@@ -1706,6 +1917,73 @@
     document.querySelector('.header').classList.remove('detail-open');
     renderSidebar();
   }
+
+  // ── Profile navigation: Next / swipe ──
+  // Next button + swipe-left ONLY navigate. Swipe-right marks prayed AND advances.
+  let _visibleList = [];
+
+  function orderedIds() {
+    return _visibleList.length ? _visibleList : profiles.map(p => p.id);
+  }
+
+  function nextProfile(dir) {
+    const ids = orderedIds();
+    if (!ids.length) return;
+    const i = ids.indexOf(selectedId);
+    selectProfile(ids[i === -1 ? 0 : (i + dir + ids.length) % ids.length]);
+  }
+
+  async function swipeMarkPrayed() {
+    const p = profiles.find(x => x.id === selectedId);
+    if (!p) return;
+    if (p.last_prayed_date !== todayStr()) {
+      const r = await api(`/api/profiles/${p.id}/pray`, { method: 'PUT' });
+      if (!r) return;
+      showToast(`Marked ${p.name} as prayed`, 'Undo', async () => {
+        await api(`/api/profiles/${p.id}/pray`, { method: 'PUT' }); // toggles back off
+        await load();
+      });
+      await load();
+    }
+    nextProfile(1);
+  }
+
+  const _mainPanelEl = document.getElementById('main-panel');
+  let _touchX = null, _touchY = null;
+  _mainPanelEl.addEventListener('touchstart', e => {
+    if (e.touches.length !== 1) return;
+    _touchX = e.touches[0].clientX;
+    _touchY = e.touches[0].clientY;
+  }, { passive: true });
+  _mainPanelEl.addEventListener('touchend', e => {
+    if (_touchX === null) return;
+    const dx = e.changedTouches[0].clientX - _touchX;
+    const dy = e.changedTouches[0].clientY - _touchY;
+    _touchX = _touchY = null;
+    if (document.getElementById('profile-detail').style.display === 'none') return;
+    if (document.getElementById('sidebar').classList.contains('open') ||
+        document.getElementById('settings-panel').classList.contains('open')) return;
+    const tag = (e.target.tagName || '').toLowerCase();
+    if (tag === 'input' || tag === 'textarea' || tag === 'select') return;
+    if (Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
+    if (dx > 0) swipeMarkPrayed(); // swipe right → mark prayed + advance (undo via toast)
+    else        nextProfile(-1);   // swipe left → navigate back only
+  }, { passive: true });
+
+  // ── Undo toast ──
+  let _toastTimer = null;
+  function showToast(msg, actionLabel, actionFn) {
+    const toast = document.getElementById('toast');
+    const btn   = document.getElementById('toast-action');
+    document.getElementById('toast-msg').textContent = msg;
+    btn.textContent   = actionLabel || '';
+    btn.style.display = actionLabel ? '' : 'none';
+    btn.onclick       = () => { hideToast(); if (actionFn) actionFn(); };
+    toast.classList.add('show');
+    clearTimeout(_toastTimer);
+    _toastTimer = setTimeout(hideToast, 5000);
+  }
+  function hideToast() { document.getElementById('toast').classList.remove('show'); }
 
   // ── Detail rendering ──
   function renderDetail(p) {
@@ -1761,7 +2039,18 @@
         ? `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg> Prayed Today`
         : `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/></svg> Pray Today`}
     </button>`);
+    // Next only navigates — it never marks anything as prayed
+    actBtns.push(`<button class="btn-cc cc-next" onclick="nextProfile(1)" title="Go to the next profile (does not mark as prayed)">
+      Next <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+    </button>`);
     actRow.innerHTML = actBtns.join('');
+
+    // Last-prayed date + time stamp
+    const lastEl = document.getElementById('cc-lastprayed');
+    const last   = fmtLastPrayed(p);
+    lastEl.innerHTML = last
+      ? `Last prayed for: <strong>${esc(last)}</strong>`
+      : 'Not marked as prayed for yet.';
 
     // Notes
     const notesEl = document.getElementById('cc-notes');
@@ -1782,12 +2071,17 @@
   }
 
   function renderPrayers(p) {
-    const sorted = [...p.prayer_notes].sort((a,b) => b.date.localeCompare(a.date));
+    // Active requests first (newest on top); answered sink to the bottom
+    const sorted = [...p.prayer_notes].sort((a, b) => {
+      if (a.answered !== b.answered) return a.answered ? 1 : -1;
+      if (a.answered) return (b.answered_at || '').localeCompare(a.answered_at || '');
+      return b.date.localeCompare(a.date);
+    });
     const active = sorted.filter(n => !n.answered).length;
     document.getElementById('prayer-badge').textContent =
       active ? `${active} active` : (sorted.length ? 'all answered' : 'none yet');
     const el = document.getElementById('prayer-list');
-    if (!sorted.length) { el.innerHTML = `<div class="verse-list-empty">No prayer notes yet — add one above.</div>`; return; }
+    if (!sorted.length) { el.innerHTML = `<div class="verse-list-empty">No prayer requests yet — add one above.</div>`; return; }
     el.innerHTML = sorted.map(n => {
       const [day, mon] = fmtDateParts(n.date);
       return `<div class="${n.answered ? 'prayer-item answered' : 'prayer-item'}" id="prayer-item-${n.id}">
@@ -1797,19 +2091,52 @@
         </div>
         <div class="prayer-body">
           <div class="${n.answered ? 'prayer-text answered-text' : 'prayer-text'}">${esc(n.text)}</div>
+          ${n.answered && n.answered_note ? `<div class="answered-note">${esc(n.answered_note)}</div>` : ''}
           <div class="prayer-meta">
             ${n.answered
-              ? `<span class="badge b-answered"><span class="b-dot" style="background:var(--green)"></span>Answered</span>`
+              ? `<span class="badge b-answered"><span class="b-dot" style="background:var(--green)"></span>Answered</span>
+                 ${n.answered_at ? `<span class="answered-stamp">${fmtDateTime(n.answered_at)}</span>` : ''}`
               : `<span class="badge b-active"><span class="b-dot" style="background:var(--indigo)"></span>Active</span>`}
             <div class="prayer-acts">
               <button class="btn-sm" onclick="editPrayer(${n.id})">&#x270E; Edit</button>
-              <button class="btn-sm ${n.answered ? '' : 'answered'}${n.answered ? ' answered-on' : ''}" onclick="toggleAnswered(${n.id})">${n.answered ? '&#x21A9; Reopen' : '&#x2713; Answered'}</button>
+              ${n.answered
+                ? `<button class="btn-sm answered-on" onclick="toggleAnswered(${n.id})">&#x21A9; Reopen</button>`
+                : `<button class="btn-sm answered" onclick="openAnsweredForm(${n.id})">&#x2713; Answered</button>`}
               <button class="btn-sm del" onclick="deletePrayer(${n.id})">Delete</button>
             </div>
           </div>
+          <div id="ans-slot-${n.id}"></div>
         </div>
       </div>`;
     }).join('');
+  }
+
+  // ── Marking answered: capture how the prayer was answered (auto date/time stamped) ──
+  function openAnsweredForm(prayerId) {
+    const slot = document.getElementById(`ans-slot-${prayerId}`);
+    if (!slot) return;
+    slot.innerHTML = `<div class="ans-form">
+      <textarea class="prayer-edit-ta" id="ans-note-${prayerId}" rows="2" placeholder="How was this prayer answered? (optional)"></textarea>
+      <div class="ans-form-acts">
+        <button class="btn-sm" onclick="cancelAnsweredForm()">Cancel</button>
+        <button class="btn-sm answered-on" onclick="saveAnswered(${prayerId})">&#x2713; Mark Answered</button>
+      </div>
+    </div>`;
+    document.getElementById(`ans-note-${prayerId}`).focus();
+  }
+
+  function cancelAnsweredForm() {
+    const p = profiles.find(x => x.id === selectedId);
+    if (p) renderPrayers(p);
+  }
+
+  async function saveAnswered(prayerId) {
+    const note = document.getElementById(`ans-note-${prayerId}`).value.trim();
+    const r = await api(`/api/profiles/${selectedId}/prayers/${prayerId}`, {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ answered: true, answered_note: note }),
+    });
+    if (r) await load();
   }
 
   function renderVerses(p) {
@@ -1904,41 +2231,18 @@
     if (p) renderPrayers(p);
   }
 
-  // ── Bible auto-fetch ──
-  async function autoFetchVerse() {
-    const refEl  = document.getElementById('new-verse-ref');
-    const textEl = document.getElementById('new-verse-text');
-    const badge  = document.getElementById('verse-fetch-badge');
-    const ref    = refEl.value.trim();
-    if (!ref || textEl.value.trim()) return;
-    badge.textContent = 'Fetching…'; badge.className = 'verse-fetch-badge loading'; badge.style.display = '';
-    try {
-      const encoded = encodeURIComponent(ref);
-      const res = await fetch(`https://bible-api.com/${encoded}?translation=kjv`);
-      if (!res.ok) throw new Error('not found');
-      const data = await res.json();
-      const text = (data.text || '').replace(/\n/g, ' ').trim();
-      if (text) {
-        textEl.value = text;
-        badge.textContent = 'Auto-filled (KJV)'; badge.className = 'verse-fetch-badge'; badge.style.display = '';
-      } else { badge.style.display = 'none'; }
-    } catch { badge.textContent = 'Not found — type manually'; badge.className = 'verse-fetch-badge loading'; }
-  }
-
+  // ── Verses (free-form — paste from any translation) ──
   async function addVerse() {
     const reference = document.getElementById('new-verse-ref').value.trim();
     const text      = document.getElementById('new-verse-text').value.trim();
     if (!reference) { document.getElementById('new-verse-ref').focus(); return; }
-    if (!text) { await autoFetchVerse(); }
-    const finalText = document.getElementById('new-verse-text').value.trim();
     const r = await api(`/api/profiles/${selectedId}/verses`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ reference, text: finalText }),
+      body: JSON.stringify({ reference, text }),
     });
     if (!r) return;
     document.getElementById('new-verse-ref').value  = '';
     document.getElementById('new-verse-text').value = '';
-    document.getElementById('verse-fetch-badge').style.display = 'none';
     await load();
   }
 
@@ -2012,7 +2316,7 @@
     editId = p.id;
     setText('modal-title', 'Edit Profile'); setText('modal-sub', `Editing ${p.name}`);
     document.getElementById('f-name').value  = p.name         || '';
-    document.getElementById('f-rel').value   = p.relationship || '';
+    setRelInputs('f', p.relationship || '');
     document.getElementById('f-phone').value = p.phone        || '';
     document.getElementById('f-email').value = p.email        || '';
     document.getElementById('f-bday').value  = p.birthday     || '';
@@ -2031,7 +2335,7 @@
 
   function clearModal() {
     ['f-name','f-phone','f-email','f-bday','f-notes'].forEach(id => document.getElementById(id).value = '');
-    document.getElementById('f-rel').value   = '';
+    setRelInputs('f', '');
     document.getElementById('f-photo').value = '';
     document.getElementById('f-vcf').value   = '';
     document.getElementById('err-name').style.display = 'none';
@@ -2048,7 +2352,7 @@
     document.getElementById('err-name').style.display = 'none';
     const fd = new FormData();
     fd.append('name',         name);
-    fd.append('relationship', document.getElementById('f-rel').value);
+    fd.append('relationship', relValue('f'));
     fd.append('phone',        document.getElementById('f-phone').value.trim());
     fd.append('email',        document.getElementById('f-email').value.trim());
     fd.append('birthday',     document.getElementById('f-bday').value.trim());
@@ -2276,6 +2580,164 @@
     return val;
   }
 
+  // ── Reminders & notifications ──
+  let reminders = [];
+  const DAY_NAMES = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+
+  async function loadReminders() {
+    const r = await api('/api/reminders');
+    if (r && r.ok) { try { reminders = await r.json(); } catch { reminders = []; } }
+    renderReminders();
+    populateReminderTargets();
+    initPushStatus();
+  }
+
+  function reminderLabel(r) {
+    if (r.type === 'group') return `"${r.group}" group`;
+    const p = profiles.find(p => p.id === r.profileId);
+    const name = p ? p.name : 'Unknown';
+    return r.type === 'birthday' ? `🎂 ${name} — birthday` : name;
+  }
+
+  function renderReminders() {
+    const el = document.getElementById('reminder-list');
+    if (!reminders.length) {
+      el.innerHTML = `<div class="rem-row-sub" style="padding:2px 2px 8px">No reminders yet — add one below. Birthday reminders are created automatically for profiles with a birthday.</div>`;
+      return;
+    }
+    el.innerHTML = reminders.map(r => {
+      const sub = r.type === 'birthday'
+        ? `On their birthday · ${fmtTime12(r.time)}`
+        : `${(r.days || []).map(d => DAY_NAMES[d]).join(', ')} · ${fmtTime12(r.time)}`;
+      return `<div class="rem-row">
+        <div class="rem-row-main">
+          <div class="rem-row-title">${esc(reminderLabel(r))}</div>
+          <div class="rem-row-sub">${esc(sub)}</div>
+        </div>
+        <button class="rem-del" onclick="deleteReminder(${r.id})" title="Delete reminder">&#x2715;</button>
+      </div>`;
+    }).join('');
+  }
+
+  function fmtTime12(hhmm) {
+    const [h, m] = hhmm.split(':').map(Number);
+    return `${((h + 11) % 12) + 1}:${String(m).padStart(2, '0')} ${h >= 12 ? 'PM' : 'AM'}`;
+  }
+
+  function onRemTypeChange() { populateReminderTargets(); }
+
+  function populateReminderTargets() {
+    const type = document.getElementById('rem-type').value;
+    const sel  = document.getElementById('rem-target');
+    if (type === 'profile') {
+      sel.innerHTML = profiles.map(p => `<option value="${p.id}">${esc(p.name)}</option>`).join('')
+        || '<option value="">No profiles yet</option>';
+    } else {
+      const groups = [...new Set(profiles.map(p => p.relationship).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+      sel.innerHTML = groups.map(g => `<option>${esc(g)}</option>`).join('')
+        || '<option value="">No groups yet</option>';
+    }
+  }
+
+  document.getElementById('rem-days').addEventListener('click', e => {
+    const chip = e.target.closest('.day-chip');
+    if (chip) chip.classList.toggle('on');
+  });
+
+  async function addReminder() {
+    const type   = document.getElementById('rem-type').value;
+    const target = document.getElementById('rem-target').value;
+    const days   = [...document.querySelectorAll('#rem-days .day-chip.on')].map(c => Number(c.dataset.day));
+    const time   = document.getElementById('rem-time').value;
+    if (!target)      { showToast(type === 'profile' ? 'Add a profile first' : 'No groups yet — assign profiles to a group first'); return; }
+    if (!days.length) { showToast('Pick at least one day'); return; }
+    if (!time)        { showToast('Pick a time'); return; }
+    const body = { type, days, time, tz: Intl.DateTimeFormat().resolvedOptions().timeZone };
+    if (type === 'profile') body.profileId = Number(target); else body.group = target;
+    const r = await api('/api/reminders', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+    });
+    if (!r) return;
+    if (!r.ok) { const err = await r.json(); showToast('Error: ' + err.error); return; }
+    document.querySelectorAll('#rem-days .day-chip.on').forEach(c => c.classList.remove('on'));
+    await loadReminders();
+    showToast('Reminder added');
+  }
+
+  async function deleteReminder(id) {
+    const r = await api(`/api/reminders/${id}`, { method: 'DELETE' });
+    if (r) await loadReminders();
+  }
+
+  // ── Web push subscription ──
+  function urlB64ToUint8Array(s) {
+    const pad    = '='.repeat((4 - s.length % 4) % 4);
+    const base64 = (s + pad).replace(/-/g, '+').replace(/_/g, '/');
+    const raw    = atob(base64);
+    return Uint8Array.from([...raw].map(c => c.charCodeAt(0)));
+  }
+
+  async function initPushStatus() {
+    const statusEl = document.getElementById('push-status');
+    const btn      = document.getElementById('push-enable-btn');
+    btn.style.display = 'none';
+    if (!('serviceWorker' in navigator) || !('PushManager' in window) || !('Notification' in window)) {
+      statusEl.textContent = 'Notifications need the installed app. On iPhone, use Add to Home Screen first.';
+      return;
+    }
+    let keyInfo = null;
+    try { keyInfo = await (await fetch('/api/push/public-key')).json(); } catch {}
+    if (!keyInfo || !keyInfo.enabled) { statusEl.textContent = 'Reminder notifications aren’t enabled on the server yet.'; return; }
+    if (Notification.permission === 'denied') { statusEl.textContent = 'Notifications are blocked — allow them in your device settings.'; return; }
+    const reg = await navigator.serviceWorker.ready;
+    const sub = await reg.pushManager.getSubscription();
+    if (Notification.permission === 'granted' && sub) {
+      statusEl.textContent = 'Notifications are on for this device.';
+    } else {
+      statusEl.textContent = 'Turn on notifications to receive reminders on this device.';
+      btn.style.display = '';
+    }
+  }
+
+  async function enableNotifications() {
+    try {
+      const perm = await Notification.requestPermission();
+      if (perm !== 'granted') { initPushStatus(); return; }
+      const keyInfo = await (await fetch('/api/push/public-key')).json();
+      const reg = await navigator.serviceWorker.ready;
+      const sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlB64ToUint8Array(keyInfo.key),
+      });
+      const r = await api('/api/push/subscribe', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ subscription: sub.toJSON(), tz: Intl.DateTimeFormat().resolvedOptions().timeZone }),
+      });
+      if (r && r.ok) showToast('Notifications enabled');
+    } catch (err) {
+      console.error('push subscribe:', err);
+      showToast('Could not enable notifications');
+    }
+    initPushStatus();
+  }
+
+  // ── Deep links (?profile=ID / ?group=NAME from reminder notifications) ──
+  let _deepLinked = false;
+  function handleDeepLink() {
+    if (_deepLinked) return;
+    _deepLinked = true;
+    const params    = new URLSearchParams(location.search);
+    const group     = params.get('group');
+    const profileId = Number(params.get('profile'));
+    if (group !== null) {
+      setFilterUI(group);
+      openProfilesPanel();
+    } else if (profileId && profiles.some(p => p.id === profileId)) {
+      selectProfile(profileId);
+    }
+    if (group !== null || params.get('profile')) history.replaceState(null, '', location.pathname);
+  }
+
   // ── Utilities ──
   function setText(id, v) { document.getElementById(id).textContent = v; }
   function esc(s) {
@@ -2287,6 +2749,22 @@
     if (!d) return ['—',''];
     const dt = new Date(d + 'T00:00:00');
     return [dt.getDate(), dt.toLocaleDateString('en-US',{month:'short'}).toUpperCase()];
+  }
+  function fmtDateTime(iso) {
+    const d = new Date(iso);
+    if (isNaN(d)) return '';
+    const sameYear = d.getFullYear() === new Date().getFullYear();
+    const date = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', ...(sameYear ? {} : { year: 'numeric' }) });
+    const time = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+    return `${date} · ${time}`;
+  }
+  function fmtLastPrayed(p) {
+    if (p.last_prayed_at) return fmtDateTime(p.last_prayed_at);
+    if (p.last_prayed_date) {
+      const dt = new Date(p.last_prayed_date + 'T00:00:00');
+      return dt.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    }
+    return null;
   }
 
   document.addEventListener('keydown', e => {
@@ -2302,6 +2780,12 @@
 
   initApp();
 </script>
+
+<!-- ── Undo Toast ── -->
+<div class="toast" id="toast" role="status">
+  <span class="toast-msg" id="toast-msg"></span>
+  <button type="button" id="toast-action"></button>
+</div>
 
 <!-- ── Phone Call/Text Popover ── -->
 <div id="phone-popover" class="phone-popover" style="display:none">

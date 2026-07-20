@@ -106,6 +106,20 @@ const upload = multer({
   },
 });
 
+// ── Web Push (optional — enabled when VAPID env vars are set) ─────────────────
+let webpush = null;
+try { webpush = require('web-push'); } catch {}
+const PUSH_ENABLED = !!(webpush && process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY);
+if (PUSH_ENABLED) {
+  webpush.setVapidDetails(
+    process.env.VAPID_SUBJECT || 'mailto:admin@example.com',
+    process.env.VAPID_PUBLIC_KEY,
+    process.env.VAPID_PRIVATE_KEY,
+  );
+} else {
+  console.warn('[WARN]  Web push disabled — set VAPID_PUBLIC_KEY / VAPID_PRIVATE_KEY to enable reminders.');
+}
+
 // ── JSON storage ──────────────────────────────────────────────────────────────
 function readDB() {
   let db;
@@ -116,7 +130,17 @@ function readDB() {
     catch { db = { users: [], profiles: [], prayer_log: [], nextId: 1 }; }
   }
   if (!db.prayer_log) db.prayer_log = [];
+  if (!db.reminders)  db.reminders  = [];
+  if (!db.push_subs)  db.push_subs  = [];
+  if (!db.metrics)    db.metrics    = {};
   return db;
+}
+
+// Aggregate, anonymous usage counters — daily counts only, never content or user ids
+function bumpMetric(db, key, n = 1) {
+  const day = new Date().toISOString().split('T')[0];
+  if (!db.metrics[day]) db.metrics[day] = {};
+  db.metrics[day][key] = (db.metrics[day][key] || 0) + n;
 }
 function writeDB(data) {
   fs.writeFileSync(DB_FILE, JSON.stringify(data, null, 2), 'utf8');
@@ -199,6 +223,9 @@ app.post('/api/auth/login', loginLimiter, async (req, res) => {
   if (!user || !(await bcrypt.compare(password, user.password)))
     return res.status(401).json({ error: 'Invalid username or password' });
 
+  bumpMetric(db, 'logins');
+  writeDB(db);
+
   const token = jwt.sign({ id: user.id, username: user.username }, JWT_SECRET, { expiresIn: '30d' });
   res.json({ token, username: user.username });
 });
@@ -206,6 +233,42 @@ app.post('/api/auth/login', loginLimiter, async (req, res) => {
 app.get('/api/auth/me', requireAuth, (req, res) => {
   res.json({ id: req.user.id, username: req.user.username });
 });
+
+// ── Birthday parsing (free-text field → month/day) ───────────────────────────
+const MONTH_NAMES = ['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'];
+function parseBirthdayMD(str) {
+  if (!str) return null;
+  const s = String(str).trim().toLowerCase();
+  let m;
+  // 1990-05-15 or 05-15 / 05/15
+  if ((m = s.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})$/)))  return checkMD(+m[2], +m[3]);
+  if ((m = s.match(/^(\d{1,2})[-/](\d{1,2})(?:[-/]\d{2,4})?$/))) return checkMD(+m[1], +m[2]);
+  // "May 15" / "May 15, 1990" / "15 May"
+  if ((m = s.match(/^([a-z]+)\.?\s+(\d{1,2})/)))  { const mi = MONTH_NAMES.indexOf(m[1].slice(0,3)); if (mi !== -1) return checkMD(mi + 1, +m[2]); }
+  if ((m = s.match(/^(\d{1,2})\s+([a-z]+)/)))     { const mi = MONTH_NAMES.indexOf(m[2].slice(0,3)); if (mi !== -1) return checkMD(mi + 1, +m[1]); }
+  return null;
+}
+function checkMD(month, day) {
+  return month >= 1 && month <= 12 && day >= 1 && day <= 31 ? { month, day } : null;
+}
+
+// Auto-create/update/remove the birthday reminder for a profile (unified reminder model)
+function syncBirthdayReminder(db, profile) {
+  const idx = db.reminders.findIndex(r => r.type === 'birthday' && r.profileId === profile.id);
+  const md  = parseBirthdayMD(profile.birthday);
+  if (md) {
+    if (idx === -1) {
+      db.reminders.push({
+        id: db.nextId++, userId: profile.userId, type: 'birthday',
+        profileId: profile.id, group: null, days: null, time: '09:00',
+        tz: null, enabled: true, last_fired: null,
+        created_at: new Date().toISOString(),
+      });
+    }
+  } else if (idx !== -1) {
+    db.reminders.splice(idx, 1);
+  }
+}
 
 // ── Profiles ──────────────────────────────────────────────────────────────────
 app.get('/api/profiles', requireAuth, (req, res) => {
@@ -232,12 +295,14 @@ app.post('/api/profiles', requireAuth, upload.single('photo'), (req, res) => {
     notes:            (req.body.notes        || '').trim().slice(0, 5000),
     photo_url:        req.file ? '/uploads/' + req.file.filename : null,
     last_prayed_date: null,
+    last_prayed_at:   null,
     prayer_notes:     [],
     verses:           [],
     created_at:       new Date().toISOString(),
     updated_at:       new Date().toISOString(),
   };
   db.profiles.push(profile);
+  syncBirthdayReminder(db, profile);
   writeDB(db);
   res.status(201).json(profile);
 });
@@ -276,6 +341,7 @@ app.put('/api/profiles/:id', requireAuth, upload.single('photo'), (req, res) => 
     photo_url,
     updated_at: new Date().toISOString(),
   };
+  syncBirthdayReminder(db, db.profiles[idx]);
   writeDB(db);
   res.json(db.profiles[idx]);
 });
@@ -285,7 +351,9 @@ app.delete('/api/profiles/:id', requireAuth, (req, res) => {
   const profile = db.profiles.find(p => p.id === Number(req.params.id) && p.userId === req.user.id);
   if (!profile) return res.status(404).json({ error: 'Not found' });
   deletePhoto(profile.photo_url);
-  db.profiles = db.profiles.filter(p => p.id !== Number(req.params.id));
+  db.profiles  = db.profiles.filter(p => p.id !== Number(req.params.id));
+  // Cascade: reminders pointing at this profile must not outlive it
+  db.reminders = db.reminders.filter(r => r.profileId !== profile.id);
   writeDB(db);
   res.json({ success: true });
 });
@@ -298,11 +366,13 @@ app.put('/api/profiles/:id/pray', requireAuth, (req, res) => {
   const today       = new Date().toISOString().split('T')[0];
   const wasUnprayed = profile.last_prayed_date !== today;
   profile.last_prayed_date = wasUnprayed ? today : null;
+  profile.last_prayed_at   = wasUnprayed ? new Date().toISOString() : null;
   profile.updated_at       = new Date().toISOString();
   // Upsert into prayer_log when marking as prayed (not when un-marking)
   if (wasUnprayed && !db.prayer_log.find(e => e.userId === req.user.id && e.date === today)) {
     db.prayer_log.push({ userId: req.user.id, date: today });
   }
+  if (wasUnprayed) bumpMetric(db, 'prayed_marks');
   writeDB(db);
   res.json(profile);
 });
@@ -324,13 +394,16 @@ app.post('/api/profiles/:id/prayers', requireAuth, (req, res) => {
   if (!profile) return res.status(404).json({ error: 'Profile not found' });
 
   const prayer = {
-    id:         db.nextId++,
+    id:            db.nextId++,
     text,
-    date:       req.body.date || new Date().toISOString().split('T')[0],
-    answered:   false,
-    created_at: new Date().toISOString(),
+    date:          req.body.date || new Date().toISOString().split('T')[0],
+    answered:      false,
+    answered_at:   null,
+    answered_note: '',
+    created_at:    new Date().toISOString(),
   };
   profile.prayer_notes.push(prayer);
+  bumpMetric(db, 'prayers_added');
   writeDB(db);
   res.status(201).json(prayer);
 });
@@ -342,12 +415,22 @@ app.put('/api/profiles/:id/prayers/:pid', requireAuth, (req, res) => {
   const pIdx = profile.prayer_notes.findIndex(p => p.id === Number(req.params.pid));
   if (pIdx === -1) return res.status(404).json({ error: 'Prayer not found' });
   const prev = profile.prayer_notes[pIdx];
-  profile.prayer_notes[pIdx] = {
+  const next = {
     ...prev,
     ...(req.body.text     !== undefined ? { text:     req.body.text.trim().slice(0, 2000) } : {}),
     ...(req.body.date     !== undefined ? { date:     req.body.date                       } : {}),
     ...(req.body.answered !== undefined ? { answered: Boolean(req.body.answered)           } : {}),
   };
+  // Answered transitions: stamp date/time + optional "how it was answered" note
+  if (!prev.answered && next.answered) {
+    next.answered_at   = new Date().toISOString();
+    next.answered_note = (req.body.answered_note || '').trim().slice(0, 2000);
+    bumpMetric(db, 'prayers_answered');
+  } else if (prev.answered && !next.answered) {
+    next.answered_at   = null;
+    next.answered_note = '';
+  }
+  profile.prayer_notes[pIdx] = next;
   writeDB(db);
   res.json(profile.prayer_notes[pIdx]);
 });
@@ -380,6 +463,7 @@ app.post('/api/profiles/:id/verses', requireAuth, (req, res) => {
     added_at:  new Date().toISOString(),
   };
   profile.verses.push(verse);
+  bumpMetric(db, 'verses_added');
   writeDB(db);
   res.status(201).json(verse);
 });
@@ -393,6 +477,233 @@ app.delete('/api/profiles/:id/verses/:vid', requireAuth, (req, res) => {
   if (profile.verses.length === len) return res.status(404).json({ error: 'Not found' });
   writeDB(db);
   res.json({ success: true });
+});
+
+// ── Reminders (unified model: profile | group | birthday) ────────────────────
+const VALID_TIME = /^([01]\d|2[0-3]):[0-5]\d$/;
+function validTZ(tz) {
+  if (!tz || typeof tz !== 'string' || tz.length > 64) return false;
+  try { new Intl.DateTimeFormat('en-US', { timeZone: tz }); return true; } catch { return false; }
+}
+function saveUserTZ(db, userId, tz) {
+  if (!validTZ(tz)) return;
+  const user = db.users.find(u => u.id === userId);
+  if (user) user.tz = tz;
+}
+
+app.get('/api/reminders', requireAuth, (req, res) => {
+  res.json(readDB().reminders.filter(r => r.userId === req.user.id));
+});
+
+app.post('/api/reminders', requireAuth, (req, res) => {
+  const { type, profileId, group, days, time, tz } = req.body;
+  if (type !== 'profile' && type !== 'group')
+    return res.status(400).json({ error: 'Type must be "profile" or "group" (birthday reminders are created automatically)' });
+  if (!Array.isArray(days) || !days.length || days.some(d => !Number.isInteger(d) || d < 0 || d > 6))
+    return res.status(400).json({ error: 'Days must be a list of weekdays (0=Sun … 6=Sat)' });
+  if (!VALID_TIME.test(time || ''))
+    return res.status(400).json({ error: 'Time must be HH:MM (24h)' });
+
+  const db = readDB();
+  if (type === 'profile') {
+    const p = db.profiles.find(p => p.id === Number(profileId) && p.userId === req.user.id);
+    if (!p) return res.status(404).json({ error: 'Profile not found' });
+  } else {
+    const g = (group || '').trim().slice(0, 50);
+    if (!g) return res.status(400).json({ error: 'Group name is required' });
+    if (!db.profiles.some(p => p.userId === req.user.id && p.relationship === g))
+      return res.status(404).json({ error: 'No profiles in that group' });
+  }
+
+  const reminder = {
+    id:         db.nextId++,
+    userId:     req.user.id,
+    type,
+    profileId:  type === 'profile' ? Number(profileId) : null,
+    group:      type === 'group' ? (group || '').trim().slice(0, 50) : null,
+    days:       [...new Set(days)].sort(),
+    time,
+    tz:         validTZ(tz) ? tz : null,
+    enabled:    true,
+    last_fired: null,
+    created_at: new Date().toISOString(),
+  };
+  db.reminders.push(reminder);
+  saveUserTZ(db, req.user.id, tz);
+  writeDB(db);
+  res.status(201).json(reminder);
+});
+
+app.put('/api/reminders/:id', requireAuth, (req, res) => {
+  const db = readDB();
+  const r  = db.reminders.find(r => r.id === Number(req.params.id) && r.userId === req.user.id);
+  if (!r) return res.status(404).json({ error: 'Not found' });
+  if (req.body.days !== undefined) {
+    if (!Array.isArray(req.body.days) || !req.body.days.length || req.body.days.some(d => !Number.isInteger(d) || d < 0 || d > 6))
+      return res.status(400).json({ error: 'Invalid days' });
+    r.days = [...new Set(req.body.days)].sort();
+  }
+  if (req.body.time !== undefined) {
+    if (!VALID_TIME.test(req.body.time)) return res.status(400).json({ error: 'Invalid time' });
+    r.time = req.body.time;
+  }
+  if (req.body.enabled !== undefined) r.enabled = Boolean(req.body.enabled);
+  if (req.body.tz      !== undefined && validTZ(req.body.tz)) r.tz = req.body.tz;
+  writeDB(db);
+  res.json(r);
+});
+
+app.delete('/api/reminders/:id', requireAuth, (req, res) => {
+  const db  = readDB();
+  const len = db.reminders.length;
+  db.reminders = db.reminders.filter(r => !(r.id === Number(req.params.id) && r.userId === req.user.id));
+  if (db.reminders.length === len) return res.status(404).json({ error: 'Not found' });
+  writeDB(db);
+  res.json({ success: true });
+});
+
+// ── Push subscriptions ────────────────────────────────────────────────────────
+app.get('/api/push/public-key', (req, res) => {
+  res.json({ enabled: PUSH_ENABLED, key: PUSH_ENABLED ? process.env.VAPID_PUBLIC_KEY : null });
+});
+
+app.post('/api/push/subscribe', requireAuth, (req, res) => {
+  const sub = req.body.subscription;
+  if (!sub || typeof sub.endpoint !== 'string' || !sub.endpoint.startsWith('https://'))
+    return res.status(400).json({ error: 'Invalid subscription' });
+  const db = readDB();
+  db.push_subs = db.push_subs.filter(s => s.subscription.endpoint !== sub.endpoint);
+  db.push_subs.push({ userId: req.user.id, subscription: sub, created_at: new Date().toISOString() });
+  saveUserTZ(db, req.user.id, req.body.tz);
+  writeDB(db);
+  res.status(201).json({ success: true });
+});
+
+app.post('/api/push/unsubscribe', requireAuth, (req, res) => {
+  const db = readDB();
+  db.push_subs = db.push_subs.filter(s => !(s.userId === req.user.id && s.subscription.endpoint === req.body.endpoint));
+  writeDB(db);
+  res.json({ success: true });
+});
+
+async function sendPushToUser(db, userId, payload) {
+  if (!PUSH_ENABLED) return false;
+  const subs = db.push_subs.filter(s => s.userId === userId);
+  const dead = [];
+  for (const s of subs) {
+    try {
+      await webpush.sendNotification(s.subscription, JSON.stringify(payload));
+    } catch (err) {
+      if (err.statusCode === 404 || err.statusCode === 410) dead.push(s.subscription.endpoint);
+    }
+  }
+  if (dead.length) db.push_subs = db.push_subs.filter(s => !dead.includes(s.subscription.endpoint));
+  return dead.length > 0;
+}
+
+// ── Reminder scheduler (runs every minute; times evaluated in each reminder's TZ)
+function nowInTZ(tz) {
+  try {
+    const parts = Object.fromEntries(
+      new Intl.DateTimeFormat('en-CA', {
+        timeZone: tz, hour12: false, weekday: 'short',
+        year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit',
+      }).formatToParts(new Date()).map(p => [p.type, p.value])
+    );
+    const dowMap = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
+    const hour   = parts.hour === '24' ? '00' : parts.hour; // some ICU versions emit 24:00
+    return {
+      date:  `${parts.year}-${parts.month}-${parts.day}`,
+      hhmm:  `${hour}:${parts.minute}`,
+      dow:   dowMap[parts.weekday.slice(0, 3)],
+      month: Number(parts.month),
+      day:   Number(parts.day),
+    };
+  } catch { return null; }
+}
+
+async function reminderTick() {
+  const db  = readDB();
+  let dirty = false;
+  const tzNow = {};
+  const due   = [];
+
+  for (const r of db.reminders) {
+    if (!r.enabled) continue;
+    const user = db.users.find(u => u.id === r.userId);
+    const tz   = r.tz || (user && user.tz) || 'UTC';
+    if (!(tz in tzNow)) tzNow[tz] = nowInTZ(tz) || nowInTZ('UTC');
+    const now = tzNow[tz];
+    const fireKey = `${now.date} ${now.hhmm}`;
+    if (r.last_fired === fireKey || r.time !== now.hhmm) continue;
+
+    if (r.type === 'birthday' || r.type === 'profile') {
+      const p = db.profiles.find(p => p.id === r.profileId && p.userId === r.userId);
+      if (!p) { r._orphan = true; dirty = true; continue; } // profile deleted → prune below
+      if (r.type === 'birthday') {
+        const md = parseBirthdayMD(p.birthday);
+        if (!md || md.month !== now.month || md.day !== now.day) continue;
+        due.push({ r, fireKey, payload: {
+          title: 'Birthday today 🎂',
+          body:  `It's ${p.name}'s birthday — say a prayer for them!`,
+          url:   `/?profile=${p.id}`,
+        }});
+      } else {
+        if (!r.days.includes(now.dow)) continue;
+        due.push({ r, fireKey, payload: {
+          title: 'Prayer reminder',
+          body:  `Time to pray for ${p.name}`,
+          url:   `/?profile=${p.id}`,
+        }});
+      }
+    } else if (r.type === 'group') {
+      if (!r.days.includes(now.dow)) continue;
+      const members = db.profiles.filter(p => p.userId === r.userId && p.relationship === r.group);
+      if (!members.length) continue; // group currently empty/renamed — skip, don't crash or prune
+      due.push({ r, fireKey, payload: {
+        title: 'Prayer reminder',
+        body:  `Time to pray for your "${r.group}" group (${members.length} ${members.length === 1 ? 'person' : 'people'})`,
+        url:   `/?group=${encodeURIComponent(r.group)}`,
+      }});
+    }
+  }
+
+  if (db.reminders.some(r => r._orphan)) {
+    db.reminders = db.reminders.filter(r => !r._orphan);
+  }
+
+  for (const { r, fireKey, payload } of due) {
+    r.last_fired = fireKey;
+    dirty = true;
+    await sendPushToUser(db, r.userId, payload);
+  }
+  if (dirty) writeDB(db);
+}
+
+if (PUSH_ENABLED) setInterval(() => reminderTick().catch(err => console.error('[reminders]', err.message)), 60 * 1000);
+
+// ── Admin metrics (aggregate + anonymous — reporting only) ────────────────────
+app.get('/api/admin/metrics', (req, res) => {
+  const key = process.env.ADMIN_KEY;
+  if (!key) return res.status(503).json({ error: 'ADMIN_KEY is not configured' });
+  if (req.headers['x-admin-key'] !== key) return res.status(401).json({ error: 'Unauthorized' });
+
+  const db     = readDB();
+  const totals = {};
+  for (const day of Object.keys(db.metrics)) {
+    for (const [k, v] of Object.entries(db.metrics[day])) totals[k] = (totals[k] || 0) + v;
+  }
+  // Aggregate counts only — no usernames, no prayer/verse content
+  res.json({
+    days:   db.metrics,
+    totals,
+    snapshot: {
+      users:              db.users.length,
+      profiles:           db.profiles.length,
+      reminders:          db.reminders.length,
+      push_subscriptions: db.push_subs.length,
+    },
+  });
 });
 
 // ── iCloud CardDAV ────────────────────────────────────────────────────────────
