@@ -660,9 +660,16 @@ async function reminderTick() {
       if (!r.days.includes(now.dow)) continue;
       const members = db.profiles.filter(p => p.userId === r.userId && p.relationship === r.group);
       if (!members.length) continue; // group currently empty/renamed — skip, don't crash or prune
+      // Only call out people not yet prayed for today — if the group is already covered, stay quiet
+      const unprayed = members.filter(p => p.last_prayed_date !== now.date);
+      if (!unprayed.length) continue;
+      const names = unprayed.slice(0, 3).map(p => p.name);
+      const body = unprayed.length <= 3
+        ? `${names.join(', ')} (${r.group}) ${unprayed.length === 1 ? 'hasn’t' : 'haven’t'} been prayed for yet today.`
+        : `${names.join(', ')} and ${unprayed.length - 3} more in ${r.group} haven’t been prayed for yet today.`;
       due.push({ r, fireKey, payload: {
         title: 'Prayer reminder',
-        body:  `Time to pray for your "${r.group}" group (${members.length} ${members.length === 1 ? 'person' : 'people'})`,
+        body,
         url:   `/?group=${encodeURIComponent(r.group)}`,
       }});
     }

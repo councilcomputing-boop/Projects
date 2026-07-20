@@ -906,6 +906,7 @@
       transition: background 0.12s, color 0.12s;
     }
     .day-chip.on { background: var(--gold); border-color: var(--gold); color: var(--surface); }
+    .rem-hint { font-size: 11.5px; color: var(--text3); line-height: 1.6; margin-top: 12px; padding: 0 2px; }
 
     /* ═══ RESPONSIVE / MOBILE ═══ */
     @media (max-width: 740px) {
@@ -1059,7 +1060,7 @@
         </button>
       </div>
       <div class="header-right">
-        <button class="icon-btn" onclick="openSettingsPanel()" aria-label="Reminders" title="Reminders">
+        <button class="icon-btn" onclick="openNotificationsPanel()" aria-label="Open notifications" title="Notifications">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M6 8a6 6 0 1 1 12 0c0 5 2 6 2 6H4s2-1 2-6Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M10 20a2 2 0 0 0 4 0" stroke="currentColor" stroke-width="1.6"/></svg>
         </button>
         <button class="icon-btn" id="settings-btn" onclick="openSettingsPanel()" aria-label="Open settings" title="Settings">
@@ -1119,6 +1120,41 @@
       </div>
     </aside>
 
+    <!-- ── Notifications Panel (slide-out, right) ── -->
+    <aside class="sidebar right" id="notifications-panel">
+      <div class="sidebar-top">
+        <div class="panel-header">
+          <span class="panel-title">Notifications</span>
+          <button class="icon-btn" onclick="closePanels()" aria-label="Close">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+          </button>
+        </div>
+      </div>
+      <div class="settings-body">
+        <div class="group-label">Push notifications</div>
+        <div class="rem-status">
+          <span class="rem-status-text" id="push-status">Checking notification support…</span>
+          <button class="btn-prim" id="push-enable-btn" style="display:none;padding:7px 12px;font-size:12px" onclick="enableNotifications()">Enable</button>
+        </div>
+
+        <div class="group-label" style="margin-top:20px">Prayer reminders</div>
+        <div id="reminder-list"></div>
+        <div class="rem-form" id="reminder-form">
+          <select id="rem-type" onchange="onRemTypeChange()">
+            <option value="group">Remind me about a group</option>
+            <option value="profile">Remind me about a person</option>
+          </select>
+          <select id="rem-target"></select>
+          <div class="day-picker" id="rem-days">
+            <span class="day-chip" data-day="0">S</span><span class="day-chip" data-day="1">M</span><span class="day-chip" data-day="2">T</span><span class="day-chip" data-day="3">W</span><span class="day-chip" data-day="4">T</span><span class="day-chip" data-day="5">F</span><span class="day-chip" data-day="6">S</span>
+          </div>
+          <input type="time" id="rem-time" value="09:00">
+          <button class="btn-prim" type="button" style="justify-content:center" onclick="addReminder()">Add reminder</button>
+        </div>
+        <div class="rem-hint">Group reminders only notify about people in that group who haven&rsquo;t been prayed for yet that day.</div>
+      </div>
+    </aside>
+
     <!-- ── Settings Panel (slide-out, right) ── -->
     <aside class="sidebar right" id="settings-panel">
       <div class="sidebar-top">
@@ -1139,25 +1175,6 @@
               <div class="settings-sub">Signed in</div>
             </div>
           </div>
-        </div>
-
-        <div class="group-label" style="margin-top:20px">Reminders</div>
-        <div class="rem-status">
-          <span class="rem-status-text" id="push-status">Checking notification support…</span>
-          <button class="btn-prim" id="push-enable-btn" style="display:none;padding:7px 12px;font-size:12px" onclick="enableNotifications()">Enable</button>
-        </div>
-        <div id="reminder-list"></div>
-        <div class="rem-form" id="reminder-form">
-          <select id="rem-type" onchange="onRemTypeChange()">
-            <option value="profile">Remind me about a person</option>
-            <option value="group">Remind me about a group</option>
-          </select>
-          <select id="rem-target"></select>
-          <div class="day-picker" id="rem-days">
-            <span class="day-chip" data-day="0">S</span><span class="day-chip" data-day="1">M</span><span class="day-chip" data-day="2">T</span><span class="day-chip" data-day="3">W</span><span class="day-chip" data-day="4">T</span><span class="day-chip" data-day="5">F</span><span class="day-chip" data-day="6">S</span>
-          </div>
-          <input type="time" id="rem-time" value="09:00">
-          <button class="btn-prim" type="button" style="justify-content:center" onclick="addReminder()">Add reminder</button>
         </div>
 
         <div class="group-label" style="margin-top:20px">App</div>
@@ -1580,22 +1597,19 @@
   }
 
   // ── Slide-out panels ──
-  function openProfilesPanel() {
-    document.getElementById('settings-panel').classList.remove('open');
-    document.getElementById('sidebar').classList.add('open');
+  const PANEL_IDS = ['sidebar', 'notifications-panel', 'settings-panel'];
+  function openPanel(id) {
+    PANEL_IDS.forEach(pid => document.getElementById(pid).classList.toggle('open', pid === id));
     document.getElementById('panel-backdrop').classList.add('open');
   }
-  function openSettingsPanel() {
-    document.getElementById('sidebar').classList.remove('open');
-    document.getElementById('settings-panel').classList.add('open');
-    document.getElementById('panel-backdrop').classList.add('open');
-    loadReminders();
-  }
+  function openProfilesPanel()      { openPanel('sidebar'); }
+  function openSettingsPanel()      { openPanel('settings-panel'); }
+  function openNotificationsPanel() { openPanel('notifications-panel'); loadReminders(); }
   function closePanels() {
-    document.getElementById('sidebar').classList.remove('open');
-    document.getElementById('settings-panel').classList.remove('open');
+    PANEL_IDS.forEach(pid => document.getElementById(pid).classList.remove('open'));
     document.getElementById('panel-backdrop').classList.remove('open');
   }
+  function anyPanelOpen() { return PANEL_IDS.some(pid => document.getElementById(pid).classList.contains('open')); }
 
   function switchTab(tab) {
     document.getElementById('login-form').style.display    = tab === 'login'    ? 'flex' : 'none';
@@ -1961,8 +1975,7 @@
     const dy = e.changedTouches[0].clientY - _touchY;
     _touchX = _touchY = null;
     if (document.getElementById('profile-detail').style.display === 'none') return;
-    if (document.getElementById('sidebar').classList.contains('open') ||
-        document.getElementById('settings-panel').classList.contains('open')) return;
+    if (anyPanelOpen()) return;
     const tag = (e.target.tagName || '').toLowerCase();
     if (tag === 'input' || tag === 'textarea' || tag === 'select') return;
     if (Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
