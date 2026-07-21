@@ -1055,8 +1055,11 @@ const DRACULA_BET_MATCHED = [
   'Well judged — your wager and the count agree.'
 ];
 const DRACULA_BET_NOT_MATCHED_QUIZ = "Your wager did not match the count's true favor. Even after all these centuries, some lessons repeat.";
-function draculaBetNotMatched(tcLabel, recUnits){
+function draculaBetTooTimid(tcLabel, recUnits){
   return 'The count favors you at ' + tcLabel + ' — a bolder wager was warranted. ~' + recUnits + ' unit' + (recUnits > 1 ? 's' : '') + ' (' + (recUnits * 5) + ' Blood Drops) was the hunger you should have indulged.';
+}
+function draculaBetTooBold(tcLabel, recUnits){
+  return 'The count at ' + tcLabel + ' did not favor such hunger — a smaller wager was wise. ~' + recUnits + ' unit' + (recUnits > 1 ? 's' : '') + ' (' + (recUnits * 5) + ' Blood Drops) would have sufficed.';
 }
 
 /* ============================================================ */
@@ -1469,10 +1472,13 @@ function gradeBet(tc, bet){
     showBetFeedback(matched ? draculaSay(DRACULA_BET_MATCHED) : DRACULA_BET_NOT_MATCHED_QUIZ, matched);
   } else {
     const tcLabel = fmtSigned(Math.round(tc * 10) / 10);
+    const mismatchMsg = actualUnits < recUnits
+      ? draculaBetTooTimid(tcLabel, recUnits)
+      : draculaBetTooBold(tcLabel, recUnits);
     showBetFeedback(
       matched
         ? draculaSay(DRACULA_BET_MATCHED) + ' (TC ' + tcLabel + '.)'
-        : draculaBetNotMatched(tcLabel, recUnits),
+        : mismatchMsg,
       matched
     );
   }
