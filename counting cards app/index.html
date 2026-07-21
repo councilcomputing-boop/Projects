@@ -295,8 +295,10 @@ button{user-select:none;-webkit-user-select:none;touch-action:manipulation}
 .store-buy-amount{font-family:var(--display-font);font-weight:700;color:#7a5f00}
 .ad-progress-track{background:var(--gray-pale);border-radius:10px;height:10px;overflow:hidden;margin:12px 0}
 .ad-progress-bar{background:var(--gold);height:100%;width:0%}
-.wheel-pointer{font-size:16px;color:var(--red);line-height:1;margin-bottom:-4px}
-.wheel-emoji{font-size:48px;margin:8px 0;display:inline-block;transform:rotate(0deg)}
+.wheel-wrap{display:flex;flex-direction:column;align-items:center;margin:6px 0}
+.wheel-pointer{font-size:22px;color:var(--gold);line-height:1;margin-bottom:-6px;z-index:2;text-shadow:0 2px 4px rgba(0,0,0,.5)}
+.wheel-svg{display:block;filter:drop-shadow(0 4px 10px rgba(0,0,0,.45))}
+#wheelSpin{transform-box:fill-box;transform-origin:50% 50%}
 
 /* Quiz modal */
 .quiz-overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;z-index:500;padding:20px}
@@ -758,8 +760,29 @@ button{user-select:none;-webkit-user-select:none;touch-action:manipulation}
   <div class="quiz-overlay" id="wheelOverlay" style="display:none">
     <div class="quiz-box">
       <div class="quiz-title">Spin the Wheel</div>
-      <div class="wheel-pointer">▼</div>
-      <div class="wheel-emoji" id="wheelEmoji">🎡</div>
+      <div class="wheel-wrap">
+        <div class="wheel-pointer">▼</div>
+        <svg class="wheel-svg" viewBox="0 0 200 200" width="220" height="220">
+          <circle cx="100" cy="100" r="97" fill="#2a1810" stroke="#c9a227" stroke-width="2"/>
+          <g id="wheelSpin">
+            <path d="M100,100 L100.00,5.00 A95,95 0 0,1 174.27,40.77 Z" fill="#8a0517"/>
+            <path d="M100,100 L174.27,40.77 A95,95 0 0,1 192.62,121.14 Z" fill="#c9a227"/>
+            <path d="M100,100 L192.62,121.14 A95,95 0 0,1 141.22,185.59 Z" fill="#8a0517"/>
+            <path d="M100,100 L141.22,185.59 A95,95 0 0,1 58.78,185.59 Z" fill="#c9a227"/>
+            <path d="M100,100 L58.78,185.59 A95,95 0 0,1 7.38,121.14 Z" fill="#8a0517"/>
+            <path d="M100,100 L7.38,121.14 A95,95 0 0,1 25.73,40.77 Z" fill="#c9a227"/>
+            <path d="M100,100 L25.73,40.77 A95,95 0 0,1 100.00,5.00 Z" fill="#8a0517"/>
+            <text x="100" y="42" transform="rotate(25.71 100 100)" text-anchor="middle" fill="#f3e6bf" font-weight="700" font-size="15">50</text>
+            <text x="100" y="42" transform="rotate(77.14 100 100)" text-anchor="middle" fill="#3a0a12" font-weight="700" font-size="15">100</text>
+            <text x="100" y="42" transform="rotate(128.57 100 100)" text-anchor="middle" fill="#f3e6bf" font-weight="700" font-size="15">100</text>
+            <text x="100" y="42" transform="rotate(180.00 100 100)" text-anchor="middle" fill="#3a0a12" font-weight="700" font-size="15">150</text>
+            <text x="100" y="42" transform="rotate(231.43 100 100)" text-anchor="middle" fill="#f3e6bf" font-weight="700" font-size="15">250</text>
+            <text x="100" y="42" transform="rotate(282.86 100 100)" text-anchor="middle" fill="#3a0a12" font-weight="700" font-size="15">500</text>
+            <text x="100" y="42" transform="rotate(334.29 100 100)" text-anchor="middle" fill="#f3e6bf" font-weight="700" font-size="15">1000</text>
+          </g>
+          <circle cx="100" cy="100" r="11" fill="#c9a227" stroke="#2a1810" stroke-width="2"/>
+        </svg>
+      </div>
       <div class="quiz-question" id="wheelResult">Spinning...</div>
       <button class="btn btn-outline" id="wheelCloseBtn" style="display:none">Nice!</button>
     </div>
@@ -2357,30 +2380,38 @@ document.getElementById('dailyBonusBtn').addEventListener('click', claimDailyBon
 document.getElementById('homeDailyBonusBtn').addEventListener('click', claimDailyBonus);
 
 const WHEEL_PRIZES = [50, 100, 100, 150, 250, 500, 1000];
-const WHEEL_SPIN_MS = 2400;
+const WHEEL_SEGMENT_ANGLE = 360 / WHEEL_PRIZES.length;
+const WHEEL_SPIN_MS = 3000;
 document.getElementById('spinWheelBtn').addEventListener('click', () => {
   const today = todayStr();
   if(storeState.spinWheel.lastSpinDate === today) return;
   const overlay = document.getElementById('wheelOverlay');
   const resultEl = document.getElementById('wheelResult');
   const closeBtn = document.getElementById('wheelCloseBtn');
-  const wheelEl = document.getElementById('wheelEmoji');
+  const wheelEl = document.getElementById('wheelSpin');
   resultEl.textContent = 'Spinning...';
   closeBtn.style.display = 'none';
   overlay.style.display = 'flex';
 
+  // Pick the prize FIRST, then compute the rotation that actually lands the
+  // pointer on that segment — the wheel's visual outcome always matches
+  // what's credited, unlike the old emoji spin which was purely cosmetic.
+  const prizeIndex = Math.floor(Math.random() * WHEEL_PRIZES.length);
+  const prize = WHEEL_PRIZES[prizeIndex];
+  const jitter = (Math.random() - 0.5) * (WHEEL_SEGMENT_ANGLE - 8);
+  const targetAngle = prizeIndex * WHEEL_SEGMENT_ANGLE + WHEEL_SEGMENT_ANGLE / 2 + jitter;
+  const extraSpins = 5 + Math.floor(Math.random() * 3);
+  const finalAngle = extraSpins * 360 + (360 - targetAngle);
+
   wheelEl.style.transition = 'none';
   wheelEl.style.transform = 'rotate(0deg)';
-  void wheelEl.offsetWidth;
-  const extraSpins = 4 + Math.floor(Math.random() * 3);
-  const finalAngle = extraSpins * 360 + Math.floor(Math.random() * 360);
+  void wheelEl.getBoundingClientRect(); // force reflow before restarting the animation
   requestAnimationFrame(() => {
     wheelEl.style.transition = 'transform ' + WHEEL_SPIN_MS + 'ms cubic-bezier(.12,.67,.18,1)';
     wheelEl.style.transform = 'rotate(' + finalAngle + 'deg)';
   });
 
   setTimeout(() => {
-    const prize = WHEEL_PRIZES[Math.floor(Math.random() * WHEEL_PRIZES.length)];
     storeState.spinWheel.lastSpinDate = today;
     addDrops(prize);
     saveStoreState();
