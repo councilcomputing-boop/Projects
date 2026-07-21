@@ -119,7 +119,7 @@
         .bond-num  { font-weight: 600; color: var(--blue); }
         .principal { font-weight: 500; }
         .meta      { font-size: 11px; color: var(--gray-600); margin-top: 2px; }
-        .row-acts  { display: flex; gap: 5px; }
+        .row-acts  { display: flex; gap: 5px; flex-wrap: wrap; }
 
         /* Badges */
         .badge { display: inline-flex; align-items: center; padding: 3px 9px; border-radius: 20px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; white-space: nowrap; }
@@ -738,7 +738,7 @@ const SURETIES = [
 
 const PRODUCERS = [
     'Larry Bixler', 'Logan Buckner', 'Cody McNeill', 'Mike McNeill',
-    'Kyle Reser', 'Mike Shannon', 'Todd Triplett', 'Kyle Vandruff',
+    'John Rogers', 'Kyle Reser', 'Mike Shannon', 'Todd Triplett', 'Kyle Vandruff',
 ];
 
 const LABELS = {
@@ -854,8 +854,8 @@ function renderBonds() {
             const amtSub = (b.bond_type==='Bid Bond'&&b.bid_bond_percent&&b.bond_amount)
                 ? `<div class="meta">${b.bid_bond_percent}% = $${(b.bond_amount*b.bid_bond_percent/100).toLocaleString('en-US',{maximumFractionDigits:0})}</div>` : '';
             const lowBidBtn = b.bond_type==='Bid Bond'
-                ? `<button class="btn btn-secondary btn-sm" onclick="setLowBid(${b.id}, true)" style="${b.low_bid?'color:#2e7d32;border-color:#2e7d32;':''}">${b.low_bid?'Low Bid ✓':'Mark Low Bid'}</button>
-                <button class="btn btn-secondary btn-sm" onclick="setLowBid(${b.id}, false)" style="${b.low_bid===false?'color:#c62828;border-color:#c62828;':''}">${b.low_bid===false?'Not Low Bid ✓':'Mark Not Low Bid'}</button>`
+                ? `<button class="btn btn-secondary btn-sm" onclick="setLowBid(${b.id}, true)" style="${b.low_bid?'color:#2e7d32;border-color:#2e7d32;':''}" title="${b.low_bid?'Low Bid':'Mark Low Bid'}">${b.low_bid?'Low ✓':'Low'}</button>
+                <button class="btn btn-secondary btn-sm" onclick="setLowBid(${b.id}, false)" style="${b.low_bid===false?'color:#c62828;border-color:#c62828;':''}" title="${b.low_bid===false?'Not Low Bid':'Mark Not Low Bid'}">${b.low_bid===false?'Not Low ✓':'Not Low'}</button>`
                 : '';
             return `<tr>
             <td><span class="principal">${esc(b.principal)}</span><div class="meta">Added by ${esc(b.created_by)} &middot; ${b.created_at}</div></td>
