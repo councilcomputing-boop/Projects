@@ -56,7 +56,7 @@ button{user-select:none;-webkit-user-select:none;touch-action:manipulation}
 .hdr.hdr-big .hdr-title{font-size:20px;letter-spacing:1.5px;white-space:normal}
 .hdr.hdr-big .hdr-sub{font-size:11px;white-space:normal}
 .hdr.hdr-big .menu-link{display:none}
-.dealer-portrait{display:block;width:76px;margin:0 auto 4px;filter:drop-shadow(0 6px 14px rgba(0,0,0,.5))}
+.dealer-portrait{display:block;width:56px;margin:0 auto 4px;filter:drop-shadow(0 6px 14px rgba(0,0,0,.5))}
 .dealer-portrait.deal-pulse{animation:dealerPulse .5s ease-out}
 @keyframes dealerPulse{0%{transform:scale(1)}35%{transform:scale(1.06)}70%{transform:scale(.99)}100%{transform:scale(1)}}
 .hdr-title{font-family:var(--display-font);font-size:19px;font-weight:700;letter-spacing:1px;color:#f3e6bf;text-shadow:0 0 12px rgba(201,162,39,.35);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -68,7 +68,8 @@ button{user-select:none;-webkit-user-select:none;touch-action:manipulation}
 .menu-card:active{opacity:.75;transform:scale(.99)}
 .menu-icon{font-size:26px}
 .menu-title{font-size:11.5px;font-weight:700;color:var(--text)}
-#C{padding:14px 14px 90px;position:relative}
+#C{padding:14px 14px 20px;position:relative}
+#C.with-nav{padding-bottom:90px}
 .bottom-nav{position:fixed;left:0;right:0;bottom:0;max-width:600px;margin:0 auto;display:none;justify-content:space-around;align-items:center;background:linear-gradient(0deg,var(--wine-dark),var(--wine));border-top:1px solid #4a1420;box-shadow:0 -2px 12px rgba(0,0,0,.5);z-index:200;padding:8px 0 calc(8px + env(safe-area-inset-bottom))}
 .bottom-nav.show{display:flex}
 .nav-btn{background:none;border:none;color:#c9a9a9;display:flex;flex-direction:column;align-items:center;gap:2px;font-size:10.5px;font-weight:700;padding:4px 18px;cursor:pointer}
@@ -88,7 +89,7 @@ button{user-select:none;-webkit-user-select:none;touch-action:manipulation}
 .legend-badge.minus{background:var(--red)}
 .legend-cards{font-size:15px;font-weight:700}
 .legend-note{font-size:12px;color:var(--muted);margin-top:1px}
-.hint{font-size:12.5px;color:var(--muted);line-height:1.5;margin-top:10px}
+.hint{font-size:12.5px;color:var(--muted);line-height:1.5;margin-top:6px}
 .rules-list{font-size:13.5px;line-height:1.6;color:var(--text);padding-left:18px}
 .rules-list li{margin-bottom:8px}
 
@@ -121,8 +122,8 @@ button{user-select:none;-webkit-user-select:none;touch-action:manipulation}
 .btn:active{opacity:.75}
 .btn:disabled{opacity:.4;cursor:default}
 .btn-outline{background:#fff;color:var(--text);border:1px solid var(--border)}
-.btn-row{display:flex;gap:8px;margin-bottom:12px}
-.btn-row .btn{width:auto;flex:1;padding:14px 4px;font-size:13.5px}
+.btn-row{display:flex;gap:8px;margin-bottom:8px}
+.btn-row .btn{width:auto;flex:1;padding:11px 4px;font-size:13.5px}
 .btn-hit{background:var(--green2);color:#fff}
 .btn-stand{background:var(--gray);color:#fff}
 .btn-double{background:var(--gold);color:#3a2e00}
@@ -151,7 +152,7 @@ button{user-select:none;-webkit-user-select:none;touch-action:manipulation}
 }
 .peek-count-badge .peek-rc{display:block;font-family:var(--display-font);font-weight:700;font-size:15px}
 .peek-count-badge .peek-tc{display:block;font-size:9.5px;color:#c9a9a9}
-.dealer-portrait-wrap{position:relative;display:block;width:76px;margin:0 auto}
+.dealer-portrait-wrap{position:relative;display:block;width:56px;margin:0 auto}
 .dealer-speech{
   display:none;position:relative;background:#fff;border:2px solid var(--border);
   border-radius:14px;padding:8px 12px;font-size:12px;font-weight:600;
@@ -194,9 +195,9 @@ button{user-select:none;-webkit-user-select:none;touch-action:manipulation}
 /* Dealer game */
 .shoe-row{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:13px;color:var(--muted);margin-bottom:4px}
 .shoe-row select{padding:6px 8px;border:1.5px solid var(--border);border-radius:8px;font-size:14px;background:#fff}
-.table-label{font-size:12px;font-weight:700;text-transform:uppercase;color:var(--muted);letter-spacing:.5px;text-align:center;margin-bottom:6px}
-.card-row{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-bottom:6px;min-height:74px}
-.playing-card{width:50px;height:72px;border-radius:6px;background:#fff;border:1px solid #ccc;display:flex;flex-direction:column;align-items:center;justify-content:center;font-weight:800;font-size:15px;box-shadow:0 1px 3px rgba(0,0,0,.2)}
+.table-label{font-size:11px;font-weight:700;text-transform:uppercase;color:var(--muted);letter-spacing:.5px;text-align:center;margin-bottom:4px}
+.card-row{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;margin-bottom:4px;min-height:60px}
+.playing-card{width:42px;height:58px;border-radius:6px;background:#fff;border:1px solid #ccc;display:flex;flex-direction:column;align-items:center;justify-content:center;font-weight:800;font-size:13px;box-shadow:0 1px 3px rgba(0,0,0,.2)}
 .playing-card.red{color:var(--red)}
 .playing-card.black{color:#1a1a1a}
 .playing-card.hidden-card{background:repeating-linear-gradient(45deg,var(--cardback1),var(--cardback1) 6px,var(--cardback2) 6px,var(--cardback2) 12px);color:transparent;font-size:20px}
@@ -204,9 +205,9 @@ button{user-select:none;-webkit-user-select:none;touch-action:manipulation}
 @keyframes flipIn{from{opacity:.5;transform:rotateY(90deg)}to{opacity:1;transform:rotateY(0)}}
 .playing-card.deal-in{animation:dealIn .6s cubic-bezier(.16,.68,.3,1) both}
 .playing-card.flip-in{animation:flipIn .32s ease-out both}
-.hand-total{font-size:15px;font-weight:700;text-align:center;color:var(--text);margin-bottom:14px}
+.hand-total{font-size:14px;font-weight:700;text-align:center;color:var(--text);margin-bottom:6px}
 .hand-total .muted{color:var(--muted);font-weight:600}
-.hand-block{margin-bottom:10px;padding:8px;border-radius:10px}
+.hand-block{margin-bottom:6px;padding:6px;border-radius:10px}
 .hand-block.active-hand{background:var(--gold-pale)}
 .hand-badge{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);text-align:center;margin-bottom:4px}
 .result-banner{text-align:center;font-size:18px;font-weight:800;border-radius:10px;padding:12px;margin-bottom:12px}
@@ -264,7 +265,7 @@ button{user-select:none;-webkit-user-select:none;touch-action:manipulation}
 .quiz-title{font-family:var(--display-font);font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px}
 .quiz-question{font-size:16px;font-weight:700;margin-bottom:14px}
 .quiz-input{width:100%;font-size:22px;text-align:center;padding:10px;border:1.5px solid var(--border);border-radius:8px;margin-bottom:12px}
-.quiz-feedback{font-size:14.5px;font-weight:700;margin:10px 0;min-height:20px}
+.quiz-feedback{font-size:14.5px;font-weight:700;margin:6px 0;min-height:20px}
 .quiz-feedback.correct{color:var(--green2)}
 .quiz-feedback.incorrect{color:var(--red)}
 
@@ -274,13 +275,13 @@ button{user-select:none;-webkit-user-select:none;touch-action:manipulation}
 .example-table th{color:var(--muted);font-weight:700;font-size:11.5px;text-transform:uppercase}
 .example-table td:first-child{text-align:left;font-weight:600}
 .example-table td:last-child{font-family:var(--display-font);font-weight:700}
-.calc-row{display:flex;gap:10px;margin-bottom:12px}
+.calc-row{display:flex;gap:10px;margin-bottom:8px}
 .calc-field{flex:1}
 .calc-field label{display:block;font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px}
 .calc-field select,.calc-field input{width:100%;padding:10px;border:1.5px solid var(--border);border-radius:8px;font-size:16px;background:#fff;text-align:center}
 .calc-output{font-family:var(--display-font);font-size:17px;font-weight:700;text-align:center;color:#7a5f00;background:var(--gold-pale);border-radius:10px;padding:14px 10px;line-height:1.5}
-.problem-display{display:flex;gap:10px;margin-bottom:14px}
-.problem-box{flex:1;background:var(--gray-pale);border-radius:10px;padding:14px 10px;text-align:center}
+.problem-display{display:flex;gap:10px;margin-bottom:8px}
+.problem-box{flex:1;background:var(--gray-pale);border-radius:10px;padding:10px 10px;text-align:center}
 .problem-box .problem-label{font-family:var(--display-font);font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px}
 .problem-box .problem-value{font-family:var(--display-font);font-size:26px;font-weight:700;color:var(--text)}
 .math-score{text-align:center;font-size:13px;color:var(--muted);margin-top:10px}
@@ -484,18 +485,21 @@ button{user-select:none;-webkit-user-select:none;touch-action:manipulation}
         <img src="dealer-dracula.png" alt="Count Dracula, your dealer" class="dealer-portrait" id="dealerPortrait">
       </div>
       <div class="dealer-speech" id="dealerSpeech"></div>
-      <div class="table-label">Dealer</div>
-      <div class="card-row" id="dealerCards"></div>
-      <div class="hand-total" id="dealerTotal">&nbsp;</div>
 
-      <div class="table-label">You</div>
-      <div id="playerHandsArea"></div>
+      <div id="handArea" style="display:none">
+        <div class="table-label">Dealer</div>
+        <div class="card-row" id="dealerCards"></div>
+        <div class="hand-total" id="dealerTotal">&nbsp;</div>
 
-      <div class="btn-row" id="playActions">
-        <button class="btn btn-hit" id="hitBtn">Hit</button>
-        <button class="btn btn-stand" id="standBtn">Stand</button>
-        <button class="btn btn-double" id="doubleBtn">Double</button>
-        <button class="btn btn-split" id="splitBtn" style="display:none">Split</button>
+        <div class="table-label">You</div>
+        <div id="playerHandsArea"></div>
+
+        <div class="btn-row" id="playActions">
+          <button class="btn btn-hit" id="hitBtn">Hit</button>
+          <button class="btn btn-stand" id="standBtn">Stand</button>
+          <button class="btn btn-double" id="doubleBtn">Double</button>
+          <button class="btn btn-split" id="splitBtn" style="display:none">Split</button>
+        </div>
       </div>
       <button class="btn btn-outline" id="dealBtn">Deal Hand</button>
     </div>
@@ -900,6 +904,7 @@ function setActiveTab(tab){
   document.querySelector('.hdr').classList.toggle('hdr-big', tab === 'home');
   document.getElementById('menuBtn').style.display = TOP_LEVEL_TABS.includes(tab) ? 'none' : 'inline-flex';
   document.getElementById('bottomNav').classList.toggle('show', TOP_LEVEL_TABS.includes(tab));
+  document.getElementById('C').classList.toggle('with-nav', TOP_LEVEL_TABS.includes(tab));
   document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.toggle('active', btn.dataset.tab === tab));
   document.getElementById('homeView').classList.toggle('active', tab === 'home');
   document.getElementById('storeView').classList.toggle('active', tab === 'store');
@@ -1555,6 +1560,8 @@ function renderDealer(){
   const splitBtnEl = document.getElementById('splitBtn');
 
   if(!h){
+    document.getElementById('handArea').style.display = 'none';
+    document.getElementById('dealerModeHint').style.display = 'block';
     dealerCardsEl.innerHTML = '';
     handsAreaEl.innerHTML = '';
     dealerTotalEl.innerHTML = '&nbsp;';
@@ -1565,6 +1572,8 @@ function renderDealer(){
     dealBtnEl.disabled = dealerState.drops < dealerState.currentBet;
     return;
   }
+  document.getElementById('handArea').style.display = 'block';
+  document.getElementById('dealerModeHint').style.display = 'none';
 
   if(h.id !== lastRender.handId){
     lastRender = { handId: h.id, dealerExtra: 0, hole: false, upAnimated: false, handsCounts: [0, 0] };
