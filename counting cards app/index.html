@@ -309,11 +309,11 @@ button{user-select:none;-webkit-user-select:none;touch-action:manipulation}
       </button>
       <button class="menu-card" data-tab="peek">
         <div class="menu-icon">👁</div>
-        <div class="menu-title">Peek Practice</div>
+        <div class="menu-title">Peek</div>
       </button>
       <button class="menu-card" data-tab="quiz">
         <div class="menu-icon">❓</div>
-        <div class="menu-title">Quiz Practice</div>
+        <div class="menu-title">Classic</div>
       </button>
       <button class="menu-card" data-tab="math">
         <div class="menu-icon">➗</div>
@@ -371,8 +371,8 @@ button{user-select:none;-webkit-user-select:none;touch-action:manipulation}
       <p class="lesson-intro">I have prepared five chambers of instruction. Enter each in turn, or as you please — I am patient. I have centuries.</p>
       <ol class="rules-list">
         <li><b>Manual</b> — tap +1/0/-1 yourself while counting an actual physical deck.</li>
-        <li><b>Peek Practice</b> — play simulated hands against a dealer with betting, splits, and my coaching; hold the peek button to test your count against my own.</li>
-        <li><b>Quiz Practice</b> — the same game, but the count stays hidden, and I will demand it of you at moments of my choosing.</li>
+        <li><b>Peek</b> — play simulated hands against a dealer with betting, splits, and my coaching; hold the peek button to check your count anytime — for a price, 10 Blood Drops a look.</li>
+        <li><b>Classic</b> — the same game, but the count stays hidden, and I will demand it of you at moments of my choosing. Answer correctly and I'll reward you for it.</li>
         <li><b>Deck Math</b> — a calculator and drill for converting running count to true count.</li>
         <li><b>Speed Drill</b> — a full deck flashes before you at speed; keep the count in your head and answer for it at the end.</li>
       </ol>
@@ -691,7 +691,7 @@ button{user-select:none;-webkit-user-select:none;touch-action:manipulation}
   <div class="view" id="accountView">
 
     <div class="card">
-      <div class="card-title">Peek / Quiz Settings</div>
+      <div class="card-title">Peek / Classic Settings</div>
       <div class="toggle-row-compact">
         <label class="toggle-label" for="coachingToggle">Strategy coaching</label>
         <label class="switch"><input type="checkbox" id="coachingToggle" checked><span class="switch-slider"></span></label>
@@ -729,7 +729,7 @@ button{user-select:none;-webkit-user-select:none;touch-action:manipulation}
 
     <div class="card">
       <div class="card-title">Hand History</div>
-      <div class="hint" style="margin-top:0">Most recent hands first, from Peek/Quiz Practice. Shows the outcome and how many of your decisions matched basic strategy.</div>
+      <div class="hint" style="margin-top:0">Most recent hands first, from Peek/Classic. Shows the outcome and how many of your decisions matched basic strategy.</div>
       <div id="handHistoryList" style="margin-top:10px"></div>
     </div>
 
@@ -1215,6 +1215,8 @@ function openQuizModal(){
   document.getElementById('quizInput').focus();
 }
 
+const QUIZ_REWARD = 15;
+
 function submitQuizAnswer(){
   const raw = document.getElementById('quizInput').value;
   const feedback = document.getElementById('quizFeedback');
@@ -1228,20 +1230,20 @@ function submitQuizAnswer(){
     const roundedUser = Math.round(val * 2) / 2;
     const correct = roundedUser === roundedCorrect;
     dealerState.quizTrue.total += 1;
-    if(correct) dealerState.quizTrue.correct += 1;
-    feedback.textContent = correct
+    if(correct){ dealerState.quizTrue.correct += 1; addDrops(QUIZ_REWARD); }
+    feedback.textContent = (correct
       ? draculaQuizCorrect('true count', fmtSigned(roundedCorrect))
-      : draculaQuizIncorrect('true count', fmtSigned(roundedCorrect));
+      : draculaQuizIncorrect('true count', fmtSigned(roundedCorrect))) + (correct ? ' (+' + QUIZ_REWARD + ' 🩸)' : '');
     feedback.className = 'quiz-feedback ' + (correct ? 'correct' : 'incorrect');
   } else {
     const val = parseInt(raw, 10);
     if(isNaN(val)){ feedback.textContent = DRACULA_ENTER_NUMBER; feedback.className = 'quiz-feedback incorrect'; return; }
     dealerState.quiz.total += 1;
     const correct = val === dealerState.runningCount;
-    if(correct) dealerState.quiz.correct += 1;
-    feedback.textContent = correct
+    if(correct){ dealerState.quiz.correct += 1; addDrops(QUIZ_REWARD); }
+    feedback.textContent = (correct
       ? draculaQuizCorrect('running count', fmtSigned(dealerState.runningCount))
-      : draculaQuizIncorrect('running count', fmtSigned(dealerState.runningCount));
+      : draculaQuizIncorrect('running count', fmtSigned(dealerState.runningCount))) + (correct ? ' (+' + QUIZ_REWARD + ' 🩸)' : '');
     feedback.className = 'quiz-feedback ' + (correct ? 'correct' : 'incorrect');
   }
 
@@ -1261,9 +1263,22 @@ document.getElementById('quizSubmitBtn').addEventListener('click', submitQuizAns
 document.getElementById('quizInput').addEventListener('keydown', e => { if(e.key === 'Enter') submitQuizAnswer(); });
 document.getElementById('quizContinueBtn').addEventListener('click', closeQuizModal);
 
-/* --- Peek button (Peek Practice tab only) --- */
+/* --- Peek button (Peek tab only) --- */
+const PEEK_COST = 10;
 const peekBtn = document.getElementById('peekBtn');
-function startPeek(e){ e.preventDefault(); isPeeking = true; renderDealer(); }
+function startPeek(e){
+  e.preventDefault();
+  if(isPeeking) return;
+  if(dealerState.drops < PEEK_COST){
+    showBetFeedback('Not enough Blood Drops to peek — visit the Store for more.', false);
+    return;
+  }
+  dealerState.drops -= PEEK_COST;
+  saveDealerState();
+  showBetFeedback('-' + PEEK_COST + ' 🩸 to peek.', null);
+  isPeeking = true;
+  renderDealer();
+}
 function stopPeek(){ isPeeking = false; renderDealer(); }
 peekBtn.addEventListener('pointerdown', startPeek);
 peekBtn.addEventListener('pointerup', stopPeek);
