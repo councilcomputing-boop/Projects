@@ -47,8 +47,7 @@ button{user-select:none;-webkit-user-select:none;touch-action:manipulation}
 .hdr{background:linear-gradient(180deg,var(--wine),var(--wine-dark));color:#f3e6bf;padding:10px 14px;text-align:center;position:sticky;top:0;z-index:200;box-shadow:0 2px 12px rgba(0,0,0,.55);border-bottom:1px solid #4a1420;transition:padding .25s ease}
 .hdr-row{display:flex;align-items:center;gap:10px;transition:gap .25s ease}
 .hdr-text{flex:1;min-width:0;text-align:left;transition:text-align .25s ease}
-.dracula-mark{width:46px;height:auto;flex-shrink:0;margin:0;display:block;transition:width .25s ease}
-.dracula-mark.deal-pulse{animation:dealerPulse .5s ease-out}
+.dracula-mark{width:50px;height:auto;flex-shrink:0;margin:0;display:block;transition:width .25s ease}
 .hdr.hdr-big{padding:10px 16px 8px}
 .hdr.hdr-big .hdr-row{flex-direction:column;gap:0}
 .hdr.hdr-big .hdr-text{text-align:center}
@@ -56,9 +55,7 @@ button{user-select:none;-webkit-user-select:none;touch-action:manipulation}
 .hdr.hdr-big .hdr-title{font-size:20px;letter-spacing:1.5px;white-space:normal}
 .hdr.hdr-big .hdr-sub{font-size:11px;white-space:normal}
 .hdr.hdr-big .menu-link{display:none}
-.dealer-portrait{display:block;width:56px;margin:0 auto 4px;filter:drop-shadow(0 6px 14px rgba(0,0,0,.5))}
-.dealer-portrait.deal-pulse{animation:dealerPulse .5s ease-out}
-@keyframes dealerPulse{0%{transform:scale(1)}35%{transform:scale(1.06)}70%{transform:scale(.99)}100%{transform:scale(1)}}
+.dealer-portrait{display:block;width:62px;margin:0 auto 4px;filter:drop-shadow(0 6px 14px rgba(0,0,0,.5))}
 .hdr-title{font-family:var(--display-font);font-size:19px;font-weight:700;letter-spacing:1px;color:#f3e6bf;text-shadow:0 0 12px rgba(201,162,39,.35);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .hdr-sub{font-size:11px;color:#c9a9a9;margin-top:1px;font-style:italic;letter-spacing:.3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .menu-link{background:rgba(255,255,255,.15);color:#fff;border:none;border-radius:10px;padding:8px 12px;font-weight:700;font-size:12.5px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;flex-shrink:0}
@@ -318,7 +315,7 @@ button{user-select:none;-webkit-user-select:none;touch-action:manipulation}
       </button>
       <button class="menu-card" data-tab="peek">
         <div class="menu-icon">👁</div>
-        <div class="menu-title">Peek Practice</div>
+        <div class="menu-title">Classic/Peek Practice</div>
       </button>
       <button class="menu-card" data-tab="quiz">
         <div class="menu-icon">❓</div>
@@ -380,7 +377,7 @@ button{user-select:none;-webkit-user-select:none;touch-action:manipulation}
       <p class="lesson-intro">I have prepared five chambers of instruction. Enter each in turn, or as you please — I am patient. I have centuries.</p>
       <ol class="rules-list">
         <li><b>Manual</b> — tap +1/0/-1 yourself while counting an actual physical deck.</li>
-        <li><b>Peek Practice</b> — play simulated hands against a dealer with betting, splits, and my coaching; click the eye beside the dealer to check your count — for a price, 10 Blood Drops a look.</li>
+        <li><b>Classic/Peek Practice</b> — play simulated hands against a dealer with betting, splits, and my coaching; click the eye beside the dealer to check your count — for a price, 10 Blood Drops a look.</li>
         <li><b>Quiz Practice</b> — the same game, but the count stays hidden, and I will demand it of you at moments of my choosing. Answer correctly and I'll reward you for it.</li>
         <li><b>Deck Math</b> — a calculator and drill for converting running count to true count.</li>
         <li><b>Speed Drill</b> — a full deck flashes before you at speed; keep the count in your head and answer for it at the end.</li>
@@ -778,25 +775,7 @@ function softTotalInfo(cards){
   while(total > 21 && aces > 0){ total -= 10; aces--; }
   return { total, soft: aces > 0 && total <= 21 };
 }
-const draculaMarkEl = document.getElementById('draculaMark');
-let draculaPulseTimer = null;
-function animateDracula(){
-  if(draculaMarkEl){
-    draculaMarkEl.classList.remove('deal-pulse');
-    void draculaMarkEl.offsetWidth; // restart animation
-    draculaMarkEl.classList.add('deal-pulse');
-    clearTimeout(draculaPulseTimer);
-    draculaPulseTimer = setTimeout(() => draculaMarkEl.classList.remove('deal-pulse'), 550);
-  }
-  const portrait = document.getElementById('dealerPortrait');
-  if(portrait){
-    portrait.classList.remove('deal-pulse');
-    void portrait.offsetWidth;
-    portrait.classList.add('deal-pulse');
-    clearTimeout(portrait._pulseTimer);
-    portrait._pulseTimer = setTimeout(() => portrait.classList.remove('deal-pulse'), 550);
-  }
-}
+function animateDracula(){}
 function cardHTML(card, hidden, animClass, delayMs){
   const cls = ['playing-card'];
   cls.push(hidden ? 'hidden-card' : ((card.suit === '♥' || card.suit === '♦') ? 'red' : 'black'));
@@ -810,39 +789,39 @@ function fmtSigned(n){ return n > 0 ? '+' + n : String(n); }
 /* --- The Count's voice: small phrase pools so his lines don't repeat every hand --- */
 function draculaSay(pool){ return pool[Math.floor(Math.random() * pool.length)]; }
 const DRACULA_STRATEGY_CORRECT = [
-  '✓ Precisely as I would have played it.',
-  '✓ Correct — you learn quickly, mortal.',
-  '✓ Well played. Even I could not fault that.'
+  '✓ Just as centuries of hunger have taught me. Correct.',
+  '✓ Correct — your instincts sharpen, mortal. Do not disappoint me now.',
+  '✓ Flawless. Even I taste no error in that play.'
 ];
 function draculaStrategyIncorrect(recLabel){
   return draculaSay([
-    '✗ No — I would have played ' + recLabel + ' here.',
-    '✗ A mistake. Basic strategy demands ' + recLabel + '.',
-    '✗ Wrong. Remember: ' + recLabel + ' is correct here.'
+    '✗ Wrong. ' + recLabel + ' was the only path — the cards do not forgive.',
+    '✗ A grave error. ' + recLabel + ' was correct — remember it, or the house feeds on you.',
+    '✗ No. ' + recLabel + ' was correct — I have watched a thousand hands end this way.'
   ]);
 }
 function draculaQuizCorrect(kind, val){
   return draculaSay([
-    'Correct. The ' + kind + ' stands at ' + val + ', exactly as I sensed it.',
-    'Precisely right — ' + val + '. Your instincts sharpen.',
-    'Yes, ' + val + ' — I could not have counted it better myself.'
+    'Correct — the ' + kind + ' is ' + val + '. I taste no lie in you.',
+    val + '. Precisely. Centuries of counting, and still you keep pace with me.',
+    'Yes — ' + val + '. Sharp as a stake through the heart.'
   ]);
 }
 function draculaQuizIncorrect(kind, val){
   return draculaSay([
-    'Not quite, mortal. The ' + kind + ' is ' + val + '.',
-    'Wrong — I have counted every card. It is ' + val + '.',
-    'No. Listen closer next time; the ' + kind + ' is ' + val + '.'
+    'Wrong, mortal. The ' + kind + ' is ' + val + ' — I have counted every card that ever left this shoe.',
+    'No. It is ' + val + '. Listen closer, or the night will swallow your fortune.',
+    val + ' is the truth of it. Your count falters — mine never has.'
   ]);
 }
-const DRACULA_ENTER_NUMBER = 'Speak a number first, mortal.';
+const DRACULA_ENTER_NUMBER = 'Speak a number, mortal — I have no patience for silence.';
 const DRACULA_BET_MATCHED = [
-  'Your wager matches the moment. Well judged.',
-  'A wise stake — you sense the shoe as I do.'
+  'A wise stake. You sense the shoe as I do.',
+  'Well judged — your wager and the count agree.'
 ];
-const DRACULA_BET_NOT_MATCHED_QUIZ = "Your wager did not match the count's true favor.";
+const DRACULA_BET_NOT_MATCHED_QUIZ = "Your wager did not match the count's true favor. Even after all these centuries, some lessons repeat.";
 function draculaBetNotMatched(tcLabel, recUnits){
-  return 'The count favors you at ' + tcLabel + ' — a bolder wager was warranted, ~' + recUnits + ' unit' + (recUnits > 1 ? 's' : '') + ' (' + (recUnits * 5) + ' Blood Drops).';
+  return 'The count favors you at ' + tcLabel + ' — a bolder wager was warranted. ~' + recUnits + ' unit' + (recUnits > 1 ? 's' : '') + ' (' + (recUnits * 5) + ' Blood Drops) was the hunger you should have indulged.';
 }
 
 /* ============================================================ */
@@ -1266,12 +1245,12 @@ let peekTimer = null;
 function triggerPeek(){
   if(isPeeking) return;
   if(dealerState.drops < PEEK_COST){
-    showBetFeedback('Not enough Blood Drops to peek — visit the Store for more.', false);
+    showBetFeedback('Too little blood in your coffers for my whisper — the Store awaits.', false);
     return;
   }
   dealerState.drops -= PEEK_COST;
   saveDealerState();
-  showBetFeedback('-' + PEEK_COST + ' 🩸 to peek.', null);
+  showBetFeedback('-' + PEEK_COST + ' 🩸 — a small tithe for my whisper.', null);
   isPeeking = true;
   renderDealer();
   clearTimeout(peekTimer);
@@ -1308,7 +1287,7 @@ let lastRender = { handId: null, dealerExtra: 0, hole: false, upAnimated: false,
 
 function dealNewHand(){
   if(dealerState.drops < dealerState.currentBet){
-    showBetFeedback('Your coffers run dry, mortal — lower your wager or restore your fortune.', false);
+    showBetFeedback('Your coffers run dry, mortal. Lower your wager, or beg the Store for more blood.', false);
     return;
   }
   maybeReshuffle();
@@ -1395,7 +1374,7 @@ function playerDouble(){
   if(!h || h.stage !== 'player') return;
   const cur = h.hands[h.activeIndex];
   if(cur.stage !== 'active' || !canDoubleNow(h, cur)) return;
-  if(dealerState.drops < cur.bet){ showBetFeedback('Insufficient Blood Drops to double this hand.', false); return; }
+  if(dealerState.drops < cur.bet){ showBetFeedback('Too little blood to double this wager, mortal.', false); return; }
   gradeAndShowStrategy(cur, 'D', true, canSplitNow(h, cur));
   dealerState.drops -= cur.bet;
   cur.bet *= 2;
@@ -1413,7 +1392,7 @@ function playerSplit(){
   if(!h || h.stage !== 'player') return;
   const cur = h.hands[h.activeIndex];
   if(cur.stage !== 'active' || !canSplitNow(h, cur)) return;
-  if(dealerState.drops < cur.bet){ showBetFeedback('Insufficient Blood Drops to split this hand.', false); return; }
+  if(dealerState.drops < cur.bet){ showBetFeedback('Too little blood to split this hand, mortal.', false); return; }
   gradeAndShowStrategy(cur, 'P', canDoubleNow(h, cur), true);
   dealerState.drops -= cur.bet;
 
