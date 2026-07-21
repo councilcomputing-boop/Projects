@@ -129,7 +129,7 @@ def create_bond():
         notes                = data.get('notes', '').strip(),
         work_on_hand         = data.get('work_on_hand', '').strip(),
         work_on_hand_low     = bool(data.get('work_on_hand_low', False)),
-        low_bid              = bool(data.get('low_bid', False)),
+        low_bid              = data.get('low_bid'),
         created_by           = current_user.username,
         created_at           = datetime.utcnow(),
     )
@@ -166,7 +166,7 @@ def update_bond(bond_id):
     bond.notes               = data.get('notes',               bond.notes or '').strip()
     bond.work_on_hand        = data.get('work_on_hand',        bond.work_on_hand or '').strip()
     bond.work_on_hand_low    = bool(data.get('work_on_hand_low', bond.work_on_hand_low or False))
-    bond.low_bid             = bool(data.get('low_bid', bond.low_bid or False))
+    bond.low_bid             = data.get('low_bid', bond.low_bid)
     bond.updated_by          = current_user.username
     bond.updated_at          = datetime.utcnow()
 
@@ -183,7 +183,7 @@ def toggle_low_bid(bond_id):
     old_data = bond.to_dict()
     data = request.get_json()
 
-    bond.low_bid    = bool(data.get('low_bid', False))
+    bond.low_bid    = data.get('low_bid')
     bond.updated_by = current_user.username
     bond.updated_at = datetime.utcnow()
 
@@ -669,7 +669,7 @@ def generate_excel():
     ws.title = 'Bond Report'
 
     headers = ['Bond #', 'Bond Type', 'Principal', 'Obligee', 'Producer', 'Project', 'Project Description',
-               'Surety', 'Amount', 'Bid Bond %', 'Low Bid', 'Bid Date', 'Decision Date',
+               'Surety', 'Amount', 'Bid Bond %', 'Bid Result', 'Bid Date', 'Decision Date',
                'Status', 'Notes', 'Work on Hand', 'Work on Hand Low']
 
     hdr_fill = PatternFill(start_color='0D1B2A', end_color='0D1B2A', fill_type='solid')
@@ -693,7 +693,7 @@ def generate_excel():
             bond.surety,
             bond.bond_amount,
             f'{bond.bid_bond_percent}%' if bond.bid_bond_percent else '',
-            'Yes' if bond.low_bid else 'No',
+            'Low' if bond.low_bid is True else 'Not Low' if bond.low_bid is False else 'No Result',
             bond.bid_date, bond.decision_date,
             bond.status, bond.notes or '',
             bond.work_on_hand or '',
@@ -815,7 +815,7 @@ with app.app_context():
                 conn.execute(text('ALTER TABLE bonds ADD COLUMN IF NOT EXISTS bid_bond_percent FLOAT'))
                 conn.execute(text('ALTER TABLE bonds ADD COLUMN IF NOT EXISTS work_on_hand TEXT'))
                 conn.execute(text('ALTER TABLE bonds ADD COLUMN IF NOT EXISTS work_on_hand_low BOOLEAN DEFAULT FALSE'))
-                conn.execute(text('ALTER TABLE bonds ADD COLUMN IF NOT EXISTS low_bid BOOLEAN DEFAULT FALSE'))
+                conn.execute(text('ALTER TABLE bonds ADD COLUMN IF NOT EXISTS low_bid BOOLEAN'))
                 conn.execute(text('ALTER TABLE bonds ADD COLUMN IF NOT EXISTS producer VARCHAR(200)'))
                 conn.execute(text('ALTER TABLE users ADD COLUMN IF NOT EXISTS invite_token VARCHAR(64)'))
                 conn.execute(text('ALTER TABLE users ADD COLUMN IF NOT EXISTS invite_expires TIMESTAMP'))
@@ -830,7 +830,7 @@ with app.app_context():
                     ('bid_bond_percent',    'FLOAT'),
                     ('work_on_hand',        'TEXT'),
                     ('work_on_hand_low',    'BOOLEAN DEFAULT 0'),
-                    ('low_bid',             'BOOLEAN DEFAULT 0'),
+                    ('low_bid',             'BOOLEAN'),
                     ('producer',            'VARCHAR(200)'),
                 ]
                 for col_name, col_type in bond_migrations:
