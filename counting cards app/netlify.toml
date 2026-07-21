@@ -8,6 +8,11 @@
   # directory or the client bundle. Netlify's secrets scanner can't tell that
   # apart from a real leak, so it flags them; this tells it they're safe.
   SECRETS_SCAN_OMIT_KEYS = "STRIPE_SECRET_KEY,FIREBASE_SERVICE_ACCOUNT"
+  # Firebase Web API keys are meant to be public in client-side code — access
+  # is controlled by Firestore/Auth security rules, not by hiding this value.
+  # It's already in plain sight in index.html; this just tells the scanner's
+  # generic pattern-matcher it's not a leak.
+  SECRETS_SCAN_SMART_DETECTION_OMIT_VALUES = "AIzaSyAKjpkly-sczi0pkHGBie3ln255dN7iyF0"
 
 [functions]
   node_bundler = "esbuild"
