@@ -58,16 +58,19 @@ button{user-select:none;-webkit-user-select:none;touch-action:manipulation}
 .hdr.hdr-big .hdr-title{font-size:20px;letter-spacing:1.5px;white-space:normal}
 .hdr.hdr-big .hdr-sub{font-size:11px;white-space:normal}
 .hdr.hdr-big .menu-link{display:none}
+.hdr-drops{background:rgba(255,255,255,.15);color:#f3e6bf;font-family:var(--display-font);font-weight:700;font-size:12.5px;padding:7px 10px;border-radius:10px;flex-shrink:0;white-space:nowrap;transition:transform .2s ease,box-shadow .2s ease}
+.hdr.hdr-big .hdr-drops{position:absolute;top:10px;right:14px}
+.hdr-drops.credit-pulse{animation:creditPulse .6s ease}
 .dealer-portrait{display:block;width:62px;margin:0 auto 4px;filter:drop-shadow(0 6px 14px rgba(0,0,0,.5))}
 .hdr-title{font-family:var(--display-font);font-size:19px;font-weight:700;letter-spacing:1px;color:#f3e6bf;text-shadow:0 0 12px rgba(201,162,39,.35);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .hdr-sub{font-size:11px;color:#c9a9a9;margin-top:1px;font-style:italic;letter-spacing:.3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .menu-link{background:rgba(255,255,255,.15);color:#fff;border:none;border-radius:10px;padding:8px 12px;font-weight:700;font-size:12.5px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;flex-shrink:0}
 .menu-link:active{background:rgba(255,255,255,.28)}
-.home-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
-.menu-card{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;background:var(--card);border-radius:var(--r);box-shadow:var(--shadow);padding:14px 4px;cursor:pointer;border:none;text-align:center;min-width:0;overflow:hidden}
+.home-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.menu-card{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;background:var(--card);border-radius:var(--r);box-shadow:var(--shadow);padding:26px 6px;cursor:pointer;border:none;text-align:center;min-width:0;overflow:hidden}
 .menu-card:active{opacity:.75;transform:scale(.99)}
-.menu-icon{font-size:26px}
-.menu-title{font-size:11.5px;font-weight:700;color:var(--text)}
+.menu-icon{font-size:36px}
+.menu-title{font-size:12.5px;font-weight:700;color:var(--text)}
 #C{padding:14px 14px 20px;position:relative}
 #C.with-nav{padding-bottom:90px}
 .bottom-nav{position:fixed;left:0;right:0;bottom:0;max-width:600px;margin:0 auto;display:none;justify-content:space-around;align-items:center;background:linear-gradient(0deg,var(--wine-dark),var(--wine));border-top:1px solid #4a1420;box-shadow:0 -2px 12px rgba(0,0,0,.5);z-index:200;padding:8px 0 calc(8px + env(safe-area-inset-bottom))}
@@ -250,18 +253,11 @@ button{user-select:none;-webkit-user-select:none;touch-action:manipulation}
   35%{transform:scale(1.1);box-shadow:0 0 0 8px rgba(138,5,23,.22)}
   100%{transform:scale(1);box-shadow:0 0 0 0 rgba(138,5,23,0)}
 }
-.credit-float{
-  position:absolute;left:50%;top:0;transform:translate(-50%,0);
+.credit-fly{
+  position:fixed;left:0;top:0;
   font-family:var(--display-font);font-weight:700;font-size:14px;color:#f3e6bf;
   background:var(--wine);padding:5px 11px;border-radius:8px;white-space:nowrap;
-  pointer-events:none;box-shadow:var(--shadow);z-index:5;
-  animation:creditFloat 1.6s ease-out forwards;
-}
-@keyframes creditFloat{
-  0%{opacity:0;transform:translate(-50%,8px) scale(.85)}
-  15%{opacity:1;transform:translate(-50%,-4px) scale(1.05)}
-  78%{opacity:1}
-  100%{opacity:0;transform:translate(-50%,-54px) scale(1)}
+  pointer-events:none;box-shadow:var(--shadow);z-index:600;
 }
 .blood-drip{animation:bloodDrip 2.2s ease-in-out infinite;transform-origin:center top}
 @keyframes bloodDrip{
@@ -287,6 +283,7 @@ button{user-select:none;-webkit-user-select:none;touch-action:manipulation}
 .vial-name{font-size:11.5px;font-weight:700;color:var(--text)}
 .vial-amount{font-family:var(--display-font);font-size:12px;font-weight:700;color:#7a5f00}
 .vial-price{font-size:10.5px;font-weight:600;color:var(--muted)}
+.vial-bonus{font-size:9.5px;font-weight:700;color:#7a5f00;background:var(--gold-pale);border-radius:6px;padding:1px 7px;margin-top:2px}
 .store-buy-amount{font-family:var(--display-font);font-weight:700;color:#7a5f00}
 .ad-progress-track{background:var(--gray-pale);border-radius:10px;height:10px;overflow:hidden;margin:12px 0}
 .ad-progress-bar{background:var(--gold);height:100%;width:0%}
@@ -338,6 +335,7 @@ button{user-select:none;-webkit-user-select:none;touch-action:manipulation}
       <div class="hdr-title">CountDracula</div>
       <div class="hdr-sub">He never loses count · Hi-Lo System</div>
     </div>
+    <div class="hdr-drops" id="hdrDropsBadge">🩸 1000</div>
     <button class="menu-link" id="menuBtn">← Home</button>
   </div>
 </div>
@@ -371,6 +369,13 @@ button{user-select:none;-webkit-user-select:none;touch-action:manipulation}
         <div class="menu-icon">📖</div>
         <div class="menu-title">Rules</div>
       </button>
+    </div>
+
+    <div class="card" style="margin-top:14px">
+      <div class="card-title">Blood Drops</div>
+      <div class="store-drops-badge" id="homeDropsBadge">🩸 1000</div>
+      <div class="hint" id="homeStreakHint" style="margin-top:0">Come back every day for a bigger bonus.</div>
+      <button class="btn btn-outline" id="homeDailyBonusBtn" style="margin-top:10px">Claim Daily Bonus</button>
     </div>
   </div>
 
@@ -678,25 +683,27 @@ button{user-select:none;-webkit-user-select:none;touch-action:manipulation}
       <div class="card-title">Blood Vials</div>
       <div class="hint" style="margin-top:-6px;margin-bottom:10px">Entertainment only — no cash value, no cash-out.</div>
       <div class="vial-grid">
-      <button class="vial-tile" data-amount="50" data-link="https://buy.stripe.com/fZu4gz1Im6MN6WXfmDgnK03">
+      <button class="vial-tile" data-amount="100" data-link="https://buy.stripe.com/fZu4gz1Im6MN6WXfmDgnK03">
         <svg viewBox="0 0 20 32" width="22" height="30"><rect x="7" y="0" width="6" height="4" rx="1" fill="#5a3a1a"/><path d="M6 4 H14 V22 A4 4 0 0 1 6 22 Z" fill="#fff" stroke="#6b5a4a" stroke-width="1.1"/><path d="M6 15 H14 V22 A4 4 0 0 1 6 22 Z" fill="#8a0517"/><ellipse cx="8" cy="17" rx="1" ry="2" fill="#e2647a" opacity=".6"/></svg>
         <div class="vial-name">Tiny Vial</div>
-        <div class="vial-amount">+50 🩸</div>
+        <div class="vial-amount">+100 🩸</div>
         <div class="vial-price">$0.99</div>
       </button>
-      <button class="vial-tile" data-amount="200" data-link="https://buy.stripe.com/fZueVddr41sta99gqHgnK04">
+      <button class="vial-tile" data-amount="350" data-link="https://buy.stripe.com/fZueVddr41sta99gqHgnK04">
         <svg viewBox="0 0 20 32" width="26" height="32"><rect x="7" y="0" width="6" height="4" rx="1" fill="#5a3a1a"/><path d="M6 4 H14 V23 A4 4 0 0 1 6 23 Z" fill="#fff" stroke="#6b5a4a" stroke-width="1.1"/><path d="M6 14 H14 V23 A4 4 0 0 1 6 23 Z" fill="#8a0517"/><ellipse cx="8" cy="16.5" rx="1.1" ry="2.4" fill="#e2647a" opacity=".6"/></svg>
         <div class="vial-name">Small Vial</div>
-        <div class="vial-amount">+200 🩸</div>
+        <div class="vial-amount">+350 🩸</div>
         <div class="vial-price">$2.99</div>
+        <div class="vial-bonus">+15% Bonus</div>
       </button>
-      <button class="vial-tile" data-amount="1000" data-link="https://buy.stripe.com/00w8wP86K2wxa99cargnK05">
+      <button class="vial-tile" data-amount="1300" data-link="https://buy.stripe.com/00w8wP86K2wxa99cargnK05">
         <svg viewBox="0 0 20 34" width="30" height="34"><rect x="7" y="0" width="6" height="4" rx="1" fill="#5a3a1a"/><path d="M6 4 H14 V25 A4 4 0 0 1 6 25 Z" fill="#fff" stroke="#6b5a4a" stroke-width="1.1"/><path d="M6 12 H14 V25 A4 4 0 0 1 6 25 Z" fill="#8a0517"/><ellipse cx="8" cy="15" rx="1.2" ry="2.8" fill="#e2647a" opacity=".6"/></svg>
         <div class="vial-name">Large Vial</div>
-        <div class="vial-amount">+1000 🩸</div>
+        <div class="vial-amount">+1,300 🩸</div>
         <div class="vial-price">$9.99</div>
+        <div class="vial-bonus">+30% Bonus</div>
       </button>
-      <button class="vial-tile" data-amount="4000" data-link="https://buy.stripe.com/00wcN5aeS6MNepp1vNgnK06">
+      <button class="vial-tile" data-amount="4500" data-link="https://buy.stripe.com/00wcN5aeS6MNepp1vNgnK06">
         <svg viewBox="0 0 30 40" width="30" height="40">
           <path d="M11 2 L19 2 L25 10 L19 30 L11 30 L5 10 Z" fill="#4a2f18" stroke="#2a1810" stroke-width="1.1"/>
           <path d="M7.5 7 H22.5" stroke="#2a1810" stroke-width="1" opacity=".5"/>
@@ -705,10 +712,11 @@ button{user-select:none;-webkit-user-select:none;touch-action:manipulation}
           <path d="M20 28 C18.8 30 18.8 31.6 20 33 C21.2 31.6 21.2 30 20 28 Z" fill="#8a0517" class="blood-drip" style="animation-delay:1s"/>
         </svg>
         <div class="vial-name">Coffin Hoard</div>
-        <div class="vial-amount">+4000 🩸</div>
+        <div class="vial-amount">+4,500 🩸</div>
         <div class="vial-price">$29.99</div>
+        <div class="vial-bonus">+50% Bonus</div>
       </button>
-      <button class="vial-tile" data-amount="10000" data-link="https://buy.stripe.com/3cI7sL9aO1stbdd4HZgnK07">
+      <button class="vial-tile" data-amount="10500" data-link="https://buy.stripe.com/3cI7sL9aO1stbdd4HZgnK07">
         <svg viewBox="0 0 38 38" width="38" height="38">
           <path d="M6 16 Q19 4 32 16 Z" fill="#6b4423" stroke="#2a1810" stroke-width="1.1"/>
           <rect x="6" y="16" width="26" height="15" rx="2" fill="#4a2f18" stroke="#2a1810" stroke-width="1.1"/>
@@ -721,8 +729,9 @@ button{user-select:none;-webkit-user-select:none;touch-action:manipulation}
           <path d="M8 5 L8.7 6.7 L10.4 7.4 L8.7 8.1 L8 9.8 L7.3 8.1 L5.6 7.4 L7.3 6.7 Z" fill="#f3e6bf" class="hoard-sparkle" style="animation-delay:.6s"/>
         </svg>
         <div class="vial-name">Ancient Hoard</div>
-        <div class="vial-amount">+10000 🩸</div>
+        <div class="vial-amount">+10,500 🩸</div>
         <div class="vial-price">$59.99</div>
+        <div class="vial-bonus">+75% Bonus</div>
       </button>
       </div>
     </div>
@@ -770,16 +779,9 @@ button{user-select:none;-webkit-user-select:none;touch-action:manipulation}
 
     <div class="card" id="authCard">
       <div class="card-title">Account</div>
-      <div id="authSignedOut">
+      <div id="authSignedOutPrompt">
         <div class="hint" style="margin-top:0">Sign in to buy Blood Drops in the Store and keep them synced across devices. Everything else works fine without an account.</div>
-        <input type="email" id="authEmail" class="auth-input" placeholder="Email" autocomplete="email" style="margin-top:8px">
-        <input type="password" id="authPass" class="auth-input" placeholder="Password" autocomplete="current-password" style="margin-top:8px">
-        <div class="hint" id="authError" style="color:var(--red);display:none;margin-top:6px"></div>
-        <div class="btn-row" style="margin-top:10px">
-          <button class="btn" id="authSignInBtn" style="background:var(--wine);color:#f3e6bf">Sign In</button>
-          <button class="btn" id="authSignUpBtn" style="background:var(--gray-pale);color:var(--text)">Sign Up</button>
-        </div>
-        <div class="hint" id="authForgotBtn" style="margin-top:8px;text-decoration:underline;cursor:pointer">Forgot password?</div>
+        <button class="btn" id="goToSignInBtn" style="background:var(--wine);color:#f3e6bf;margin-top:10px">Sign In / Create Account</button>
       </div>
       <div id="authSignedIn" style="display:none">
         <div class="hint" style="margin-top:0">Signed in as <b id="authEmailDisplay"></b></div>
@@ -828,6 +830,24 @@ button{user-select:none;-webkit-user-select:none;touch-action:manipulation}
       <div class="card-title">Hand History</div>
       <div class="hint" style="margin-top:0">Most recent hands first, from Peek/Quiz Practice. Shows the outcome and how many of your decisions matched basic strategy.</div>
       <div id="handHistoryList" style="margin-top:10px"></div>
+    </div>
+
+  </div>
+
+  <!-- ===================== SIGN IN VIEW ===================== -->
+  <div class="view" id="signinView">
+
+    <div class="card" id="signinCard">
+      <div class="card-title">Sign In</div>
+      <div class="hint" style="margin-top:0">Sign in to buy Blood Drops in the Store and keep them synced across devices. Everything else works fine without an account.</div>
+      <input type="email" id="authEmail" class="auth-input" placeholder="Email" autocomplete="email" style="margin-top:8px">
+      <input type="password" id="authPass" class="auth-input" placeholder="Password" autocomplete="current-password" style="margin-top:8px">
+      <div class="hint" id="authError" style="color:var(--red);display:none;margin-top:6px"></div>
+      <div class="btn-row" style="margin-top:10px">
+        <button class="btn" id="authSignInBtn" style="background:var(--wine);color:#f3e6bf">Sign In</button>
+        <button class="btn" id="authSignUpBtn" style="background:var(--gray-pale);color:var(--text)">Sign Up</button>
+      </div>
+      <div class="hint" id="authForgotBtn" style="margin-top:8px;text-decoration:underline;cursor:pointer">Forgot password?</div>
     </div>
 
   </div>
@@ -931,11 +951,12 @@ document.getElementById('authForgotBtn').addEventListener('click', async () => {
   }catch(e){ showAuthError(authFriendlyError(e.code)); }
 });
 document.getElementById('authSignOutBtn').addEventListener('click', () => { if(firebaseReady) auth.signOut(); });
+document.getElementById('goToSignInBtn').addEventListener('click', () => setActiveTab('signin'));
 
 if(firebaseReady){
   auth.onAuthStateChanged((user) => {
     currentUser = user;
-    const signedOutEl = document.getElementById('authSignedOut');
+    const signedOutEl = document.getElementById('authSignedOutPrompt');
     const signedInEl = document.getElementById('authSignedIn');
     if(user){
       signedOutEl.style.display = 'none';
@@ -944,6 +965,7 @@ if(firebaseReady){
       showAuthError('');
       startDealerSync(user.uid);
       verifyPendingPurchase(user.uid);
+      if(activeTab === 'signin'){ setActiveTab('account'); }
     } else {
       signedOutEl.style.display = 'block';
       signedInEl.style.display = 'none';
@@ -1093,6 +1115,7 @@ function setActiveTab(tab){
   document.getElementById('homeView').classList.toggle('active', tab === 'home');
   document.getElementById('storeView').classList.toggle('active', tab === 'store');
   document.getElementById('accountView').classList.toggle('active', tab === 'account');
+  document.getElementById('signinView').classList.toggle('active', tab === 'signin');
   document.getElementById('manualView').classList.toggle('active', tab === 'manual');
   document.getElementById('dealerView').classList.toggle('active', tab === 'peek' || tab === 'quiz');
   document.getElementById('deckMathView').classList.toggle('active', tab === 'math');
@@ -1109,6 +1132,7 @@ function setActiveTab(tab){
   }
   if(tab === 'account'){ renderStats(); }
   if(tab === 'store'){ renderStore(); }
+  if(tab === 'home'){ renderHome(); }
 }
 
 document.querySelectorAll('.menu-card').forEach(card => {
@@ -1252,6 +1276,7 @@ document.getElementById('shoeDecks').value = dealerState.numDecks;
 document.getElementById('ownCountToggle').checked = dealerState.trackOwnCount;
 document.getElementById('coachingToggle').checked = dealerState.coachingEnabled;
 document.getElementById('betCoachingToggle').checked = dealerState.betCoachingEnabled;
+document.getElementById('hdrDropsBadge').textContent = '🩸 ' + dealerState.drops;
 
 function saveDealerState(){
   localStorage.setItem(DEALER_KEY, JSON.stringify(dealerState));
@@ -1268,6 +1293,8 @@ function refreshEconomyUI(){
   try{ renderDealer(); }catch(e){}
   try{ renderStats(); }catch(e){}
   try{ renderStore(); }catch(e){}
+  try{ renderHome(); }catch(e){}
+  try{ updateHeaderDrops(); }catch(e){}
 }
 
 async function startDealerSync(uid){
@@ -2237,27 +2264,47 @@ function daysBetween(a, b){
   return Math.round((new Date(b + 'T00:00:00') - new Date(a + 'T00:00:00')) / 86400000);
 }
 
+function updateHeaderDrops(){
+  const el = document.getElementById('hdrDropsBadge');
+  if(el) el.textContent = '🩸 ' + dealerState.drops;
+}
+
 function addDrops(amount){
   dealerState.drops += amount;
   if(dealerState.drops > dealerState.dropsHigh) dealerState.dropsHigh = dealerState.drops;
   saveDealerState();
+  updateHeaderDrops();
+}
+
+function dailyBonusStatus(){
+  const today = todayStr();
+  const db = storeState.dailyBonus;
+  const alreadyClaimed = db.lastClaimDate === today;
+  const nextStreak = alreadyClaimed ? db.streak : db.streak + 1;
+  const amount = Math.min(200 + (nextStreak - 1) * 50, 500);
+  return { alreadyClaimed, nextStreak, amount, streak: db.streak };
+}
+
+function applyDailyBonusUI(hintId, btnId){
+  const { alreadyClaimed, nextStreak, amount, streak } = dailyBonusStatus();
+  document.getElementById(hintId).textContent = alreadyClaimed
+    ? ('Streak: ' + streak + ' day' + (streak === 1 ? '' : 's') + ' — come back tomorrow for more.')
+    : ('Day ' + nextStreak + ' streak — claim +' + amount + ' 🩸 today.');
+  const btn = document.getElementById(btnId);
+  btn.textContent = alreadyClaimed ? 'Already Claimed Today' : ('Claim Daily Bonus (+' + amount + ' 🩸)');
+  btn.disabled = alreadyClaimed;
+}
+
+function renderHome(){
+  document.getElementById('homeDropsBadge').textContent = '🩸 ' + dealerState.drops;
+  applyDailyBonusUI('homeStreakHint', 'homeDailyBonusBtn');
 }
 
 function renderStore(){
   document.getElementById('storeDropsBadge').textContent = '🩸 ' + dealerState.drops;
+  applyDailyBonusUI('dailyStreakHint', 'dailyBonusBtn');
 
   const today = todayStr();
-  const db = storeState.dailyBonus;
-  const alreadyClaimed = db.lastClaimDate === today;
-  const dailyBonusBtn = document.getElementById('dailyBonusBtn');
-  const nextStreak = alreadyClaimed ? db.streak : db.streak + 1;
-  const amount = Math.min(200 + (nextStreak - 1) * 50, 500);
-  document.getElementById('dailyStreakHint').textContent = alreadyClaimed
-    ? ('Streak: ' + db.streak + ' day' + (db.streak === 1 ? '' : 's') + ' — come back tomorrow for more.')
-    : ('Day ' + nextStreak + ' streak — claim +' + amount + ' 🩸 today.');
-  dailyBonusBtn.textContent = alreadyClaimed ? 'Already Claimed Today' : ('Claim Daily Bonus (+' + amount + ' 🩸)');
-  dailyBonusBtn.disabled = alreadyClaimed;
-
   const spinAvailable = storeState.spinWheel.lastSpinDate !== today;
   document.getElementById('spinWheelStatus').textContent = spinAvailable ? '1 free spin' : 'Come back tomorrow';
   document.getElementById('spinWheelBtn').disabled = !spinAvailable;
@@ -2271,7 +2318,7 @@ function renderStore(){
   document.getElementById('watchAdBtn').disabled = adCountToday >= AD_CAP;
 }
 
-document.getElementById('dailyBonusBtn').addEventListener('click', () => {
+function claimDailyBonus(){
   const today = todayStr();
   const db = storeState.dailyBonus;
   if(db.lastClaimDate === today) return;
@@ -2282,7 +2329,10 @@ document.getElementById('dailyBonusBtn').addEventListener('click', () => {
   addDrops(amount);
   saveStoreState();
   renderStore();
-});
+  renderHome();
+}
+document.getElementById('dailyBonusBtn').addEventListener('click', claimDailyBonus);
+document.getElementById('homeDailyBonusBtn').addEventListener('click', claimDailyBonus);
 
 const WHEEL_PRIZES = [50, 100, 100, 150, 250, 500, 1000];
 const WHEEL_SPIN_MS = 2400;
@@ -2353,18 +2403,42 @@ function showStorePurchaseMsg(msg){
   el.style.display = msg ? 'block' : 'none';
 }
 
+function pulseCreditBadge(el){
+  if(!el) return;
+  el.classList.remove('credit-pulse');
+  void el.offsetWidth; // restart the animation if it's already mid-run
+  el.classList.add('credit-pulse');
+}
+
 function celebrateVialPurchase(amount){
-  const badge = document.getElementById('storeDropsBadge');
-  const wrap = document.getElementById('storeDropsWrap');
-  if(!badge || !wrap) return;
-  badge.classList.remove('credit-pulse');
-  void badge.offsetWidth; // restart the animation if it's already mid-run
-  badge.classList.add('credit-pulse');
-  const float = document.createElement('div');
-  float.className = 'credit-float';
-  float.textContent = '+' + amount + ' 🩸';
-  wrap.appendChild(float);
-  setTimeout(() => float.remove(), 1700);
+  const startEl = document.getElementById('storeDropsBadge');
+  const targetEl = document.getElementById('hdrDropsBadge');
+  if(!targetEl) return;
+  pulseCreditBadge(startEl);
+
+  const targetRect = targetEl.getBoundingClientRect();
+  const startRect = (startEl || targetEl).getBoundingClientRect();
+  const startX = startRect.left + startRect.width / 2;
+  const startY = startRect.top + startRect.height / 2;
+  const dx = (targetRect.left + targetRect.width / 2) - startX;
+  const dy = (targetRect.top + targetRect.height / 2) - startY;
+
+  const fly = document.createElement('div');
+  fly.className = 'credit-fly';
+  fly.textContent = '+' + amount + ' 🩸';
+  fly.style.left = startX + 'px';
+  fly.style.top = startY + 'px';
+  document.body.appendChild(fly);
+
+  const anim = fly.animate([
+    { transform: 'translate(-50%,-50%) scale(1)', opacity: 1, offset: 0 },
+    { transform: 'translate(-50%,-50%) scale(1.15)', opacity: 1, offset: 0.15 },
+    { transform: `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px)) scale(.3)`, opacity: 0, offset: 1 }
+  ], { duration: 900, easing: 'cubic-bezier(.3,.55,.35,1)' });
+  anim.onfinish = () => {
+    fly.remove();
+    pulseCreditBadge(targetEl);
+  };
 }
 
 function goToVialCheckout(tile){
@@ -2453,7 +2527,7 @@ if(!localStorage.getItem(WELCOME_KEY)){
 }
 document.getElementById('welcomeCreateAccountBtn').addEventListener('click', () => {
   dismissWelcome();
-  setActiveTab('account');
+  setActiveTab('signin');
 });
 document.getElementById('welcomeGuestBtn').addEventListener('click', dismissWelcome);
 
