@@ -225,7 +225,7 @@ button{user-select:none;-webkit-user-select:none;touch-action:manipulation}
 .stats-bar-value{display:block;font-family:var(--display-font);font-size:17px;font-weight:700;color:var(--text)}
 .stats-bar-label{display:block;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-top:1px}
 .quiz-score{text-align:center;font-size:13px;color:var(--muted);margin-bottom:10px}
-.bankroll-badge{position:absolute;top:12px;right:12px;font-family:var(--display-font);font-size:12.5px;font-weight:700;background:var(--gold-pale);color:#7a5f00;padding:5px 11px;border-radius:20px;white-space:nowrap}
+.drops-badge{position:absolute;top:12px;right:12px;font-family:var(--display-font);font-size:12.5px;font-weight:700;background:var(--gold-pale);color:#7a5f00;padding:5px 11px;border-radius:20px;white-space:nowrap}
 
 /* Quiz modal */
 .quiz-overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;z-index:500;padding:20px}
@@ -450,7 +450,7 @@ button{user-select:none;-webkit-user-select:none;touch-action:manipulation}
     <div class="card" id="betCard" style="display:none">
       <div class="shoe-row">
         <span>Choose your bet</span>
-        <button class="btn btn-outline" id="resetBankrollBtn" style="width:auto;padding:6px 10px;font-size:12px">Reset Bankroll</button>
+        <button class="btn btn-outline" id="resetBankrollBtn" style="width:auto;padding:6px 10px;font-size:12px">Reset Blood Drops</button>
       </div>
       <div class="own-count-btns" style="margin-top:10px">
         <button class="mini-count-btn chip-btn" data-bet="5">5</button>
@@ -459,7 +459,7 @@ button{user-select:none;-webkit-user-select:none;touch-action:manipulation}
         <button class="mini-count-btn chip-btn" data-bet="50">50</button>
         <button class="mini-count-btn chip-btn" data-bet="100">100</button>
       </div>
-      <div class="hint" style="margin-top:8px">Current bet: <b id="currentBetValue">25</b> chips</div>
+      <div class="hint" style="margin-top:8px">Current bet: <b id="currentBetValue">25</b> 🩸</div>
     </div>
 
     <div class="count-display">
@@ -472,7 +472,7 @@ button{user-select:none;-webkit-user-select:none;touch-action:manipulation}
     <div class="quiz-score" id="quizScore" style="display:none">Running: 0/0 · True: 0/0</div>
 
     <div class="card" style="position:relative">
-      <div class="bankroll-badge" id="bankrollBadge">💰 1000 · Bet 25</div>
+      <div class="drops-badge" id="bankrollBadge">🩸 1000 · Bet 25</div>
       <div id="resultBanner"></div>
 
       <img src="dealer-dracula.png" alt="Count Dracula, your dealer" class="dealer-portrait" id="dealerPortrait">
@@ -655,10 +655,10 @@ button{user-select:none;-webkit-user-select:none;touch-action:manipulation}
         <tr><td>Running-count quiz accuracy</td><td id="statQuizRunning">—</td></tr>
         <tr><td>True-count quiz accuracy</td><td id="statQuizTrue">—</td></tr>
         <tr><td>Speed drill best time</td><td id="statSpeedBest">—</td></tr>
-        <tr><td>Bankroll (current / high)</td><td id="statBankroll">—</td></tr>
+        <tr><td>Blood Drops (current / high)</td><td id="statBankroll">—</td></tr>
       </table>
       <button class="btn btn-outline" id="resetStatsBtn" style="margin-top:12px">Reset All Stats</button>
-      <div class="hint" id="resetStatsConfirm" style="display:none">Tap again to confirm — this clears all stats, bankroll, and history.</div>
+      <div class="hint" id="resetStatsConfirm" style="display:none">Tap again to confirm — this clears all stats, Blood Drops, and history.</div>
     </div>
 
     <div class="card">
@@ -782,7 +782,7 @@ const DRACULA_BET_MATCHED = [
 ];
 const DRACULA_BET_NOT_MATCHED_QUIZ = "Your wager did not match the count's true favor.";
 function draculaBetNotMatched(tcLabel, recUnits){
-  return 'The count favors you at ' + tcLabel + ' — a bolder wager was warranted, ~' + recUnits + ' unit' + (recUnits > 1 ? 's' : '') + ' (' + (recUnits * 5) + ' chips).';
+  return 'The count favors you at ' + tcLabel + ' — a bolder wager was warranted, ~' + recUnits + ' unit' + (recUnits > 1 ? 's' : '') + ' (' + (recUnits * 5) + ' Blood Drops).';
 }
 
 /* ============================================================ */
@@ -972,7 +972,7 @@ function defaultDealerState(){
     quiz: { correct: 0, total: 0 }, quizTrue: { correct: 0, total: 0 },
     myCount: 0, trackOwnCount: false,
     strategy: { correct: 0, total: 0 }, coachingEnabled: true,
-    bankroll: 1000, bankrollHigh: 1000, currentBet: 25, betCoachingEnabled: true,
+    drops: 1000, dropsHigh: 1000, currentBet: 25, betCoachingEnabled: true,
     stats: { hands: 0, win: 0, lose: 0, push: 0, blackjack: 0 },
     handHistory: []
   };
@@ -987,8 +987,8 @@ function loadDealerState(){
       if(!saved.quizTrue) saved.quizTrue = { correct: 0, total: 0 };
       if(!saved.strategy) saved.strategy = { correct: 0, total: 0 };
       if(typeof saved.coachingEnabled !== 'boolean') saved.coachingEnabled = true;
-      if(typeof saved.bankroll !== 'number') saved.bankroll = 1000;
-      if(typeof saved.bankrollHigh !== 'number') saved.bankrollHigh = saved.bankroll;
+      if(typeof saved.drops !== 'number') saved.drops = typeof saved.bankroll === 'number' ? saved.bankroll : 1000;
+      if(typeof saved.dropsHigh !== 'number') saved.dropsHigh = typeof saved.bankrollHigh === 'number' ? saved.bankrollHigh : saved.drops;
       if(typeof saved.currentBet !== 'number') saved.currentBet = 25;
       if(typeof saved.betCoachingEnabled !== 'boolean') saved.betCoachingEnabled = true;
       if(!saved.stats) saved.stats = { hands: 0, win: 0, lose: 0, push: 0, blackjack: 0 };
@@ -1088,8 +1088,8 @@ document.querySelectorAll('.chip-btn').forEach(btn => {
   });
 });
 document.getElementById('resetBankrollBtn').addEventListener('click', () => {
-  dealerState.bankroll = 1000;
-  dealerState.bankrollHigh = Math.max(dealerState.bankrollHigh, 1000);
+  dealerState.drops = 1000;
+  dealerState.dropsHigh = Math.max(dealerState.dropsHigh, 1000);
   saveDealerState();
   renderDealer();
 });
@@ -1234,14 +1234,14 @@ let handIdCounter = 0;
 let lastRender = { handId: null, dealerExtra: 0, hole: false, upAnimated: false, handsCounts: [0, 0] };
 
 function dealNewHand(){
-  if(dealerState.bankroll < dealerState.currentBet){
+  if(dealerState.drops < dealerState.currentBet){
     showBetFeedback('Your coffers run dry, mortal — lower your wager or restore your fortune.', false);
     return;
   }
   maybeReshuffle();
   const decksRemaining = Math.max(dealerState.shoe.length / 52, 0.5);
   const trueCountAtBet = dealerState.runningCount / decksRemaining;
-  dealerState.bankroll -= dealerState.currentBet;
+  dealerState.drops -= dealerState.currentBet;
 
   const hand = {
     id: ++handIdCounter,
@@ -1271,7 +1271,7 @@ function dealNewHand(){
     return;
   }
   checkQuiz();
-  if(dealerState.bankroll > dealerState.bankrollHigh) dealerState.bankrollHigh = dealerState.bankroll;
+  if(dealerState.drops > dealerState.dropsHigh) dealerState.dropsHigh = dealerState.drops;
   saveDealerState();
   renderDealer();
 }
@@ -1322,9 +1322,9 @@ function playerDouble(){
   if(!h || h.stage !== 'player') return;
   const cur = h.hands[h.activeIndex];
   if(cur.stage !== 'active' || !canDoubleNow(h, cur)) return;
-  if(dealerState.bankroll < cur.bet){ showBetFeedback('Insufficient gold to double this hand.', false); return; }
+  if(dealerState.drops < cur.bet){ showBetFeedback('Insufficient Blood Drops to double this hand.', false); return; }
   gradeAndShowStrategy(cur, 'D', true, canSplitNow(h, cur));
-  dealerState.bankroll -= cur.bet;
+  dealerState.drops -= cur.bet;
   cur.bet *= 2;
   cur.doubled = true;
   cur.cards.push(drawCard(true));
@@ -1340,9 +1340,9 @@ function playerSplit(){
   if(!h || h.stage !== 'player') return;
   const cur = h.hands[h.activeIndex];
   if(cur.stage !== 'active' || !canSplitNow(h, cur)) return;
-  if(dealerState.bankroll < cur.bet){ showBetFeedback('Insufficient gold to split this hand.', false); return; }
+  if(dealerState.drops < cur.bet){ showBetFeedback('Insufficient Blood Drops to split this hand.', false); return; }
   gradeAndShowStrategy(cur, 'P', canDoubleNow(h, cur), true);
-  dealerState.bankroll -= cur.bet;
+  dealerState.drops -= cur.bet;
 
   const isAcePair = cur.cards[0].rank === 'A';
   const movedCard = cur.cards.pop();
@@ -1401,14 +1401,14 @@ function resolveHand(){
     else if(playerTotal < dealerTotal){ result = 'lose'; payout = 0; }
     else { result = 'push'; payout = hd.bet; }
     hd.result = result;
-    dealerState.bankroll += payout;
+    dealerState.drops += payout;
     dealerState.stats.hands++;
     dealerState.stats[result] = (dealerState.stats[result] || 0) + 1;
     dealerState.handHistory.unshift({ result, correct: hd.movesCorrect, total: hd.movesTotal });
   });
   if(dealerState.handHistory.length > 30) dealerState.handHistory.length = 30;
 
-  if(dealerState.bankroll > dealerState.bankrollHigh) dealerState.bankrollHigh = dealerState.bankroll;
+  if(dealerState.drops > dealerState.dropsHigh) dealerState.dropsHigh = dealerState.drops;
 
   checkQuiz();
   saveDealerState();
@@ -1478,7 +1478,7 @@ function renderDealer(){
   }
 
   document.getElementById('currentBetValue').textContent = dealerState.currentBet;
-  document.getElementById('bankrollBadge').textContent = '💰 ' + dealerState.bankroll + ' · Bet ' + dealerState.currentBet;
+  document.getElementById('bankrollBadge').textContent = '🩸 ' + dealerState.drops + ' · Bet ' + dealerState.currentBet;
 
   const h = dealerState.hand;
   document.getElementById('betCard').style.display = h ? 'none' : 'block';
@@ -1502,7 +1502,7 @@ function renderDealer(){
     playActionsEl.style.display = 'none';
     dealBtnEl.style.display = 'block';
     dealBtnEl.textContent = 'Deal Hand';
-    dealBtnEl.disabled = dealerState.bankroll < dealerState.currentBet;
+    dealBtnEl.disabled = dealerState.drops < dealerState.currentBet;
     return;
   }
 
@@ -1582,9 +1582,9 @@ function renderDealer(){
     bannerEl.innerHTML = '';
     playActionsEl.style.display = 'flex';
     dealBtnEl.style.display = 'none';
-    doubleBtnEl.disabled = quizPending || !canDoubleNow(h, cur) || dealerState.bankroll < cur.bet;
+    doubleBtnEl.disabled = quizPending || !canDoubleNow(h, cur) || dealerState.drops < cur.bet;
     splitBtnEl.style.display = canSplitNow(h, cur) ? 'flex' : 'none';
-    splitBtnEl.disabled = quizPending || dealerState.bankroll < cur.bet;
+    splitBtnEl.disabled = quizPending || dealerState.drops < cur.bet;
   }
 
   hitBtnEl.disabled = quizPending;
@@ -1792,7 +1792,7 @@ function renderStats(){
   document.getElementById('statQuizRunning').textContent = pct(dealerState.quiz.correct, dealerState.quiz.total);
   document.getElementById('statQuizTrue').textContent = pct(dealerState.quizTrue.correct, dealerState.quizTrue.total);
   document.getElementById('statSpeedBest').textContent = speedState.bestTimeMs ? (speedState.bestTimeMs / 1000).toFixed(2) + 's' : '—';
-  document.getElementById('statBankroll').textContent = dealerState.bankroll + ' / ' + dealerState.bankrollHigh;
+  document.getElementById('statBankroll').textContent = dealerState.drops + ' / ' + dealerState.dropsHigh;
   renderHandHistory();
 }
 
@@ -1831,8 +1831,8 @@ document.getElementById('resetStatsBtn').addEventListener('click', () => {
   dealerState.strategy = { correct: 0, total: 0 };
   dealerState.quiz = { correct: 0, total: 0 };
   dealerState.quizTrue = { correct: 0, total: 0 };
-  dealerState.bankroll = 1000;
-  dealerState.bankrollHigh = 1000;
+  dealerState.drops = 1000;
+  dealerState.dropsHigh = 1000;
   dealerState.handHistory = [];
   speedState = { bestTimeMs: null, history: [] };
   saveDealerState();
