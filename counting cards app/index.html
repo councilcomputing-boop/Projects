@@ -748,6 +748,15 @@ button{user-select:none;-webkit-user-select:none;touch-action:manipulation}
     </div>
   </div>
 
+  <div class="quiz-overlay" id="welcomeOverlay" style="display:none">
+    <div class="quiz-box">
+      <div class="quiz-title">Welcome to CountDracula</div>
+      <div class="quiz-question" style="font-size:14px;font-weight:400">Create an account to sync your Blood Drops across devices and buy Blood Vials, or jump straight in and practice the count as a guest.</div>
+      <button class="btn" id="welcomeCreateAccountBtn" style="background:var(--wine);color:#f3e6bf;margin-top:14px">Create Account</button>
+      <button class="btn btn-outline" id="welcomeGuestBtn" style="margin-top:10px">Continue as Guest</button>
+    </div>
+  </div>
+
   <div class="quiz-overlay" id="disclaimerOverlay" style="display:none">
     <div class="quiz-box">
       <div class="quiz-title">Before You Buy</div>
@@ -2432,6 +2441,21 @@ async function verifyPendingPurchase(uid){
     showStorePurchaseMsg('Could not reach the payment verification server. If you were charged, please contact support.');
   }
 }
+
+/* ---- First-run welcome: Create Account vs Continue as Guest ---- */
+const WELCOME_KEY = 'cardCountingWelcomeSeen';
+function dismissWelcome(){
+  localStorage.setItem(WELCOME_KEY, '1');
+  document.getElementById('welcomeOverlay').style.display = 'none';
+}
+if(!localStorage.getItem(WELCOME_KEY)){
+  document.getElementById('welcomeOverlay').style.display = 'flex';
+}
+document.getElementById('welcomeCreateAccountBtn').addEventListener('click', () => {
+  dismissWelcome();
+  setActiveTab('account');
+});
+document.getElementById('welcomeGuestBtn').addEventListener('click', dismissWelcome);
 
 /* ============================================================ */
 /* PWA registration                                               */
