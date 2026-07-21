@@ -227,6 +227,29 @@ button{user-select:none;-webkit-user-select:none;touch-action:manipulation}
 .quiz-score{text-align:center;font-size:13px;color:var(--muted);margin-bottom:10px}
 .drops-badge{position:absolute;top:12px;right:12px;font-family:var(--display-font);font-size:12.5px;font-weight:700;background:var(--gold-pale);color:#7a5f00;padding:5px 11px;border-radius:20px;white-space:nowrap}
 
+/* Store */
+.store-drops-badge{font-family:var(--display-font);font-size:18px;font-weight:700;color:#7a5f00;background:var(--gold-pale);border-radius:10px;padding:10px 14px;text-align:center;margin-bottom:12px}
+.store-row-2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.store-tile{background:var(--gray-pale);border:none;border-radius:var(--r);padding:14px 8px;text-align:center;cursor:pointer}
+.store-tile:active{opacity:.75}
+.store-tile:disabled{opacity:.5;cursor:not-allowed}
+.store-tile-icon{font-size:26px}
+.store-tile-title{font-weight:700;font-size:13px;margin-top:4px;color:var(--text)}
+.store-tile-sub{font-size:11px;color:var(--muted);margin-top:2px}
+.chest-row{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.chest-tile{background:var(--gray-pale);border:none;border-radius:var(--r);padding:14px 4px;text-align:center;cursor:pointer}
+.chest-tile:active{opacity:.75}
+.chest-tile:disabled{opacity:.5;cursor:not-allowed}
+.chest-icon{font-size:28px}
+.chest-name{font-weight:700;font-size:12px;margin-top:4px;color:var(--text)}
+.chest-status{font-size:10px;color:var(--muted);margin-top:2px}
+.store-buy-tile{display:flex;justify-content:space-between;align-items:center;width:100%;background:var(--gray-pale);border:none;border-radius:10px;padding:12px 14px;margin-bottom:8px;cursor:pointer;font-size:13.5px;font-weight:600;color:var(--text)}
+.store-buy-tile:last-child{margin-bottom:0}
+.store-buy-tile:active{opacity:.75}
+.store-buy-amount{font-family:var(--display-font);font-weight:700;color:#7a5f00}
+.ad-progress-track{background:var(--gray-pale);border-radius:10px;height:10px;overflow:hidden;margin:12px 0}
+.ad-progress-bar{background:var(--gold);height:100%;width:0%}
+
 /* Quiz modal */
 .quiz-overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;z-index:500;padding:20px}
 .quiz-box{background:#fff;border-radius:var(--r);padding:22px;width:min(320px,100%);text-align:center;box-shadow:0 8px 30px rgba(0,0,0,.3)}
@@ -615,9 +638,85 @@ button{user-select:none;-webkit-user-select:none;touch-action:manipulation}
 
   <!-- ===================== STORE VIEW ===================== -->
   <div class="view" id="storeView">
+
+    <div class="store-drops-badge" id="storeDropsBadge">🩸 1000</div>
+
     <div class="card">
-      <div class="card-title">Blood Drops</div>
-      <div class="hint">The Store is being prepared — daily bonuses, chests, and more are coming soon.</div>
+      <div class="card-title">Daily Streak</div>
+      <div class="hint" id="dailyStreakHint">Come back every day for a bigger bonus.</div>
+      <button class="btn btn-outline" id="dailyBonusBtn" style="margin-top:10px">Claim Daily Bonus</button>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Chests</div>
+      <div class="chest-row">
+        <button class="chest-tile" data-chest="wooden">
+          <div class="chest-icon">🟫</div>
+          <div class="chest-name">Wooden</div>
+          <div class="chest-status" id="chestStatus-wooden">—</div>
+        </button>
+        <button class="chest-tile" data-chest="silver">
+          <div class="chest-icon">⬜</div>
+          <div class="chest-name">Silver</div>
+          <div class="chest-status" id="chestStatus-silver">—</div>
+        </button>
+        <button class="chest-tile" data-chest="golden">
+          <div class="chest-icon">🟨</div>
+          <div class="chest-name">Golden</div>
+          <div class="chest-status" id="chestStatus-golden">—</div>
+        </button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Spin &amp; Bonus</div>
+      <div class="store-row-2">
+        <button class="store-tile" id="spinWheelBtn">
+          <div class="store-tile-icon">🎡</div>
+          <div class="store-tile-title">Spin Wheel</div>
+          <div class="store-tile-sub" id="spinWheelStatus">—</div>
+        </button>
+        <button class="store-tile" id="watchAdBtn">
+          <div class="store-tile-icon">🎬</div>
+          <div class="store-tile-title">Watch Ad</div>
+          <div class="store-tile-sub" id="watchAdStatus">—</div>
+        </button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Blood Vials</div>
+      <button class="store-buy-tile" data-amount="200">
+        <span>Small Vial</span>
+        <span class="store-buy-amount">+200 🩸</span>
+      </button>
+      <button class="store-buy-tile" data-amount="1000">
+        <span>Large Vial</span>
+        <span class="store-buy-amount">+1000 🩸</span>
+      </button>
+      <button class="store-buy-tile" data-amount="4000">
+        <span>Coffin Hoard</span>
+        <span class="store-buy-amount">+4000 🩸</span>
+      </button>
+    </div>
+
+  </div>
+
+  <div class="quiz-overlay" id="adOverlay" style="display:none">
+    <div class="quiz-box">
+      <div class="quiz-title">Watch Ad</div>
+      <div class="quiz-question">A brief tribute plays for the Count...</div>
+      <div class="ad-progress-track"><div class="ad-progress-bar" id="adProgressBar"></div></div>
+      <div class="quiz-feedback" id="adFeedback"></div>
+    </div>
+  </div>
+
+  <div class="quiz-overlay" id="wheelOverlay" style="display:none">
+    <div class="quiz-box">
+      <div class="quiz-title">Spin the Wheel</div>
+      <div style="font-size:44px;margin:8px 0">🎡</div>
+      <div class="quiz-question" id="wheelResult">Spinning...</div>
+      <button class="btn btn-outline" id="wheelCloseBtn" style="display:none">Nice!</button>
     </div>
   </div>
 
@@ -863,6 +962,7 @@ function setActiveTab(tab){
     renderDealer();
   }
   if(tab === 'account'){ renderStats(); }
+  if(tab === 'store'){ renderStore(); }
 }
 
 document.querySelectorAll('.menu-card').forEach(card => {
@@ -1873,6 +1973,182 @@ document.addEventListener('keydown', (e) => {
   }
 });
 
+
+/* ============================================================ */
+/* STORE (Blood Drops economy)                                    */
+/* ============================================================ */
+const STORE_KEY = 'cardCountingStoreState';
+
+function defaultStoreState(){
+  return {
+    dailyBonus: { streak: 0, lastClaimDate: null },
+    chests: {
+      wooden: { nextAvailableAt: 0 },
+      silver: { nextAvailableAt: 0 },
+      golden: { nextAvailableAt: 0 }
+    },
+    adWatch: { count: 0, date: null },
+    spinWheel: { lastSpinDate: null }
+  };
+}
+function loadStoreState(){
+  try {
+    const s = JSON.parse(localStorage.getItem(STORE_KEY));
+    if(s && s.dailyBonus && s.chests && s.adWatch && s.spinWheel) return s;
+  } catch(e) {}
+  return defaultStoreState();
+}
+let storeState = loadStoreState();
+function saveStoreState(){ localStorage.setItem(STORE_KEY, JSON.stringify(storeState)); }
+
+function todayStr(){
+  const d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
+function daysBetween(a, b){
+  return Math.round((new Date(b + 'T00:00:00') - new Date(a + 'T00:00:00')) / 86400000);
+}
+
+function addDrops(amount){
+  dealerState.drops += amount;
+  if(dealerState.drops > dealerState.dropsHigh) dealerState.dropsHigh = dealerState.drops;
+  saveDealerState();
+}
+
+const CHEST_CONFIG = {
+  wooden: { cooldownMs: 4 * 3600000, min: 100, max: 150, label: 'Wooden' },
+  silver: { cooldownMs: 8 * 3600000, min: 250, max: 350, label: 'Silver' },
+  golden: { cooldownMs: 24 * 3600000, min: 500, max: 750, label: 'Golden' }
+};
+function formatCountdown(ms){
+  if(ms <= 0) return 'Ready';
+  const totalMin = Math.ceil(ms / 60000);
+  const h = Math.floor(totalMin / 60), m = totalMin % 60;
+  return h > 0 ? (h + 'h ' + m + 'm') : (m + 'm');
+}
+
+function renderStore(){
+  document.getElementById('storeDropsBadge').textContent = '🩸 ' + dealerState.drops;
+
+  const today = todayStr();
+  const db = storeState.dailyBonus;
+  const alreadyClaimed = db.lastClaimDate === today;
+  const dailyBonusBtn = document.getElementById('dailyBonusBtn');
+  const nextStreak = alreadyClaimed ? db.streak : db.streak + 1;
+  const amount = Math.min(200 + (nextStreak - 1) * 50, 500);
+  document.getElementById('dailyStreakHint').textContent = alreadyClaimed
+    ? ('Streak: ' + db.streak + ' day' + (db.streak === 1 ? '' : 's') + ' — come back tomorrow for more.')
+    : ('Day ' + nextStreak + ' streak — claim +' + amount + ' 🩸 today.');
+  dailyBonusBtn.textContent = alreadyClaimed ? 'Already Claimed Today' : ('Claim Daily Bonus (+' + amount + ' 🩸)');
+  dailyBonusBtn.disabled = alreadyClaimed;
+
+  const now = Date.now();
+  Object.keys(CHEST_CONFIG).forEach(key => {
+    const remaining = storeState.chests[key].nextAvailableAt - now;
+    const statusEl = document.getElementById('chestStatus-' + key);
+    const tileEl = document.querySelector('.chest-tile[data-chest="' + key + '"]');
+    statusEl.textContent = formatCountdown(remaining);
+    tileEl.disabled = remaining > 0;
+  });
+
+  const spinAvailable = storeState.spinWheel.lastSpinDate !== today;
+  document.getElementById('spinWheelStatus').textContent = spinAvailable ? '1 free spin' : 'Come back tomorrow';
+  document.getElementById('spinWheelBtn').disabled = !spinAvailable;
+
+  const ad = storeState.adWatch;
+  const adCountToday = ad.date === today ? ad.count : 0;
+  const AD_CAP = 5;
+  document.getElementById('watchAdStatus').textContent = adCountToday >= AD_CAP
+    ? 'Come back tomorrow'
+    : ('+150 🩸 (' + (AD_CAP - adCountToday) + ' left today)');
+  document.getElementById('watchAdBtn').disabled = adCountToday >= AD_CAP;
+}
+
+document.getElementById('dailyBonusBtn').addEventListener('click', () => {
+  const today = todayStr();
+  const db = storeState.dailyBonus;
+  if(db.lastClaimDate === today) return;
+  const brokeStreak = db.lastClaimDate && daysBetween(db.lastClaimDate, today) > 1;
+  db.streak = brokeStreak ? 1 : db.streak + 1;
+  const amount = Math.min(200 + (db.streak - 1) * 50, 500);
+  db.lastClaimDate = today;
+  addDrops(amount);
+  saveStoreState();
+  renderStore();
+});
+
+document.querySelectorAll('.chest-tile').forEach(tile => {
+  tile.addEventListener('click', () => {
+    const key = tile.dataset.chest;
+    const cfg = CHEST_CONFIG[key];
+    const chest = storeState.chests[key];
+    if(Date.now() < chest.nextAvailableAt) return;
+    const reward = cfg.min + Math.floor(Math.random() * (cfg.max - cfg.min + 1));
+    chest.nextAvailableAt = Date.now() + cfg.cooldownMs;
+    addDrops(reward);
+    saveStoreState();
+    renderStore();
+  });
+});
+
+const WHEEL_PRIZES = [50, 100, 100, 150, 250, 500, 1000];
+document.getElementById('spinWheelBtn').addEventListener('click', () => {
+  const today = todayStr();
+  if(storeState.spinWheel.lastSpinDate === today) return;
+  const overlay = document.getElementById('wheelOverlay');
+  const resultEl = document.getElementById('wheelResult');
+  const closeBtn = document.getElementById('wheelCloseBtn');
+  resultEl.textContent = 'Spinning...';
+  closeBtn.style.display = 'none';
+  overlay.style.display = 'flex';
+  setTimeout(() => {
+    const prize = WHEEL_PRIZES[Math.floor(Math.random() * WHEEL_PRIZES.length)];
+    storeState.spinWheel.lastSpinDate = today;
+    addDrops(prize);
+    saveStoreState();
+    resultEl.textContent = 'You won ' + prize + ' 🩸!';
+    closeBtn.style.display = 'inline-flex';
+    renderStore();
+  }, 1200);
+});
+document.getElementById('wheelCloseBtn').addEventListener('click', () => {
+  document.getElementById('wheelOverlay').style.display = 'none';
+});
+
+document.getElementById('watchAdBtn').addEventListener('click', () => {
+  const today = todayStr();
+  const ad = storeState.adWatch;
+  const countToday = ad.date === today ? ad.count : 0;
+  if(countToday >= 5) return;
+  const overlay = document.getElementById('adOverlay');
+  const bar = document.getElementById('adProgressBar');
+  const feedback = document.getElementById('adFeedback');
+  bar.style.width = '0%';
+  bar.style.transition = 'none';
+  feedback.textContent = '';
+  overlay.style.display = 'flex';
+  requestAnimationFrame(() => {
+    bar.style.transition = 'width 3s linear';
+    bar.style.width = '100%';
+  });
+  setTimeout(() => {
+    ad.date = today;
+    ad.count = countToday + 1;
+    addDrops(150);
+    saveStoreState();
+    feedback.textContent = '+150 🩸 — thank you for your patronage.';
+    setTimeout(() => { overlay.style.display = 'none'; renderStore(); }, 900);
+  }, 3000);
+});
+
+document.querySelectorAll('.store-buy-tile').forEach(tile => {
+  tile.addEventListener('click', () => {
+    addDrops(parseInt(tile.dataset.amount, 10));
+    renderStore();
+  });
+});
+
+setInterval(() => { if(activeTab === 'store') renderStore(); }, 30000);
 
 /* ============================================================ */
 /* PWA registration                                               */
