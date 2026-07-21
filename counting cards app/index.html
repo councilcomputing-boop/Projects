@@ -144,23 +144,28 @@ button{user-select:none;-webkit-user-select:none;touch-action:manipulation}
   0%,100%{box-shadow:0 0 0 0 rgba(212,175,55,.5),0 4px 14px rgba(0,0,0,.35)}
   50%{box-shadow:0 0 0 9px rgba(212,175,55,0),0 4px 14px rgba(0,0,0,.35)}
 }
+.peek-count-badge{
+  position:absolute;top:14px;left:66px;z-index:6;
+  background:var(--wine);color:#f3e6bf;border-radius:10px;
+  padding:6px 10px;box-shadow:var(--shadow);text-align:left;line-height:1.2;
+}
+.peek-count-badge .peek-rc{display:block;font-family:var(--display-font);font-weight:700;font-size:15px}
+.peek-count-badge .peek-tc{display:block;font-size:9.5px;color:#c9a9a9}
 .dealer-portrait-wrap{position:relative;display:block;width:76px;margin:0 auto}
 .dealer-speech{
-  position:absolute;bottom:100%;left:50%;transform:translateX(-50%) scale(.85);
-  margin-bottom:10px;background:#fff;border:2px solid var(--border);
+  display:none;position:relative;background:#fff;border:2px solid var(--border);
   border-radius:14px;padding:8px 12px;font-size:12px;font-weight:600;
-  width:150px;text-align:center;opacity:0;pointer-events:none;
-  transition:opacity .18s ease,transform .18s ease;z-index:5;
+  max-width:260px;margin:10px auto 0;text-align:center;
 }
-.dealer-speech.show{opacity:1;transform:translateX(-50%) scale(1)}
+.dealer-speech.show{display:block}
 .dealer-speech::after{
-  content:'';position:absolute;top:100%;left:50%;transform:translateX(-50%);
-  border:7px solid transparent;border-top-color:#fff;
+  content:'';position:absolute;bottom:100%;left:50%;transform:translateX(-50%);
+  border:7px solid transparent;border-bottom-color:#fff;
 }
 .dealer-speech.correct{border-color:var(--green2);color:var(--green2)}
-.dealer-speech.correct::after{border-top-color:var(--green2)}
+.dealer-speech.correct::after{border-bottom-color:var(--green2)}
 .dealer-speech.incorrect{border-color:var(--red);color:var(--red)}
-.dealer-speech.incorrect::after{border-top-color:var(--red)}
+.dealer-speech.incorrect::after{border-bottom-color:var(--red)}
 
 /* Keep-my-own-count toggle / generic toggle rows */
 .toggle-row{display:flex;align-items:center;justify-content:space-between;background:var(--card);border-radius:var(--r);box-shadow:var(--shadow);padding:14px 16px;margin-bottom:12px}
@@ -312,11 +317,11 @@ button{user-select:none;-webkit-user-select:none;touch-action:manipulation}
       </button>
       <button class="menu-card" data-tab="peek">
         <div class="menu-icon">👁</div>
-        <div class="menu-title">Peek</div>
+        <div class="menu-title">Peek Practice</div>
       </button>
       <button class="menu-card" data-tab="quiz">
         <div class="menu-icon">❓</div>
-        <div class="menu-title">Classic</div>
+        <div class="menu-title">Quiz Practice</div>
       </button>
       <button class="menu-card" data-tab="math">
         <div class="menu-icon">➗</div>
@@ -374,8 +379,8 @@ button{user-select:none;-webkit-user-select:none;touch-action:manipulation}
       <p class="lesson-intro">I have prepared five chambers of instruction. Enter each in turn, or as you please — I am patient. I have centuries.</p>
       <ol class="rules-list">
         <li><b>Manual</b> — tap +1/0/-1 yourself while counting an actual physical deck.</li>
-        <li><b>Peek</b> — play simulated hands against a dealer with betting, splits, and my coaching; hold the peek button to check your count anytime — for a price, 10 Blood Drops a look.</li>
-        <li><b>Classic</b> — the same game, but the count stays hidden, and I will demand it of you at moments of my choosing. Answer correctly and I'll reward you for it.</li>
+        <li><b>Peek Practice</b> — play simulated hands against a dealer with betting, splits, and my coaching; click the eye beside the dealer to check your count — for a price, 10 Blood Drops a look.</li>
+        <li><b>Quiz Practice</b> — the same game, but the count stays hidden, and I will demand it of you at moments of my choosing. Answer correctly and I'll reward you for it.</li>
         <li><b>Deck Math</b> — a calculator and drill for converting running count to true count.</li>
         <li><b>Speed Drill</b> — a full deck flashes before you at speed; keep the count in your head and answer for it at the end.</li>
       </ol>
@@ -464,23 +469,21 @@ button{user-select:none;-webkit-user-select:none;touch-action:manipulation}
       <div class="hint" style="margin-top:8px">Current bet: <b id="currentBetValue">25</b> 🩸</div>
     </div>
 
-    <div class="count-display">
-      <div class="count-label">Running Count</div>
-      <div class="count-value hidden-val" id="dealerRunningCount">•••</div>
-      <div class="cards-seen" id="dealerTrueCount"></div>
-    </div>
-
     <div class="quiz-score" id="quizScore" style="display:none">Running: 0/0 · True: 0/0</div>
 
     <div class="card" style="position:relative">
-      <button class="peek-icon-btn" id="peekBtn" aria-label="Hold to reveal the running count">👁</button>
+      <button class="peek-icon-btn" id="peekBtn" aria-label="Click to reveal the running count">👁</button>
+      <div class="peek-count-badge" id="peekCountBadge" style="display:none">
+        <span class="peek-rc" id="peekRC">0</span>
+        <span class="peek-tc" id="peekTC"></span>
+      </div>
       <div class="drops-badge" id="bankrollBadge">🩸 1000 · Bet 25</div>
       <div id="resultBanner"></div>
 
       <div class="dealer-portrait-wrap">
         <img src="dealer-dracula.png" alt="Count Dracula, your dealer" class="dealer-portrait" id="dealerPortrait">
-        <div class="dealer-speech" id="dealerSpeech"></div>
       </div>
+      <div class="dealer-speech" id="dealerSpeech"></div>
       <div class="table-label">Dealer</div>
       <div class="card-row" id="dealerCards"></div>
       <div class="hand-total" id="dealerTotal">&nbsp;</div>
@@ -678,7 +681,7 @@ button{user-select:none;-webkit-user-select:none;touch-action:manipulation}
   <div class="view" id="accountView">
 
     <div class="card">
-      <div class="card-title">Peek / Classic Settings</div>
+      <div class="card-title">Peek / Quiz Settings</div>
       <div class="toggle-row-compact">
         <label class="toggle-label" for="coachingToggle">Strategy coaching</label>
         <label class="switch"><input type="checkbox" id="coachingToggle" checked><span class="switch-slider"></span></label>
@@ -716,7 +719,7 @@ button{user-select:none;-webkit-user-select:none;touch-action:manipulation}
 
     <div class="card">
       <div class="card-title">Hand History</div>
-      <div class="hint" style="margin-top:0">Most recent hands first, from Peek/Classic. Shows the outcome and how many of your decisions matched basic strategy.</div>
+      <div class="hint" style="margin-top:0">Most recent hands first, from Peek/Quiz Practice. Shows the outcome and how many of your decisions matched basic strategy.</div>
       <div id="handHistoryList" style="margin-top:10px"></div>
     </div>
 
@@ -910,7 +913,7 @@ function setActiveTab(tab){
     document.getElementById('peekBtn').style.display = (tab === 'peek') ? 'flex' : 'none';
     document.getElementById('quizScore').style.display = (tab === 'quiz') ? 'block' : 'none';
     document.getElementById('dealerModeHint').textContent = (tab === 'peek')
-      ? 'Hold the eye beside the dealer to make him whisper the count — 10 🩸 a look.'
+      ? 'Click the eye beside the dealer to make him whisper the count for a few seconds — 10 🩸 a look.'
       : "Count stays hidden — you'll be quizzed on it at random moments.";
     isPeeking = false;
     renderDealer();
@@ -1252,9 +1255,10 @@ document.getElementById('quizContinueBtn').addEventListener('click', closeQuizMo
 
 /* --- Peek button (Peek tab only) --- */
 const PEEK_COST = 10;
+const PEEK_REVEAL_MS = 3000;
 const peekBtn = document.getElementById('peekBtn');
-function startPeek(e){
-  e.preventDefault();
+let peekTimer = null;
+function triggerPeek(){
   if(isPeeking) return;
   if(dealerState.drops < PEEK_COST){
     showBetFeedback('Not enough Blood Drops to peek — visit the Store for more.', false);
@@ -1265,12 +1269,13 @@ function startPeek(e){
   showBetFeedback('-' + PEEK_COST + ' 🩸 to peek.', null);
   isPeeking = true;
   renderDealer();
+  clearTimeout(peekTimer);
+  peekTimer = setTimeout(() => {
+    isPeeking = false;
+    renderDealer();
+  }, PEEK_REVEAL_MS);
 }
-function stopPeek(){ isPeeking = false; renderDealer(); }
-peekBtn.addEventListener('pointerdown', startPeek);
-peekBtn.addEventListener('pointerup', stopPeek);
-peekBtn.addEventListener('pointerleave', stopPeek);
-peekBtn.addEventListener('pointercancel', stopPeek);
+peekBtn.addEventListener('click', triggerPeek);
 
 /* --- Strategy coaching --- */
 function showStrategyFeedback(correct, recLabel){
@@ -1514,17 +1519,16 @@ function renderDealer(){
 
   const showCount = (activeTab === 'peek' && isPeeking);
   const rc = dealerState.runningCount;
-  const rcEl = document.getElementById('dealerRunningCount');
-  const tcEl = document.getElementById('dealerTrueCount');
+  const peekBadgeEl = document.getElementById('peekCountBadge');
   if(showCount){
+    const rcEl = document.getElementById('peekRC');
+    const tcEl = document.getElementById('peekTC');
     rcEl.textContent = fmtSigned(rc);
-    rcEl.className = 'count-value ' + (rc > 0 ? 'pos' : rc < 0 ? 'neg' : 'zero');
     const tc = rc / Math.max(decksRemaining, 0.5);
-    tcEl.textContent = 'True count ' + fmtSigned(Math.round(tc * 10) / 10);
+    tcEl.textContent = 'TC ' + fmtSigned(Math.round(tc * 10) / 10);
+    peekBadgeEl.style.display = 'block';
   } else {
-    rcEl.textContent = '•••';
-    rcEl.className = 'count-value hidden-val';
-    tcEl.textContent = '';
+    peekBadgeEl.style.display = 'none';
   }
 
   if(activeTab === 'quiz'){
