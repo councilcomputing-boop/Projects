@@ -56,7 +56,7 @@ button{user-select:none;-webkit-user-select:none;touch-action:manipulation}
 .hdr.hdr-big .hdr-title{font-size:20px;letter-spacing:1.5px;white-space:normal}
 .hdr.hdr-big .hdr-sub{font-size:11px;white-space:normal}
 .hdr.hdr-big .menu-link{display:none}
-.dealer-portrait{display:block;width:150px;margin:0 auto 4px;filter:drop-shadow(0 6px 14px rgba(0,0,0,.5))}
+.dealer-portrait{display:block;width:76px;margin:0 auto 4px;filter:drop-shadow(0 6px 14px rgba(0,0,0,.5))}
 .dealer-portrait.deal-pulse{animation:dealerPulse .5s ease-out}
 @keyframes dealerPulse{0%{transform:scale(1)}35%{transform:scale(1.06)}70%{transform:scale(.99)}100%{transform:scale(1)}}
 .hdr-title{font-family:var(--display-font);font-size:19px;font-weight:700;letter-spacing:1px;color:#f3e6bf;text-shadow:0 0 12px rgba(201,162,39,.35);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -362,63 +362,46 @@ button{user-select:none;-webkit-user-select:none;touch-action:manipulation}
         <li>When it climbs positive, the deck grows heavy with high cards and aces. The house trembles. Wager boldly.</li>
         <li>When it falls negative, only the low cards remain, and fortune favors the house. Wager little, or not at all.</li>
         <li>But the Running Count alone is a crude instrument — meaningless without context. Divide it by the decks remaining, and you have the <b>True Count</b>, the number I actually act upon. Visit the Deck Math tab to master this division.</li>
+        <li>In Manual mode, keyboard shortcuts work too: <b>↑</b> = +1, <b>↓</b> = -1, <b>→</b> = 0.</li>
       </ol>
     </div>
 
     <div class="card lesson-card">
       <div class="card-title">The Curriculum</div>
-      <p class="lesson-intro">I have prepared six chambers of instruction. Enter each in turn, or as you please — I am patient. I have centuries.</p>
+      <p class="lesson-intro">I have prepared five chambers of instruction. Enter each in turn, or as you please — I am patient. I have centuries.</p>
       <ol class="rules-list">
         <li><b>Manual</b> — tap +1/0/-1 yourself while counting an actual physical deck.</li>
         <li><b>Peek Practice</b> — play simulated hands against a dealer with betting, splits, and my coaching; hold the peek button to test your count against my own.</li>
         <li><b>Quiz Practice</b> — the same game, but the count stays hidden, and I will demand it of you at moments of my choosing.</li>
         <li><b>Deck Math</b> — a calculator and drill for converting running count to true count.</li>
         <li><b>Speed Drill</b> — a full deck flashes before you at speed; keep the count in your head and answer for it at the end.</li>
-        <li><b>Stats</b> — your accuracy, your fortune, and a record of every hand you have played under my watch.</li>
       </ol>
+      <p class="lesson-intro" style="margin-top:10px">Below, the <b>Store</b> holds your Blood Drops — the coin you wager with — and the <b>Account</b> tab holds your stats, your fortune, and every setting, gathered in one place.</p>
       <div class="lesson-signature">
         <div class="wax-seal" aria-hidden="true">D</div>
         <div class="signature-text">Until the shoe is empty,<br><em>— Count Dracula</em></div>
       </div>
     </div>
 
+    <div class="card">
+      <div class="card-title">Why True Count?</div>
+      <div class="hint" style="margin-top:0">
+        The <b>Running Count</b> alone doesn't tell you much once more than one deck is in play. A running count of +6 means the deck is loaded with high cards if there's only <b>1 deck</b> left — but it's barely a blip if there are <b>6 decks</b> left. To compare fairly (and know how much to bet), divide the running count by how many decks remain:
+      </div>
+      <div class="true-count-value" style="margin-top:12px">Running Count ÷ Decks Remaining = True Count</div>
+      <table class="example-table">
+        <tr><th>Running</th><th>Decks Left</th><th>True Count</th></tr>
+        <tr><td>+4</td><td>2</td><td>+2.0</td></tr>
+        <tr><td>+4</td><td>8</td><td>+0.5</td></tr>
+        <tr><td>-6</td><td>1.5</td><td>-4.0</td></tr>
+      </table>
+      <div class="hint">The true count — not the running count — is what tells you when the deck actually favors the player.</div>
+    </div>
+
   </div>
 
   <!-- ===================== MANUAL VIEW (physical deck) ===================== -->
   <div class="view" id="manualView">
-
-    <div class="card">
-      <div class="card-title">The Rules</div>
-      <div class="legend-row">
-        <div class="legend-badge plus">+1</div>
-        <div>
-          <div class="legend-cards">2, 3, 4, 5, 6</div>
-          <div class="legend-note">Low cards — count goes up</div>
-        </div>
-      </div>
-      <div class="legend-row">
-        <div class="legend-badge zero">0</div>
-        <div>
-          <div class="legend-cards">7, 8, 9</div>
-          <div class="legend-note">Neutral — no change</div>
-        </div>
-      </div>
-      <div class="legend-row">
-        <div class="legend-badge minus">-1</div>
-        <div>
-          <div class="legend-cards">10, J, Q, K, A</div>
-          <div class="legend-note">High cards — count goes down</div>
-        </div>
-      </div>
-      <ol class="rules-list" style="margin-top:12px">
-        <li>Every time a card is dealt (yours, the dealer's, or anyone else's), tap the button below that matches it.</li>
-        <li>The <b>Running Count</b> is just the sum of every card you've tapped so far.</li>
-        <li>A positive count means more high cards are still left in the deck — the deck favors the player, so bet more.</li>
-        <li>A negative count means more low cards are left — the deck favors the house, so bet less.</li>
-        <li>The <b>True Count</b> divides the running count by the decks remaining, since a +4 count means a lot more in a single deck than in a six-deck shoe. True count is what you actually act on.</li>
-        <li>Keyboard: <b>↑</b> = +1, <b>↓</b> = -1, <b>→</b> = 0.</li>
-      </ol>
-    </div>
 
     <div class="count-display">
       <div class="count-label">Running Count</div>
@@ -533,21 +516,6 @@ button{user-select:none;-webkit-user-select:none;touch-action:manipulation}
 
   <!-- ===================== DECK MATH VIEW ===================== -->
   <div class="view" id="deckMathView">
-
-    <div class="card">
-      <div class="card-title">Why True Count?</div>
-      <div class="hint" style="margin-top:0">
-        The <b>Running Count</b> alone doesn't tell you much once more than one deck is in play. A running count of +6 means the deck is loaded with high cards if there's only <b>1 deck</b> left — but it's barely a blip if there are <b>6 decks</b> left. To compare fairly (and know how much to bet), divide the running count by how many decks remain:
-      </div>
-      <div class="true-count-value" style="margin-top:12px">Running Count ÷ Decks Remaining = True Count</div>
-      <table class="example-table">
-        <tr><th>Running</th><th>Decks Left</th><th>True Count</th></tr>
-        <tr><td>+4</td><td>2</td><td>+2.0</td></tr>
-        <tr><td>+4</td><td>8</td><td>+0.5</td></tr>
-        <tr><td>-6</td><td>1.5</td><td>-4.0</td></tr>
-      </table>
-      <div class="hint">The true count — not the running count — is what tells you when the deck actually favors the player.</div>
-    </div>
 
     <div class="card">
       <div class="card-title">Calculator</div>
