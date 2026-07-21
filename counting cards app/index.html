@@ -473,7 +473,6 @@ button{user-select:none;-webkit-user-select:none;touch-action:manipulation}
     <div class="card" id="betCard" style="display:none">
       <div class="shoe-row">
         <span>Choose your bet</span>
-        <button class="btn btn-outline" id="resetBankrollBtn" style="width:auto;padding:6px 10px;font-size:12px">Reset Blood Drops</button>
       </div>
       <div class="own-count-btns" style="margin-top:10px">
         <button class="mini-count-btn chip-btn" data-bet="5">5</button>
@@ -757,7 +756,7 @@ button{user-select:none;-webkit-user-select:none;touch-action:manipulation}
         <tr><td>Blood Drops (current / high)</td><td id="statBankroll">—</td></tr>
       </table>
       <button class="btn btn-outline" id="resetStatsBtn" style="margin-top:12px">Reset All Stats</button>
-      <div class="hint" id="resetStatsConfirm" style="display:none">Tap again to confirm — this clears all stats, Blood Drops, and history.</div>
+      <div class="hint" id="resetStatsConfirm" style="display:none">Tap again to confirm — this clears all stats and hand history (your Blood Drops balance is not affected).</div>
     </div>
 
     <div class="card">
@@ -1186,12 +1185,6 @@ document.querySelectorAll('.chip-btn').forEach(btn => {
     saveDealerState();
     renderDealer();
   });
-});
-document.getElementById('resetBankrollBtn').addEventListener('click', () => {
-  dealerState.drops = 1000;
-  dealerState.dropsHigh = Math.max(dealerState.dropsHigh, 1000);
-  saveDealerState();
-  renderDealer();
 });
 function showBetFeedback(msg, positive){
   const el = document.getElementById('betFeedback');
@@ -1931,8 +1924,6 @@ document.getElementById('resetStatsBtn').addEventListener('click', () => {
   dealerState.strategy = { correct: 0, total: 0 };
   dealerState.quiz = { correct: 0, total: 0 };
   dealerState.quizTrue = { correct: 0, total: 0 };
-  dealerState.drops = 1000;
-  dealerState.dropsHigh = 1000;
   dealerState.handHistory = [];
   speedState = { bestTimeMs: null, history: [] };
   saveDealerState();
