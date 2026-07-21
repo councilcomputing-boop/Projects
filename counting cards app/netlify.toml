@@ -11,3 +11,9 @@
 
 [functions]
   node_bundler = "esbuild"
+
+[[plugins]]
+  # Installs netlify/functions/package.json's dependencies (stripe,
+  # firebase-admin) before esbuild bundles verify-payment.js — without this,
+  # the bundler can't resolve either require() and the build fails.
+  package = "@netlify/plugin-functions-install-core"
