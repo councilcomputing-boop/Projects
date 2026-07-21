@@ -247,9 +247,12 @@ button{user-select:none;-webkit-user-select:none;touch-action:manipulation}
 .store-tile-icon{font-size:26px}
 .store-tile-title{font-weight:700;font-size:13px;margin-top:4px;color:var(--text)}
 .store-tile-sub{font-size:11px;color:var(--muted);margin-top:2px}
-.store-buy-tile{display:flex;justify-content:space-between;align-items:center;width:100%;background:var(--gray-pale);border:none;border-radius:10px;padding:12px 14px;margin-bottom:8px;cursor:pointer;font-size:13.5px;font-weight:600;color:var(--text)}
-.store-buy-tile:last-child{margin-bottom:0}
-.store-buy-tile:active{opacity:.75}
+.vial-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.vial-tile{display:flex;flex-direction:column;align-items:center;gap:4px;background:var(--gray-pale);border:none;border-radius:var(--r);padding:12px 6px;cursor:pointer;text-align:center}
+.vial-tile:active{opacity:.75}
+.vial-tile svg{display:block}
+.vial-name{font-size:11.5px;font-weight:700;color:var(--text)}
+.vial-amount{font-family:var(--display-font);font-size:12px;font-weight:700;color:#7a5f00}
 .store-buy-amount{font-family:var(--display-font);font-weight:700;color:#7a5f00}
 .ad-progress-track{background:var(--gray-pale);border-radius:10px;height:10px;overflow:hidden;margin:12px 0}
 .ad-progress-bar{background:var(--gold);height:100%;width:0%}
@@ -635,26 +638,33 @@ button{user-select:none;-webkit-user-select:none;touch-action:manipulation}
 
     <div class="card">
       <div class="card-title">Blood Vials</div>
-      <button class="store-buy-tile" data-amount="50">
-        <span>Tiny Vial</span>
-        <span class="store-buy-amount">+50 🩸</span>
+      <div class="vial-grid">
+      <button class="vial-tile" data-amount="50">
+        <svg viewBox="0 0 20 32" width="22" height="30"><rect x="7" y="0" width="6" height="4" rx="1" fill="#5a3a1a"/><path d="M6 4 H14 V22 A4 4 0 0 1 6 22 Z" fill="#fff" stroke="#6b5a4a" stroke-width="1.1"/><path d="M6 15 H14 V22 A4 4 0 0 1 6 22 Z" fill="#8a0517"/><ellipse cx="8" cy="17" rx="1" ry="2" fill="#e2647a" opacity=".6"/></svg>
+        <div class="vial-name">Tiny Vial</div>
+        <div class="vial-amount">+50 🩸</div>
       </button>
-      <button class="store-buy-tile" data-amount="200">
-        <span>Small Vial</span>
-        <span class="store-buy-amount">+200 🩸</span>
+      <button class="vial-tile" data-amount="200">
+        <svg viewBox="0 0 20 32" width="26" height="32"><rect x="7" y="0" width="6" height="4" rx="1" fill="#5a3a1a"/><path d="M6 4 H14 V23 A4 4 0 0 1 6 23 Z" fill="#fff" stroke="#6b5a4a" stroke-width="1.1"/><path d="M6 14 H14 V23 A4 4 0 0 1 6 23 Z" fill="#8a0517"/><ellipse cx="8" cy="16.5" rx="1.1" ry="2.4" fill="#e2647a" opacity=".6"/></svg>
+        <div class="vial-name">Small Vial</div>
+        <div class="vial-amount">+200 🩸</div>
       </button>
-      <button class="store-buy-tile" data-amount="1000">
-        <span>Large Vial</span>
-        <span class="store-buy-amount">+1000 🩸</span>
+      <button class="vial-tile" data-amount="1000">
+        <svg viewBox="0 0 20 34" width="30" height="34"><rect x="7" y="0" width="6" height="4" rx="1" fill="#5a3a1a"/><path d="M6 4 H14 V25 A4 4 0 0 1 6 25 Z" fill="#fff" stroke="#6b5a4a" stroke-width="1.1"/><path d="M6 12 H14 V25 A4 4 0 0 1 6 25 Z" fill="#8a0517"/><ellipse cx="8" cy="15" rx="1.2" ry="2.8" fill="#e2647a" opacity=".6"/></svg>
+        <div class="vial-name">Large Vial</div>
+        <div class="vial-amount">+1000 🩸</div>
       </button>
-      <button class="store-buy-tile" data-amount="4000">
-        <span>Coffin Hoard</span>
-        <span class="store-buy-amount">+4000 🩸</span>
+      <button class="vial-tile" data-amount="4000">
+        <svg viewBox="0 0 20 36" width="34" height="36"><rect x="7" y="0" width="6" height="4" rx="1" fill="#5a3a1a"/><path d="M5 4 H15 V27 A5 5 0 0 1 5 27 Z" fill="#fff" stroke="#6b5a4a" stroke-width="1.1"/><path d="M5 10 H15 V27 A5 5 0 0 1 5 27 Z" fill="#8a0517"/><ellipse cx="7.5" cy="13" rx="1.3" ry="3.2" fill="#e2647a" opacity=".6"/></svg>
+        <div class="vial-name">Coffin Hoard</div>
+        <div class="vial-amount">+4000 🩸</div>
       </button>
-      <button class="store-buy-tile" data-amount="10000">
-        <span>Ancient Hoard</span>
-        <span class="store-buy-amount">+10000 🩸</span>
+      <button class="vial-tile" data-amount="10000">
+        <svg viewBox="0 0 20 38" width="38" height="38"><rect x="7" y="0" width="6" height="4" rx="1" fill="#5a3a1a"/><path d="M4 4 H16 V29 A6 6 0 0 1 4 29 Z" fill="#fff" stroke="#6b5a4a" stroke-width="1.1"/><path d="M4 8 H16 V29 A6 6 0 0 1 4 29 Z" fill="#8a0517"/><ellipse cx="7" cy="12" rx="1.4" ry="3.6" fill="#e2647a" opacity=".6"/></svg>
+        <div class="vial-name">Ancient Hoard</div>
+        <div class="vial-amount">+10000 🩸</div>
       </button>
+      </div>
     </div>
 
   </div>
@@ -2060,7 +2070,7 @@ document.getElementById('watchAdBtn').addEventListener('click', () => {
   }, 3000);
 });
 
-document.querySelectorAll('.store-buy-tile').forEach(tile => {
+document.querySelectorAll('.vial-tile').forEach(tile => {
   tile.addEventListener('click', () => {
     addDrops(parseInt(tile.dataset.amount, 10));
     renderStore();
