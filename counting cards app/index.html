@@ -243,6 +243,13 @@ button{user-select:none;-webkit-user-select:none;touch-action:manipulation}
 .signature-text em{font-family:var(--display-font);font-style:normal;font-size:15px;color:var(--text)}
 .quiz-score{text-align:center;font-size:13px;color:var(--muted);margin-bottom:10px}
 .drops-badge{position:absolute;top:12px;right:12px;font-family:var(--display-font);font-size:12.5px;font-weight:700;background:var(--gold-pale);color:#7a5f00;padding:5px 11px;border-radius:20px;white-space:nowrap}
+.drops-badge.credit-pulse{animation:creditPulse .6s ease}
+.drops-badge.debit-pulse,.hdr-drops.debit-pulse{animation:debitPulse .5s ease}
+@keyframes debitPulse{
+  0%{transform:scale(1)}
+  35%{transform:scale(.92);box-shadow:0 0 0 6px rgba(138,5,23,.18)}
+  100%{transform:scale(1);box-shadow:0 0 0 0 rgba(138,5,23,0)}
+}
 
 /* Store */
 .store-drops-wrap{position:relative}
@@ -259,6 +266,7 @@ button{user-select:none;-webkit-user-select:none;touch-action:manipulation}
   background:var(--wine);padding:5px 11px;border-radius:8px;white-space:nowrap;
   pointer-events:none;box-shadow:var(--shadow);z-index:600;
 }
+.credit-fly.debit-fly{background:var(--wine-dark)}
 .blood-drip{animation:bloodDrip 2.2s ease-in-out infinite;transform-origin:center top}
 @keyframes bloodDrip{
   0%,100%{transform:translateY(0);opacity:.85}
@@ -1608,6 +1616,7 @@ function dealNewHand(){
   const decksRemaining = Math.max(dealerState.shoe.length / 52, 0.5);
   const trueCountAtBet = dealerState.runningCount / decksRemaining;
   dealerState.drops -= dealerState.currentBet;
+  flashBetTaken(dealerState.currentBet);
 
   const hand = {
     id: ++handIdCounter,
@@ -1754,6 +1763,7 @@ function resolveHand(){
   const dealerTotal = handTotal(dealerCards);
   const dealerBJ = dealerCards.length === 2 && dealerTotal === 21;
 
+  let totalWinPayout = 0;
   h.hands.forEach(hd => {
     const playerTotal = handTotal(hd.cards);
     const playerBJ = h.hands.length === 1 && hd.cards.length === 2 && playerTotal === 21;
@@ -1767,10 +1777,12 @@ function resolveHand(){
     else if(playerTotal < dealerTotal){ result = 'lose'; payout = 0; }
     else { result = 'push'; payout = hd.bet; }
     hd.result = result;
+    hd.payout = payout;
     dealerState.drops += payout;
     dealerState.stats.hands++;
     dealerState.stats[result] = (dealerState.stats[result] || 0) + 1;
     dealerState.handHistory.unshift({ result, correct: hd.movesCorrect, total: hd.movesTotal });
+    if(result === 'win' || result === 'blackjack') totalWinPayout += payout;
   });
   if(dealerState.handHistory.length > 30) dealerState.handHistory.length = 30;
 
@@ -1779,6 +1791,7 @@ function resolveHand(){
   checkQuiz();
   saveDealerState();
   renderDealer();
+  if(totalWinPayout > 0) celebrateHandWin(totalWinPayout);
 }
 
 document.getElementById('dealBtn').addEventListener('click', dealNewHand);
@@ -1933,7 +1946,10 @@ function renderDealer(){
   if(h.stage === 'done'){
     bannerEl.innerHTML = h.hands.map(hd => {
       const label = h.hands.length > 1 ? 'Hand ' + (h.hands.indexOf(hd) + 1) + ': ' : '';
-      const text = hd.result === 'win' ? 'You Win' : hd.result === 'lose' ? 'Dealer Wins' : hd.result === 'push' ? 'Push' : 'Blackjack! You Win';
+      const text = hd.result === 'win' ? 'You Win +' + Math.round(hd.payout) + ' 🩸'
+        : hd.result === 'lose' ? 'Dealer Wins'
+        : hd.result === 'push' ? 'Push'
+        : 'Blackjack! You Win +' + Math.round(hd.payout) + ' 🩸';
       return '<div class="result-banner ' + hd.result + '">' + label + text + '</div>';
     }).join('');
     playActionsEl.style.display = 'none';
@@ -2403,29 +2419,29 @@ function showStorePurchaseMsg(msg){
   el.style.display = msg ? 'block' : 'none';
 }
 
-function pulseCreditBadge(el){
+function pulseBadge(el, cls){
   if(!el) return;
-  el.classList.remove('credit-pulse');
+  el.classList.remove(cls);
   void el.offsetWidth; // restart the animation if it's already mid-run
-  el.classList.add('credit-pulse');
+  el.classList.add(cls);
 }
+function pulseCreditBadge(el){ pulseBadge(el, 'credit-pulse'); }
+function pulseDebitBadge(el){ pulseBadge(el, 'debit-pulse'); }
 
-function celebrateVialPurchase(amount){
-  const startEl = document.getElementById('storeDropsBadge');
-  const targetEl = document.getElementById('hdrDropsBadge');
+// Flies a small token from startEl to targetEl (center to center), then
+// removes it. onArrive fires once the flight animation completes.
+function flyDropsToken(text, startEl, targetEl, extraClass, onArrive){
   if(!targetEl) return;
-  pulseCreditBadge(startEl);
-
-  const targetRect = targetEl.getBoundingClientRect();
   const startRect = (startEl || targetEl).getBoundingClientRect();
+  const targetRect = targetEl.getBoundingClientRect();
   const startX = startRect.left + startRect.width / 2;
   const startY = startRect.top + startRect.height / 2;
   const dx = (targetRect.left + targetRect.width / 2) - startX;
   const dy = (targetRect.top + targetRect.height / 2) - startY;
 
   const fly = document.createElement('div');
-  fly.className = 'credit-fly';
-  fly.textContent = '+' + amount + ' 🩸';
+  fly.className = 'credit-fly' + (extraClass ? ' ' + extraClass : '');
+  fly.textContent = text;
   fly.style.left = startX + 'px';
   fly.style.top = startY + 'px';
   document.body.appendChild(fly);
@@ -2437,8 +2453,43 @@ function celebrateVialPurchase(amount){
   ], { duration: 900, easing: 'cubic-bezier(.3,.55,.35,1)' });
   anim.onfinish = () => {
     fly.remove();
-    pulseCreditBadge(targetEl);
+    if(onArrive) onArrive();
   };
+}
+
+function celebrateVialPurchase(amount){
+  const startEl = document.getElementById('storeDropsBadge');
+  const targetEl = document.getElementById('hdrDropsBadge');
+  pulseCreditBadge(startEl);
+  flyDropsToken('+' + amount + ' 🩸', startEl, targetEl, null, () => pulseCreditBadge(targetEl));
+}
+
+// Fired when a hand is won — flies the payout from the result banner into
+// the in-game Blood Drops badge.
+function celebrateHandWin(amount){
+  const startEl = document.getElementById('resultBanner');
+  const targetEl = document.getElementById('bankrollBadge');
+  flyDropsToken('+' + Math.round(amount) + ' 🩸', startEl, targetEl, null, () => pulseCreditBadge(targetEl));
+}
+
+// Fired every time a new hand's bet leaves the balance — a quick debit
+// flourish rising off the in-game Blood Drops badge.
+function flashBetTaken(amount){
+  const badge = document.getElementById('bankrollBadge');
+  if(!badge) return;
+  pulseDebitBadge(badge);
+  const rect = badge.getBoundingClientRect();
+  const fly = document.createElement('div');
+  fly.className = 'credit-fly debit-fly';
+  fly.textContent = '−' + amount + ' 🩸';
+  fly.style.left = (rect.left + rect.width / 2) + 'px';
+  fly.style.top = (rect.top + rect.height / 2) + 'px';
+  document.body.appendChild(fly);
+  const anim = fly.animate([
+    { transform: 'translate(-50%,-50%) scale(1)', opacity: 1, offset: 0 },
+    { transform: 'translate(-50%,-30%) scale(.9)', opacity: 0, offset: 1 }
+  ], { duration: 700, easing: 'ease-out' });
+  anim.onfinish = () => fly.remove();
 }
 
 function goToVialCheckout(tile){
