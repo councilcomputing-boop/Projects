@@ -1,0 +1,24 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /users/{uid} {
+      allow read: if request.auth != null && request.auth.uid == uid;
+      allow create: if request.auth != null && request.auth.uid == uid
+        && request.resource.data.drops is number
+        && request.resource.data.dropsHigh is number;
+      allow update: if request.auth != null && request.auth.uid == uid
+        && request.resource.data.diff(resource.data).affectedKeys()
+             .hasOnly(['drops', 'dropsHigh', 'disclaimerAckAt']);
+      allow delete: if false;
+
+      // Purchase receipts / idempotency ledger — written only by the Netlify
+      // Function via the Firebase Admin SDK, which bypasses these rules
+      // entirely. `allow write: if false` here blocks any client SDK path,
+      // documenting intent even though the Admin SDK doesn't need it to.
+      match /purchases/{sessionId} {
+        allow read: if request.auth != null && request.auth.uid == uid;
+        allow write: if false;
+      }
+    }
+  }
+}

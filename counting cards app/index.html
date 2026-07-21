@@ -14,6 +14,9 @@
 <link rel="manifest" href="manifest.json">
 <link rel="icon" type="image/png" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-512.png">
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -239,7 +242,37 @@ button{user-select:none;-webkit-user-select:none;touch-action:manipulation}
 .drops-badge{position:absolute;top:12px;right:12px;font-family:var(--display-font);font-size:12.5px;font-weight:700;background:var(--gold-pale);color:#7a5f00;padding:5px 11px;border-radius:20px;white-space:nowrap}
 
 /* Store */
+.store-drops-wrap{position:relative}
 .store-drops-badge{font-family:var(--display-font);font-size:18px;font-weight:700;color:#7a5f00;background:var(--gold-pale);border-radius:10px;padding:10px 14px;text-align:center;margin-bottom:12px}
+.store-drops-badge.credit-pulse{animation:creditPulse .6s ease}
+@keyframes creditPulse{
+  0%{transform:scale(1)}
+  35%{transform:scale(1.1);box-shadow:0 0 0 8px rgba(138,5,23,.22)}
+  100%{transform:scale(1);box-shadow:0 0 0 0 rgba(138,5,23,0)}
+}
+.credit-float{
+  position:absolute;left:50%;top:0;transform:translate(-50%,0);
+  font-family:var(--display-font);font-weight:700;font-size:14px;color:#f3e6bf;
+  background:var(--wine);padding:5px 11px;border-radius:8px;white-space:nowrap;
+  pointer-events:none;box-shadow:var(--shadow);z-index:5;
+  animation:creditFloat 1.6s ease-out forwards;
+}
+@keyframes creditFloat{
+  0%{opacity:0;transform:translate(-50%,8px) scale(.85)}
+  15%{opacity:1;transform:translate(-50%,-4px) scale(1.05)}
+  78%{opacity:1}
+  100%{opacity:0;transform:translate(-50%,-54px) scale(1)}
+}
+.blood-drip{animation:bloodDrip 2.2s ease-in-out infinite;transform-origin:center top}
+@keyframes bloodDrip{
+  0%,100%{transform:translateY(0);opacity:.85}
+  50%{transform:translateY(2.5px);opacity:1}
+}
+.hoard-sparkle{animation:hoardTwinkle 1.8s ease-in-out infinite;transform-origin:center}
+@keyframes hoardTwinkle{
+  0%,100%{opacity:.35;transform:scale(.7)}
+  50%{opacity:1;transform:scale(1.15)}
+}
 .store-row-2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .store-tile{background:var(--gray-pale);border:none;border-radius:var(--r);padding:14px 8px;text-align:center;cursor:pointer}
 .store-tile:active{opacity:.75}
@@ -253,6 +286,7 @@ button{user-select:none;-webkit-user-select:none;touch-action:manipulation}
 .vial-tile svg{display:block}
 .vial-name{font-size:11.5px;font-weight:700;color:var(--text)}
 .vial-amount{font-family:var(--display-font);font-size:12px;font-weight:700;color:#7a5f00}
+.vial-price{font-size:10.5px;font-weight:600;color:var(--muted)}
 .store-buy-amount{font-family:var(--display-font);font-weight:700;color:#7a5f00}
 .ad-progress-track{background:var(--gray-pale);border-radius:10px;height:10px;overflow:hidden;margin:12px 0}
 .ad-progress-bar{background:var(--gold);height:100%;width:0%}
@@ -265,6 +299,7 @@ button{user-select:none;-webkit-user-select:none;touch-action:manipulation}
 .quiz-title{font-family:var(--display-font);font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px}
 .quiz-question{font-size:16px;font-weight:700;margin-bottom:14px}
 .quiz-input{width:100%;font-size:22px;text-align:center;padding:10px;border:1.5px solid var(--border);border-radius:8px;margin-bottom:12px}
+.auth-input{width:100%;font-size:15px;padding:11px 12px;border:1.5px solid var(--border);border-radius:8px;font-family:var(--body-font)}
 .quiz-feedback{font-size:14.5px;font-weight:700;margin:6px 0;min-height:20px}
 .quiz-feedback.correct{color:var(--green2)}
 .quiz-feedback.incorrect{color:var(--red)}
@@ -612,7 +647,10 @@ button{user-select:none;-webkit-user-select:none;touch-action:manipulation}
   <!-- ===================== STORE VIEW ===================== -->
   <div class="view" id="storeView">
 
-    <div class="store-drops-badge" id="storeDropsBadge">🩸 1000</div>
+    <div class="store-drops-wrap" id="storeDropsWrap">
+      <div class="store-drops-badge" id="storeDropsBadge">🩸 1000</div>
+    </div>
+    <div class="hint" id="storePurchaseMsg" style="display:none;text-align:center;font-weight:700;margin-bottom:10px"></div>
 
     <div class="card">
       <div class="card-title">Daily Streak</div>
@@ -638,31 +676,53 @@ button{user-select:none;-webkit-user-select:none;touch-action:manipulation}
 
     <div class="card">
       <div class="card-title">Blood Vials</div>
+      <div class="hint" style="margin-top:-6px;margin-bottom:10px">Entertainment only — no cash value, no cash-out.</div>
       <div class="vial-grid">
-      <button class="vial-tile" data-amount="50">
+      <button class="vial-tile" data-amount="50" data-link="https://buy.stripe.com/fZu4gz1Im6MN6WXfmDgnK03">
         <svg viewBox="0 0 20 32" width="22" height="30"><rect x="7" y="0" width="6" height="4" rx="1" fill="#5a3a1a"/><path d="M6 4 H14 V22 A4 4 0 0 1 6 22 Z" fill="#fff" stroke="#6b5a4a" stroke-width="1.1"/><path d="M6 15 H14 V22 A4 4 0 0 1 6 22 Z" fill="#8a0517"/><ellipse cx="8" cy="17" rx="1" ry="2" fill="#e2647a" opacity=".6"/></svg>
         <div class="vial-name">Tiny Vial</div>
         <div class="vial-amount">+50 🩸</div>
+        <div class="vial-price">$0.99</div>
       </button>
-      <button class="vial-tile" data-amount="200">
+      <button class="vial-tile" data-amount="200" data-link="https://buy.stripe.com/fZueVddr41sta99gqHgnK04">
         <svg viewBox="0 0 20 32" width="26" height="32"><rect x="7" y="0" width="6" height="4" rx="1" fill="#5a3a1a"/><path d="M6 4 H14 V23 A4 4 0 0 1 6 23 Z" fill="#fff" stroke="#6b5a4a" stroke-width="1.1"/><path d="M6 14 H14 V23 A4 4 0 0 1 6 23 Z" fill="#8a0517"/><ellipse cx="8" cy="16.5" rx="1.1" ry="2.4" fill="#e2647a" opacity=".6"/></svg>
         <div class="vial-name">Small Vial</div>
         <div class="vial-amount">+200 🩸</div>
+        <div class="vial-price">$2.99</div>
       </button>
-      <button class="vial-tile" data-amount="1000">
+      <button class="vial-tile" data-amount="1000" data-link="https://buy.stripe.com/00w8wP86K2wxa99cargnK05">
         <svg viewBox="0 0 20 34" width="30" height="34"><rect x="7" y="0" width="6" height="4" rx="1" fill="#5a3a1a"/><path d="M6 4 H14 V25 A4 4 0 0 1 6 25 Z" fill="#fff" stroke="#6b5a4a" stroke-width="1.1"/><path d="M6 12 H14 V25 A4 4 0 0 1 6 25 Z" fill="#8a0517"/><ellipse cx="8" cy="15" rx="1.2" ry="2.8" fill="#e2647a" opacity=".6"/></svg>
         <div class="vial-name">Large Vial</div>
         <div class="vial-amount">+1000 🩸</div>
+        <div class="vial-price">$9.99</div>
       </button>
-      <button class="vial-tile" data-amount="4000">
-        <svg viewBox="0 0 20 36" width="34" height="36"><rect x="7" y="0" width="6" height="4" rx="1" fill="#5a3a1a"/><path d="M5 4 H15 V27 A5 5 0 0 1 5 27 Z" fill="#fff" stroke="#6b5a4a" stroke-width="1.1"/><path d="M5 10 H15 V27 A5 5 0 0 1 5 27 Z" fill="#8a0517"/><ellipse cx="7.5" cy="13" rx="1.3" ry="3.2" fill="#e2647a" opacity=".6"/></svg>
+      <button class="vial-tile" data-amount="4000" data-link="https://buy.stripe.com/00wcN5aeS6MNepp1vNgnK06">
+        <svg viewBox="0 0 30 40" width="30" height="40">
+          <path d="M11 2 L19 2 L25 10 L19 30 L11 30 L5 10 Z" fill="#4a2f18" stroke="#2a1810" stroke-width="1.1"/>
+          <path d="M7.5 7 H22.5" stroke="#2a1810" stroke-width="1" opacity=".5"/>
+          <path d="M10 28 C8.8 30 8.8 31.6 10 33 C11.2 31.6 11.2 30 10 28 Z" fill="#8a0517" class="blood-drip" style="animation-delay:.5s"/>
+          <path d="M15 30 C13.3 33 13.3 35.5 15 37.5 C16.7 35.5 16.7 33 15 30 Z" fill="#8a0517" class="blood-drip"/>
+          <path d="M20 28 C18.8 30 18.8 31.6 20 33 C21.2 31.6 21.2 30 20 28 Z" fill="#8a0517" class="blood-drip" style="animation-delay:1s"/>
+        </svg>
         <div class="vial-name">Coffin Hoard</div>
         <div class="vial-amount">+4000 🩸</div>
+        <div class="vial-price">$29.99</div>
       </button>
-      <button class="vial-tile" data-amount="10000">
-        <svg viewBox="0 0 20 38" width="38" height="38"><rect x="7" y="0" width="6" height="4" rx="1" fill="#5a3a1a"/><path d="M4 4 H16 V29 A6 6 0 0 1 4 29 Z" fill="#fff" stroke="#6b5a4a" stroke-width="1.1"/><path d="M4 8 H16 V29 A6 6 0 0 1 4 29 Z" fill="#8a0517"/><ellipse cx="7" cy="12" rx="1.4" ry="3.6" fill="#e2647a" opacity=".6"/></svg>
+      <button class="vial-tile" data-amount="10000" data-link="https://buy.stripe.com/3cI7sL9aO1stbdd4HZgnK07">
+        <svg viewBox="0 0 38 38" width="38" height="38">
+          <path d="M6 16 Q19 4 32 16 Z" fill="#6b4423" stroke="#2a1810" stroke-width="1.1"/>
+          <rect x="6" y="16" width="26" height="15" rx="2" fill="#4a2f18" stroke="#2a1810" stroke-width="1.1"/>
+          <rect x="6" y="20.5" width="26" height="3" fill="#8a6d1a"/>
+          <circle cx="19" cy="22" r="2.1" fill="#c9a227" stroke="#2a1810" stroke-width=".6"/>
+          <circle cx="11" cy="31" r="2.2" fill="#c9a227" stroke="#8a6d1a" stroke-width=".5"/>
+          <circle cx="16" cy="32.5" r="2" fill="#e8c96b" stroke="#8a6d1a" stroke-width=".5"/>
+          <circle cx="22" cy="32" r="2.1" fill="#c9a227" stroke="#8a6d1a" stroke-width=".5"/>
+          <path d="M30 7 L31 9.4 L33.4 10.4 L31 11.4 L30 13.8 L29 11.4 L26.6 10.4 L29 9.4 Z" fill="#f3e6bf" class="hoard-sparkle"/>
+          <path d="M8 5 L8.7 6.7 L10.4 7.4 L8.7 8.1 L8 9.8 L7.3 8.1 L5.6 7.4 L7.3 6.7 Z" fill="#f3e6bf" class="hoard-sparkle" style="animation-delay:.6s"/>
+        </svg>
         <div class="vial-name">Ancient Hoard</div>
         <div class="vial-amount">+10000 🩸</div>
+        <div class="vial-price">$59.99</div>
       </button>
       </div>
     </div>
@@ -688,8 +748,35 @@ button{user-select:none;-webkit-user-select:none;touch-action:manipulation}
     </div>
   </div>
 
+  <div class="quiz-overlay" id="disclaimerOverlay" style="display:none">
+    <div class="quiz-box">
+      <div class="quiz-title">Before You Buy</div>
+      <div class="quiz-question" style="font-size:14px;font-weight:400">Blood Drops are a virtual in-app currency for entertainment only. They have no cash value and cannot be redeemed, exchanged, refunded, or cashed out for real money. All purchases are final.</div>
+      <button class="btn" id="disclaimerAckBtn" style="background:var(--wine);color:#f3e6bf;margin-top:14px">I Understand</button>
+    </div>
+  </div>
+
   <!-- ===================== ACCOUNT VIEW ===================== -->
   <div class="view" id="accountView">
+
+    <div class="card" id="authCard">
+      <div class="card-title">Account</div>
+      <div id="authSignedOut">
+        <div class="hint" style="margin-top:0">Sign in to buy Blood Drops in the Store and keep them synced across devices. Everything else works fine without an account.</div>
+        <input type="email" id="authEmail" class="auth-input" placeholder="Email" autocomplete="email" style="margin-top:8px">
+        <input type="password" id="authPass" class="auth-input" placeholder="Password" autocomplete="current-password" style="margin-top:8px">
+        <div class="hint" id="authError" style="color:var(--red);display:none;margin-top:6px"></div>
+        <div class="btn-row" style="margin-top:10px">
+          <button class="btn" id="authSignInBtn" style="background:var(--wine);color:#f3e6bf">Sign In</button>
+          <button class="btn" id="authSignUpBtn" style="background:var(--gray-pale);color:var(--text)">Sign Up</button>
+        </div>
+        <div class="hint" id="authForgotBtn" style="margin-top:8px;text-decoration:underline;cursor:pointer">Forgot password?</div>
+      </div>
+      <div id="authSignedIn" style="display:none">
+        <div class="hint" style="margin-top:0">Signed in as <b id="authEmailDisplay"></b></div>
+        <button class="btn" id="authSignOutBtn" style="background:var(--gray-pale);color:var(--text);margin-top:10px">Sign Out</button>
+      </div>
+    </div>
 
     <div class="card">
       <div class="card-title">Peek / Quiz Settings</div>
@@ -757,6 +844,105 @@ button{user-select:none;-webkit-user-select:none;touch-action:manipulation}
 </div>
 
 <script>
+/* ============================================================ */
+/* Firebase (Auth + Firestore) — sign-in is optional, gated only */
+/* at the Store purchase flow; nothing else requires an account.*/
+/* Everything in this block is defensively guarded: if the SDK  */
+/* fails to load or the config is still the placeholder, the    */
+/* rest of the app (all game modes) must keep working normally. */
+/* ============================================================ */
+const firebaseConfig = {
+  apiKey: 'AIzaSyAKjpkly-sczi0pkHGBie3ln255dN7iyF0',
+  authDomain: 'countdraculacards.firebaseapp.com',
+  projectId: 'countdraculacards',
+  storageBucket: 'countdraculacards.firebasestorage.app',
+  messagingSenderId: '816463243138',
+  appId: '1:816463243138:web:b1f345db4fda7e6dec119b'
+};
+let auth = null;
+let fsDb = null;
+let currentUser = null;
+let firebaseReady = false;
+try{
+  if(typeof firebase !== 'undefined' && firebaseConfig.apiKey !== 'REPLACE_ME'){
+    firebase.initializeApp(firebaseConfig);
+    auth = firebase.auth();
+    fsDb = firebase.firestore();
+    firebaseReady = true;
+  }
+}catch(e){
+  console.warn('Firebase unavailable — sign-in/purchases disabled, rest of the app is unaffected.', e);
+}
+
+function authFriendlyError(code){
+  switch(code){
+    case 'auth/invalid-email': return 'That email address looks invalid.';
+    case 'auth/user-not-found':
+    case 'auth/wrong-password':
+    case 'auth/invalid-credential': return 'Email or password is incorrect.';
+    case 'auth/email-already-in-use': return 'An account already exists for that email — try signing in instead.';
+    case 'auth/weak-password': return 'Password should be at least 6 characters.';
+    default: return 'Something went wrong — please try again.';
+  }
+}
+function showAuthError(msg){
+  const el = document.getElementById('authError');
+  el.textContent = msg;
+  el.style.display = msg ? 'block' : 'none';
+}
+if(!firebaseReady){
+  showAuthError('Sign-in isn\'t set up yet on this deploy — everything else still works.');
+}
+document.getElementById('authSignInBtn').addEventListener('click', async () => {
+  if(!firebaseReady) return;
+  showAuthError('');
+  const email = document.getElementById('authEmail').value.trim();
+  const pass = document.getElementById('authPass').value;
+  if(!email || !pass){ showAuthError('Enter an email and password.'); return; }
+  try{ await auth.signInWithEmailAndPassword(email, pass); }
+  catch(e){ showAuthError(authFriendlyError(e.code)); }
+});
+document.getElementById('authSignUpBtn').addEventListener('click', async () => {
+  if(!firebaseReady) return;
+  showAuthError('');
+  const email = document.getElementById('authEmail').value.trim();
+  const pass = document.getElementById('authPass').value;
+  if(!email || !pass){ showAuthError('Enter an email and password.'); return; }
+  try{ await auth.createUserWithEmailAndPassword(email, pass); }
+  catch(e){ showAuthError(authFriendlyError(e.code)); }
+});
+document.getElementById('authForgotBtn').addEventListener('click', async () => {
+  if(!firebaseReady) return;
+  showAuthError('');
+  const email = document.getElementById('authEmail').value.trim();
+  if(!email){ showAuthError('Enter your email above first, then tap "Forgot password?" again.'); return; }
+  try{
+    await auth.sendPasswordResetEmail(email);
+    showAuthError('Password reset email sent.');
+  }catch(e){ showAuthError(authFriendlyError(e.code)); }
+});
+document.getElementById('authSignOutBtn').addEventListener('click', () => { if(firebaseReady) auth.signOut(); });
+
+if(firebaseReady){
+  auth.onAuthStateChanged((user) => {
+    currentUser = user;
+    const signedOutEl = document.getElementById('authSignedOut');
+    const signedInEl = document.getElementById('authSignedIn');
+    if(user){
+      signedOutEl.style.display = 'none';
+      signedInEl.style.display = 'block';
+      document.getElementById('authEmailDisplay').textContent = user.email;
+      showAuthError('');
+      startDealerSync(user.uid);
+      verifyPendingPurchase(user.uid);
+    } else {
+      signedOutEl.style.display = 'block';
+      signedInEl.style.display = 'none';
+      stopDealerSync();
+    }
+  });
+}
+
 /* ============================================================ */
 /* Shared Hi-Lo helpers                                          */
 /* ============================================================ */
@@ -1025,7 +1211,7 @@ function defaultDealerState(){
     strategy: { correct: 0, total: 0 }, coachingEnabled: true,
     drops: 1000, dropsHigh: 1000, currentBet: 25, betCoachingEnabled: true,
     stats: { hands: 0, win: 0, lose: 0, push: 0, blackjack: 0 },
-    handHistory: []
+    handHistory: [], disclaimerAckAt: null
   };
 }
 
@@ -1044,6 +1230,7 @@ function loadDealerState(){
       if(typeof saved.betCoachingEnabled !== 'boolean') saved.betCoachingEnabled = true;
       if(!saved.stats) saved.stats = { hands: 0, win: 0, lose: 0, push: 0, blackjack: 0 };
       if(!Array.isArray(saved.handHistory)) saved.handHistory = [];
+      if(typeof saved.disclaimerAckAt === 'undefined') saved.disclaimerAckAt = null;
       if(saved.hand && !saved.hand.hands) saved.hand = null; // drop incompatible old-shape in-progress hand
       return saved;
     }
@@ -1059,7 +1246,88 @@ document.getElementById('betCoachingToggle').checked = dealerState.betCoachingEn
 
 function saveDealerState(){
   localStorage.setItem(DEALER_KEY, JSON.stringify(dealerState));
+  pushDropsDebounced();
 }
+
+/* ---- Firestore drops sync (signed-in users only; gameplay stays local-first) ---- */
+let dealerDocUnsub = null;
+let dealerSyncTimer = null;
+let lastPushedDrops = null;
+let lastPushedDropsHigh = null;
+
+function refreshEconomyUI(){
+  try{ renderDealer(); }catch(e){}
+  try{ renderStats(); }catch(e){}
+  try{ renderStore(); }catch(e){}
+}
+
+async function startDealerSync(uid){
+  if(!firebaseReady) return;
+  const docRef = fsDb.collection('users').doc(uid);
+  try{
+    const snap = await docRef.get();
+    if(snap.exists){
+      const data = snap.data();
+      if(typeof data.drops === 'number') dealerState.drops = data.drops;
+      // dropsHigh must never fall below the current balance — a purchase only
+      // increments `drops` server-side, so re-derive the max defensively here
+      // rather than trusting Firestore's dropsHigh field in isolation.
+      dealerState.dropsHigh = Math.max(dealerState.dropsHigh, dealerState.drops, typeof data.dropsHigh === 'number' ? data.dropsHigh : 0);
+      if(data.disclaimerAckAt) dealerState.disclaimerAckAt = data.disclaimerAckAt;
+      localStorage.setItem(DEALER_KEY, JSON.stringify(dealerState));
+    } else {
+      await docRef.set({ drops: dealerState.drops, dropsHigh: dealerState.dropsHigh, disclaimerAckAt: dealerState.disclaimerAckAt || null }, { merge: true });
+    }
+    lastPushedDrops = dealerState.drops;
+    lastPushedDropsHigh = dealerState.dropsHigh;
+    refreshEconomyUI();
+  }catch(e){ console.warn('Firestore initial drops sync failed', e); }
+
+  dealerDocUnsub = docRef.onSnapshot((snap) => {
+    if(!snap.exists) return;
+    const data = snap.data();
+    const incomingDrops = typeof data.drops === 'number' ? data.drops : dealerState.drops;
+    const incomingHighRaw = typeof data.dropsHigh === 'number' ? data.dropsHigh : dealerState.dropsHigh;
+    if(incomingDrops === lastPushedDrops && incomingHighRaw === lastPushedDropsHigh) return; // echo of our own push
+    // Same defensive max as the initial fetch — a purchase-credit snapshot only
+    // touches `drops`, so dropsHigh must be re-derived, not trusted in isolation.
+    const incomingHigh = Math.max(incomingHighRaw, incomingDrops, dealerState.dropsHigh);
+    dealerState.drops = incomingDrops;
+    dealerState.dropsHigh = incomingHigh;
+    lastPushedDrops = incomingDrops;
+    lastPushedDropsHigh = incomingHigh;
+    localStorage.setItem(DEALER_KEY, JSON.stringify(dealerState));
+    refreshEconomyUI();
+  }, (err) => console.warn('Firestore drops listener error', err));
+}
+
+function stopDealerSync(){
+  if(dealerDocUnsub){ dealerDocUnsub(); dealerDocUnsub = null; }
+  clearTimeout(dealerSyncTimer);
+  lastPushedDrops = null;
+  lastPushedDropsHigh = null;
+}
+
+function flushDropsPush(){
+  if(!firebaseReady || !currentUser) return;
+  clearTimeout(dealerSyncTimer);
+  const uid = currentUser.uid;
+  const drops = dealerState.drops, dropsHigh = dealerState.dropsHigh;
+  lastPushedDrops = drops;
+  lastPushedDropsHigh = dropsHigh;
+  fsDb.collection('users').doc(uid).set({ drops, dropsHigh }, { merge: true })
+    .catch(e => console.warn('Drops push failed', e));
+}
+
+function pushDropsDebounced(){
+  if(!firebaseReady || !currentUser) return;
+  clearTimeout(dealerSyncTimer);
+  dealerSyncTimer = setTimeout(flushDropsPush, 3500);
+}
+
+document.addEventListener('visibilitychange', () => {
+  if(document.hidden) flushDropsPush();
+});
 
 function rebuildShoe(){
   dealerState.shoe = buildShoe(dealerState.numDecks);
@@ -2070,12 +2338,100 @@ document.getElementById('watchAdBtn').addEventListener('click', () => {
   }, 3000);
 });
 
+function showStorePurchaseMsg(msg){
+  const el = document.getElementById('storePurchaseMsg');
+  el.textContent = msg;
+  el.style.display = msg ? 'block' : 'none';
+}
+
+function celebrateVialPurchase(amount){
+  const badge = document.getElementById('storeDropsBadge');
+  const wrap = document.getElementById('storeDropsWrap');
+  if(!badge || !wrap) return;
+  badge.classList.remove('credit-pulse');
+  void badge.offsetWidth; // restart the animation if it's already mid-run
+  badge.classList.add('credit-pulse');
+  const float = document.createElement('div');
+  float.className = 'credit-float';
+  float.textContent = '+' + amount + ' 🩸';
+  wrap.appendChild(float);
+  setTimeout(() => float.remove(), 1700);
+}
+
+function goToVialCheckout(tile){
+  const link = tile.dataset.link;
+  if(!link || link.includes('REPLACE_ME')){
+    showStorePurchaseMsg('Blood Vial purchases aren\'t set up yet on this deploy.');
+    return;
+  }
+  const url = new URL(link);
+  url.searchParams.set('client_reference_id', currentUser.uid);
+  window.location.href = url.toString();
+}
+
+let pendingVialTile = null;
 document.querySelectorAll('.vial-tile').forEach(tile => {
   tile.addEventListener('click', () => {
-    addDrops(parseInt(tile.dataset.amount, 10));
-    renderStore();
+    if(!firebaseReady || !currentUser){
+      setActiveTab('account');
+      showAuthError('Sign in above to buy Blood Drops.');
+      return;
+    }
+    if(!dealerState.disclaimerAckAt){
+      pendingVialTile = tile;
+      document.getElementById('disclaimerOverlay').style.display = 'flex';
+      return;
+    }
+    goToVialCheckout(tile);
   });
 });
+
+document.getElementById('disclaimerAckBtn').addEventListener('click', () => {
+  dealerState.disclaimerAckAt = Date.now();
+  saveDealerState();
+  if(firebaseReady && currentUser){
+    fsDb.collection('users').doc(currentUser.uid)
+      .set({ disclaimerAckAt: dealerState.disclaimerAckAt }, { merge: true })
+      .catch(e => console.warn('Disclaimer ack push failed', e));
+  }
+  document.getElementById('disclaimerOverlay').style.display = 'none';
+  if(pendingVialTile){
+    goToVialCheckout(pendingVialTile);
+    pendingVialTile = null;
+  }
+});
+
+/* ---- Return from Stripe Checkout: verify + credit the purchase ---- */
+let pendingPurchaseSessionId = new URLSearchParams(location.search).get('session_id');
+if(pendingPurchaseSessionId){
+  history.replaceState(null, '', location.pathname);
+}
+
+async function verifyPendingPurchase(uid){
+  if(!pendingPurchaseSessionId) return;
+  const sessionId = pendingPurchaseSessionId;
+  pendingPurchaseSessionId = null; // only ever attempt once, regardless of outcome
+  setActiveTab('store');
+  try{
+    const resp = await fetch('/.netlify/functions/verify-payment', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sessionId, uid })
+    });
+    const data = await resp.json().catch(() => null);
+    if(resp.ok && data && data.success){
+      showStorePurchaseMsg(data.alreadyCredited
+        ? 'This purchase was already credited.'
+        : ('+' + data.amount + ' 🩸 credited — thank you!'));
+      if(!data.alreadyCredited) celebrateVialPurchase(data.amount);
+    } else {
+      showStorePurchaseMsg('We could not verify that payment. If you were charged, please contact support.');
+    }
+  }catch(e){
+    console.warn('Purchase verification request failed', e);
+    showStorePurchaseMsg('Could not reach the payment verification server. If you were charged, please contact support.');
+  }
+}
 
 /* ============================================================ */
 /* PWA registration                                               */
