@@ -28,6 +28,7 @@
   --text:#241614;--muted:#6b5a4a;--border:#ded0b0;
   --bg:#0d0508;--card:#f7f0dd;
   --wine:#2a0a12;--wine-dark:#150408;
+  --felt:#122b1c;--felt-light:#1c3f2a;
   --cardback1:#7a0c1e;--cardback2:#170509;
   --r:12px;--shadow:0 2px 10px rgba(0,0,0,.35);
   --display-font:'Cinzel',Georgia,serif;--body-font:'EB Garamond',Georgia,'Times New Roman',serif;
@@ -61,7 +62,7 @@ button{user-select:none;-webkit-user-select:none;touch-action:manipulation}
 .hdr-drops{background:rgba(255,255,255,.15);color:#f3e6bf;font-family:var(--display-font);font-weight:700;font-size:12.5px;padding:7px 10px;border-radius:10px;flex-shrink:0;white-space:nowrap;transition:transform .2s ease,box-shadow .2s ease}
 .hdr.hdr-big .hdr-drops{position:absolute;top:10px;right:14px}
 .hdr-drops.credit-pulse{animation:creditPulse .6s ease}
-.dealer-portrait{display:block;width:62px;margin:0 auto 4px;filter:drop-shadow(0 6px 14px rgba(0,0,0,.5))}
+.dealer-portrait{display:block;width:56px;height:56px;margin:0 auto 6px;border-radius:50%;object-fit:cover;object-position:top center;box-shadow:0 0 0 2px var(--gold),0 3px 8px rgba(0,0,0,.4)}
 .hdr-title{font-family:var(--display-font);font-size:19px;font-weight:700;letter-spacing:1px;color:#f3e6bf;text-shadow:0 0 12px rgba(201,162,39,.35);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .hdr-sub{font-size:11px;color:#c9a9a9;margin-top:1px;font-style:italic;letter-spacing:.3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .menu-link{background:rgba(255,255,255,.15);color:#fff;border:none;border-radius:10px;padding:8px 12px;font-weight:700;font-size:12.5px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;flex-shrink:0}
@@ -266,6 +267,18 @@ button{user-select:none;-webkit-user-select:none;touch-action:manipulation}
 .hand-review-list{text-align:left;font-size:14px;line-height:1.5;margin-bottom:4px}
 .hand-review-list>div{margin-bottom:8px}
 .hand-review-list>div:last-child{margin-bottom:0}
+.frame-hdr{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin:10px 0}
+.frame-hdr .bet-stepper-badge,.frame-hdr .drops-badge{position:static}
+.felt{
+  background:radial-gradient(circle at 50% 0%,var(--felt-light),var(--felt));
+  border-radius:10px;border:3px solid #3a2410;padding:14px 12px;margin:10px 0;
+  position:relative;min-height:230px;display:flex;flex-direction:column;
+}
+.felt .table-label,.felt .hand-badge{color:#c9b896}
+.felt .hand-total{color:#f3e6bf}
+.felt .hand-review-line{color:var(--gold-pale)}
+.felt-empty-hint{margin:auto;text-align:center;font-size:13px;color:#c9b896;font-style:italic}
+.felt-msg-zone{min-height:24px;margin-top:6px}
 
 /* Store */
 .store-drops-wrap{position:relative}
@@ -527,13 +540,22 @@ button{user-select:none;-webkit-user-select:none;touch-action:manipulation}
           <option value="8">8 decks</option>
         </select>
       </div>
+
+      <div class="frame-hdr">
+        <div class="icon-btn-row" style="margin:0">
+          <button class="peek-icon-btn" id="peekBtn" aria-label="Click to reveal the running count">👁</button>
+          <button class="peek-icon-btn" id="betTipBtn" aria-label="Get a betting tip" style="display:none">💡</button>
+        </div>
+        <div class="bet-stepper-badge" id="betStepperBadge">
+          <button class="bet-step-btn" id="betDecBtn" aria-label="Decrease bet">−</button>
+          <span>Bet <b id="currentBetValue">25</b> 🩸</span>
+          <button class="bet-step-btn" id="betIncBtn" aria-label="Increase bet">+</button>
+        </div>
+        <div class="drops-badge" id="bankrollBadge">🩸 1000</div>
+      </div>
+
       <div class="hint" id="dealerModeHint">Hold the button below to peek at the count.</div>
       <div class="quiz-feedback" id="betFeedback"></div>
-
-      <div class="icon-btn-row">
-        <button class="peek-icon-btn" id="peekBtn" aria-label="Click to reveal the running count">👁</button>
-        <button class="peek-icon-btn" id="betTipBtn" aria-label="Get a betting tip" style="display:none">💡</button>
-      </div>
       <div class="peek-count-badge" id="peekCountBadge" style="display:none">
         <span class="peek-rc" id="peekRC">0</span>
         <span class="peek-tc" id="peekTC"></span>
@@ -551,37 +573,35 @@ button{user-select:none;-webkit-user-select:none;touch-action:manipulation}
       </div>
 
       <div class="quiz-score" id="quizScore" style="display:none">Running: 0/0 · True: 0/0</div>
-    </div>
 
-    <div class="card" style="position:relative">
-      <div class="bet-stepper-badge" id="betStepperBadge">
-        <button class="bet-step-btn" id="betDecBtn" aria-label="Decrease bet">−</button>
-        <span>Bet <b id="currentBetValue">25</b> 🩸</span>
-        <button class="bet-step-btn" id="betIncBtn" aria-label="Increase bet">+</button>
-      </div>
-      <div class="drops-badge" id="bankrollBadge">🩸 1000</div>
-      <div id="resultBanner"></div>
-      <div class="hint hand-review-line" id="handReviewLine" style="display:none"></div>
-
-      <div class="dealer-portrait-wrap">
-        <img src="dealer-dracula.png" alt="Count Dracula, your dealer" class="dealer-portrait" id="dealerPortrait">
-      </div>
-      <div class="dealer-speech" id="dealerSpeech"></div>
-
-      <div id="handArea" style="display:none">
-        <div class="table-label">Dealer</div>
-        <div class="card-row" id="dealerCards"></div>
-        <div class="hand-total" id="dealerTotal">&nbsp;</div>
-
-        <div class="table-label">You</div>
-        <div id="playerHandsArea"></div>
-
-        <div class="btn-row" id="playActions">
-          <button class="btn btn-hit" id="hitBtn">Hit</button>
-          <button class="btn btn-stand" id="standBtn">Stand</button>
-          <button class="btn btn-double" id="doubleBtn">Double</button>
-          <button class="btn btn-split" id="splitBtn" style="display:none">Split</button>
+      <div class="felt">
+        <div class="dealer-portrait-wrap">
+          <img src="dealer-dracula.png" alt="Count Dracula, your dealer" class="dealer-portrait" id="dealerPortrait">
         </div>
+        <div class="dealer-speech" id="dealerSpeech"></div>
+
+        <div class="felt-empty-hint" id="feltEmptyHint">Place your bet and deal the shoe.</div>
+
+        <div id="handArea" style="display:none">
+          <div class="table-label">Dealer</div>
+          <div class="card-row" id="dealerCards"></div>
+          <div class="hand-total" id="dealerTotal">&nbsp;</div>
+
+          <div class="table-label">You</div>
+          <div id="playerHandsArea"></div>
+        </div>
+
+        <div class="felt-msg-zone">
+          <div id="resultBanner"></div>
+          <div class="hint hand-review-line" id="handReviewLine" style="display:none"></div>
+        </div>
+      </div>
+
+      <div class="btn-row" id="playActions">
+        <button class="btn btn-hit" id="hitBtn">Hit</button>
+        <button class="btn btn-stand" id="standBtn">Stand</button>
+        <button class="btn btn-double" id="doubleBtn">Double</button>
+        <button class="btn btn-split" id="splitBtn" style="display:none">Split</button>
       </div>
       <button class="btn btn-outline" id="dealBtn">Deal Hand</button>
       <button class="btn btn-outline" id="newShoeBtn" style="margin-top:8px">Shuffle New Shoe</button>
@@ -2078,6 +2098,7 @@ function renderDealer(){
 
   if(!h){
     document.getElementById('handArea').style.display = 'none';
+    document.getElementById('feltEmptyHint').style.display = 'block';
     document.getElementById('dealerModeHint').style.display = 'block';
     dealerCardsEl.innerHTML = '';
     handsAreaEl.innerHTML = '';
@@ -2090,6 +2111,7 @@ function renderDealer(){
     return;
   }
   document.getElementById('handArea').style.display = 'block';
+  document.getElementById('feltEmptyHint').style.display = 'none';
   document.getElementById('dealerModeHint').style.display = 'none';
 
   if(h.id !== lastRender.handId){
