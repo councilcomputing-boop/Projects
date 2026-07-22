@@ -11,11 +11,11 @@ if (!admin.apps.length) {
 // trust a drop amount sent in the request body. Each Vial's Payment Link has
 // a distinct one-time price, so amount_total alone identifies the tier.
 const AMOUNT_TO_DROPS = {
-  99:   { amount: 100,   tier: 'tiny_vial' },
-  299:  { amount: 350,   tier: 'small_vial' },
-  999:  { amount: 1300,  tier: 'large_vial' },
-  2999: { amount: 4500,  tier: 'coffin_hoard' },
-  5999: { amount: 10500, tier: 'ancient_hoard' }
+  99:   { amount: 1000,   tier: 'tiny_vial' },
+  299:  { amount: 3500,   tier: 'small_vial' },
+  999:  { amount: 13000,  tier: 'large_vial' },
+  2999: { amount: 45000,  tier: 'coffin_hoard' },
+  5999: { amount: 105000, tier: 'ancient_hoard' }
 };
 
 exports.handler = async (event) => {
