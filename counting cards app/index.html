@@ -691,7 +691,7 @@ button{user-select:none;-webkit-user-select:none;touch-action:manipulation}
 
     <div class="card">
       <div class="card-title">Blood Vials</div>
-      <div class="hint" style="margin-top:-6px;margin-bottom:10px">Entertainment only — no cash value, no cash-out.</div>
+      <div class="hint" style="margin-top:-6px;margin-bottom:10px">Entertainment only — no cash value, no cash-out. No purchase is ever necessary — every game mode is fully playable for free.</div>
       <div class="vial-grid">
       <button class="vial-tile" data-amount="100" data-link="https://buy.stripe.com/fZu4gz1Im6MN6WXfmDgnK03">
         <svg viewBox="0 0 20 32" width="22" height="30"><rect x="7" y="0" width="6" height="4" rx="1" fill="#5a3a1a"/><path d="M6 4 H14 V22 A4 4 0 0 1 6 22 Z" fill="#fff" stroke="#6b5a4a" stroke-width="1.1"/><path d="M6 15 H14 V22 A4 4 0 0 1 6 22 Z" fill="#8a0517"/><ellipse cx="8" cy="17" rx="1" ry="2" fill="#e2647a" opacity=".6"/></svg>
@@ -788,6 +788,22 @@ button{user-select:none;-webkit-user-select:none;touch-action:manipulation}
     </div>
   </div>
 
+  <div class="quiz-overlay" id="ageGateOverlay" style="display:none">
+    <div class="quiz-box">
+      <div class="quiz-title">Before You Enter</div>
+      <div class="quiz-question" style="font-size:14px;font-weight:400">CountDracula simulates blackjack betting with Blood Drops, a virtual currency with no cash value — for entertainment purposes only. You must be 18 or older to continue.</div>
+      <button class="btn" id="ageGateConfirmBtn" style="background:var(--wine);color:#f3e6bf;margin-top:14px">I am 18 or older — Enter</button>
+      <button class="btn btn-outline" id="ageGateDenyBtn" style="margin-top:10px">I am under 18</button>
+    </div>
+  </div>
+
+  <div class="quiz-overlay" id="ageGateBlockedOverlay" style="display:none">
+    <div class="quiz-box">
+      <div class="quiz-title">Access Restricted</div>
+      <div class="quiz-question" style="font-size:14px;font-weight:400">CountDracula is intended for users 18 and older. Please come back when you meet the age requirement.</div>
+    </div>
+  </div>
+
   <div class="quiz-overlay" id="welcomeOverlay" style="display:none">
     <div class="quiz-box">
       <div class="quiz-title">Welcome to CountDracula</div>
@@ -861,6 +877,12 @@ button{user-select:none;-webkit-user-select:none;touch-action:manipulation}
       <div class="card-title">Hand History</div>
       <div class="hint" style="margin-top:0">Most recent hands first, from Peek/Quiz Practice. Shows the outcome and how many of your decisions matched basic strategy.</div>
       <div id="handHistoryList" style="margin-top:10px"></div>
+    </div>
+
+    <div class="hint" style="text-align:center;margin-top:4px">
+      <a href="terms.html" style="color:var(--muted);text-decoration:underline">Terms of Service</a>
+      &nbsp;·&nbsp;
+      <a href="privacy.html" style="color:var(--muted);text-decoration:underline">Privacy Policy</a>
     </div>
 
   </div>
@@ -2604,14 +2626,33 @@ async function verifyPendingPurchase(uid){
   }
 }
 
-/* ---- First-run welcome: Create Account vs Continue as Guest ---- */
+/* ---- 18+ age gate — must be confirmed before the welcome overlay ever shows ---- */
 const WELCOME_KEY = 'cardCountingWelcomeSeen';
+const AGE_GATE_KEY = 'cardCountingAgeConfirmed';
+function showWelcomeIfNeeded(){
+  if(!localStorage.getItem(WELCOME_KEY)){
+    document.getElementById('welcomeOverlay').style.display = 'flex';
+  }
+}
+if(!localStorage.getItem(AGE_GATE_KEY)){
+  document.getElementById('ageGateOverlay').style.display = 'flex';
+} else {
+  showWelcomeIfNeeded();
+}
+document.getElementById('ageGateConfirmBtn').addEventListener('click', () => {
+  localStorage.setItem(AGE_GATE_KEY, '1');
+  document.getElementById('ageGateOverlay').style.display = 'none';
+  showWelcomeIfNeeded();
+});
+document.getElementById('ageGateDenyBtn').addEventListener('click', () => {
+  document.getElementById('ageGateOverlay').style.display = 'none';
+  document.getElementById('ageGateBlockedOverlay').style.display = 'flex';
+});
+
+/* ---- First-run welcome: Create Account vs Continue as Guest ---- */
 function dismissWelcome(){
   localStorage.setItem(WELCOME_KEY, '1');
   document.getElementById('welcomeOverlay').style.display = 'none';
-}
-if(!localStorage.getItem(WELCOME_KEY)){
-  document.getElementById('welcomeOverlay').style.display = 'flex';
 }
 document.getElementById('welcomeCreateAccountBtn').addEventListener('click', () => {
   dismissWelcome();
