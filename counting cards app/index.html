@@ -200,7 +200,7 @@ button{user-select:none;-webkit-user-select:none;touch-action:manipulation}
 .shoe-row{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:13px;color:var(--muted);margin-bottom:4px}
 .shoe-row select{padding:6px 8px;border:1.5px solid var(--border);border-radius:8px;font-size:14px;background:#fff}
 .table-label{font-size:11px;font-weight:700;text-transform:uppercase;color:var(--muted);letter-spacing:.5px;text-align:center;margin-bottom:4px}
-.card-row{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;margin-bottom:4px;min-height:60px}
+.card-row{display:flex;gap:6px;flex-wrap:nowrap;justify-content:center;margin-bottom:4px;height:60px;overflow-x:auto;overflow-y:hidden}
 .playing-card{width:42px;height:58px;border-radius:6px;background:#fff;border:1px solid #ccc;display:flex;flex-direction:column;align-items:center;justify-content:center;font-weight:800;font-size:13px;box-shadow:0 1px 3px rgba(0,0,0,.2)}
 .playing-card.red{color:var(--red)}
 .playing-card.black{color:#1a1a1a}
@@ -212,6 +212,7 @@ button{user-select:none;-webkit-user-select:none;touch-action:manipulation}
 .hand-total{font-size:14px;font-weight:700;text-align:center;color:var(--text);margin-bottom:6px}
 .hand-total .muted{color:var(--muted);font-weight:600}
 .hand-block{margin-bottom:6px;padding:6px;border-radius:10px}
+#playerHandsArea{min-height:200px}
 .hand-block.active-hand{background:var(--gold-pale)}
 .hand-badge{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);text-align:center;margin-bottom:4px}
 .result-banner{text-align:center;font-size:18px;font-weight:800;border-radius:10px;padding:12px;margin-bottom:12px}
@@ -546,21 +547,27 @@ button{user-select:none;-webkit-user-select:none;touch-action:manipulation}
           <button class="peek-icon-btn" id="peekBtn" aria-label="Click to reveal the running count">👁</button>
           <button class="peek-icon-btn" id="betTipBtn" aria-label="Get a betting tip" style="display:none">💡</button>
         </div>
+        <div class="drops-badge" id="bankrollBadge">🩸 1000</div>
+      </div>
+      <div class="frame-hdr" style="justify-content:center;margin-top:8px">
         <div class="bet-stepper-badge" id="betStepperBadge">
           <button class="bet-step-btn" id="betDecBtn" aria-label="Decrease bet">−</button>
           <span>Bet <b id="currentBetValue">25</b> 🩸</span>
           <button class="bet-step-btn" id="betIncBtn" aria-label="Increase bet">+</button>
         </div>
-        <div class="drops-badge" id="bankrollBadge">🩸 1000</div>
       </div>
 
       <div class="hint" id="dealerModeHint">Hold the button below to peek at the count.</div>
       <div class="quiz-feedback" id="betFeedback"></div>
-      <div class="peek-count-badge" id="peekCountBadge" style="display:none">
-        <span class="peek-rc" id="peekRC">0</span>
-        <span class="peek-tc" id="peekTC"></span>
+      <div style="min-height:46px">
+        <div class="peek-count-badge" id="peekCountBadge" style="display:none">
+          <span class="peek-rc" id="peekRC">0</span>
+          <span class="peek-tc" id="peekTC"></span>
+        </div>
       </div>
-      <div class="hint" id="betTipResult" style="display:none;text-align:center"></div>
+      <div style="min-height:38px">
+        <div class="hint" id="betTipResult" style="display:none;text-align:center"></div>
+      </div>
 
       <div class="own-count-row" id="ownCountPanel" style="display:none">
         <span class="own-count-value zero" id="ownCountValue">0</span>
@@ -572,13 +579,17 @@ button{user-select:none;-webkit-user-select:none;touch-action:manipulation}
         </div>
       </div>
 
-      <div class="quiz-score" id="quizScore" style="display:none">Running: 0/0 · True: 0/0</div>
+      <div style="min-height:20px">
+        <div class="quiz-score" id="quizScore" style="display:none">Running: 0/0 · True: 0/0</div>
+      </div>
 
       <div class="felt">
         <div class="dealer-portrait-wrap">
           <img src="dealer-dracula.png" alt="Count Dracula, your dealer" class="dealer-portrait" id="dealerPortrait">
         </div>
-        <div class="dealer-speech" id="dealerSpeech"></div>
+        <div style="min-height:44px">
+          <div class="dealer-speech" id="dealerSpeech"></div>
+        </div>
 
         <div class="felt-empty-hint" id="feltEmptyHint">Place your bet and deal the shoe.</div>
 
@@ -1173,6 +1184,11 @@ const DRACULA_HAND_REVIEW_PROMPT = [
   'You strayed from the book — tap to see where.',
   'Not every choice pleased me. See for yourself.',
   'The cards remember what you chose. Tap to review.'
+];
+const DRACULA_HAND_REVIEW_PROMPT_NEUTRAL = [
+  'Curious why? Tap to see how it played out.',
+  'Tap to see the shoe\'s reasoning.',
+  'Every hand has its reasons. Tap to see this one\'s.'
 ];
 
 /* ============================================================ */
@@ -1797,20 +1813,41 @@ function describeDeviation(d, handLabel){
   const totalLabel = (d.soft ? 'soft ' : '') + d.playerTotal;
   return handLabel + totalLabel + ' vs dealer ' + d.dealerUpRank + ' — you chose ' + ACTION_LABELS[d.action] + ', the book says ' + ACTION_LABELS[d.recommended] + '.';
 }
+function describeOutcome(hd, dealerTotal, handLabel){
+  const playerTotal = handTotal(hd.cards);
+  switch(hd.reason){
+    case 'bust': return handLabel + 'You busted with ' + playerTotal + '.';
+    case 'both-blackjack': return handLabel + 'You and the dealer both had blackjack — a push.';
+    case 'dealer-blackjack': return handLabel + 'The dealer had a natural blackjack.';
+    case 'player-blackjack': return handLabel + 'Blackjack! You had ' + playerTotal + ' off the deal.';
+    case 'dealer-bust': return handLabel + 'The dealer busted with ' + dealerTotal + ' — you had ' + playerTotal + '.';
+    case 'higher-total': return handLabel + 'You had ' + playerTotal + ' to the dealer\'s ' + dealerTotal + '.';
+    case 'lower-total': return handLabel + 'The dealer had ' + dealerTotal + ' to your ' + playerTotal + '.';
+    case 'tie': return handLabel + 'You and the dealer both had ' + playerTotal + ' — a push.';
+    default: return handLabel + 'Final total: ' + playerTotal + '.';
+  }
+}
 function openHandReviewModal(){
   const h = dealerState.hand;
-  if(!h) return;
+  if(!h || h.stage !== 'done') return;
   const multiHand = h.hands.length > 1;
-  const rows = [];
+  const dealerTotal = handTotal([h.dealerUp, h.dealerHole, ...h.dealerExtra]);
+  const outcomeRows = [];
+  const deviationRows = [];
   h.hands.forEach((hd, i) => {
     const handLabel = multiHand ? ('Hand ' + (i + 1) + ': ') : '';
-    (hd.decisions || []).forEach(d => {
-      if(!d.correct) rows.push(describeDeviation(d, handLabel));
-    });
+    outcomeRows.push(describeOutcome(hd, dealerTotal, handLabel));
+    if(dealerState.coachingEnabled){
+      (hd.decisions || []).forEach(d => {
+        if(!d.correct) deviationRows.push(describeDeviation(d, handLabel));
+      });
+    }
   });
-  const count = rows.length;
-  document.getElementById('handReviewTitle').textContent = count + ' choice' + (count === 1 ? '' : 's') + ' strayed from the book this hand:';
-  document.getElementById('handReviewList').innerHTML = rows.map(r => '<div>' + r + '</div>').join('');
+  document.getElementById('handReviewTitle').textContent = deviationRows.length
+    ? ('Why, and ' + deviationRows.length + ' choice' + (deviationRows.length === 1 ? '' : 's') + ' that strayed from the book:')
+    : 'Why this hand went that way:';
+  const allRows = outcomeRows.concat(deviationRows);
+  document.getElementById('handReviewList').innerHTML = allRows.map(r => '<div>' + r + '</div>').join('');
   document.getElementById('handReviewOverlay').style.display = 'flex';
 }
 document.getElementById('handReviewLine').addEventListener('click', openHandReviewModal);
@@ -1990,17 +2027,18 @@ function resolveHand(){
   h.hands.forEach(hd => {
     const playerTotal = handTotal(hd.cards);
     const playerBJ = h.hands.length === 1 && hd.cards.length === 2 && playerTotal === 21;
-    let result, payout;
-    if(playerTotal > 21){ result = 'lose'; payout = 0; }
-    else if(dealerBJ && playerBJ){ result = 'push'; payout = hd.bet; }
-    else if(dealerBJ){ result = 'lose'; payout = 0; }
-    else if(playerBJ){ result = 'blackjack'; payout = hd.bet * 2.5; }
-    else if(dealerTotal > 21){ result = 'win'; payout = hd.bet * 2; }
-    else if(playerTotal > dealerTotal){ result = 'win'; payout = hd.bet * 2; }
-    else if(playerTotal < dealerTotal){ result = 'lose'; payout = 0; }
-    else { result = 'push'; payout = hd.bet; }
+    let result, payout, reason;
+    if(playerTotal > 21){ result = 'lose'; payout = 0; reason = 'bust'; }
+    else if(dealerBJ && playerBJ){ result = 'push'; payout = hd.bet; reason = 'both-blackjack'; }
+    else if(dealerBJ){ result = 'lose'; payout = 0; reason = 'dealer-blackjack'; }
+    else if(playerBJ){ result = 'blackjack'; payout = hd.bet * 2.5; reason = 'player-blackjack'; }
+    else if(dealerTotal > 21){ result = 'win'; payout = hd.bet * 2; reason = 'dealer-bust'; }
+    else if(playerTotal > dealerTotal){ result = 'win'; payout = hd.bet * 2; reason = 'higher-total'; }
+    else if(playerTotal < dealerTotal){ result = 'lose'; payout = 0; reason = 'lower-total'; }
+    else { result = 'push'; payout = hd.bet; reason = 'tie'; }
     hd.result = result;
     hd.payout = payout;
+    hd.reason = reason;
     dealerState.drops += payout;
     dealerState.stats.hands++;
     dealerState.stats[result] = (dealerState.stats[result] || 0) + 1;
@@ -2191,13 +2229,9 @@ function renderDealer(){
     dealBtnEl.disabled = false;
 
     const reviewLineEl = document.getElementById('handReviewLine');
-    const hasDeviations = h.hands.some(hd => (hd.decisions || []).some(d => !d.correct));
-    if(hasDeviations && dealerState.coachingEnabled){
-      reviewLineEl.textContent = draculaSay(DRACULA_HAND_REVIEW_PROMPT);
-      reviewLineEl.style.display = 'block';
-    } else {
-      reviewLineEl.style.display = 'none';
-    }
+    const hasDeviations = dealerState.coachingEnabled && h.hands.some(hd => (hd.decisions || []).some(d => !d.correct));
+    reviewLineEl.textContent = draculaSay(hasDeviations ? DRACULA_HAND_REVIEW_PROMPT : DRACULA_HAND_REVIEW_PROMPT_NEUTRAL);
+    reviewLineEl.style.display = 'block';
   } else {
     document.getElementById('handReviewLine').style.display = 'none';
     bannerEl.innerHTML = '';
