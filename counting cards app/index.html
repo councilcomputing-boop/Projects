@@ -532,13 +532,13 @@ button{user-select:none;-webkit-user-select:none;touch-action:manipulation}
 
       <div class="icon-btn-row">
         <button class="peek-icon-btn" id="peekBtn" aria-label="Click to reveal the running count">👁</button>
-        <button class="peek-icon-btn" id="grimoireBtn" aria-label="Consult the Grimoire for betting advice" style="display:none">📖</button>
+        <button class="peek-icon-btn" id="betTipBtn" aria-label="Get a betting tip" style="display:none">💡</button>
       </div>
       <div class="peek-count-badge" id="peekCountBadge" style="display:none">
         <span class="peek-rc" id="peekRC">0</span>
         <span class="peek-tc" id="peekTC"></span>
       </div>
-      <div class="hint" id="grimoireResult" style="display:none;text-align:center"></div>
+      <div class="hint" id="betTipResult" style="display:none;text-align:center"></div>
 
       <div class="own-count-row" id="ownCountPanel" style="display:none">
         <span class="own-count-value zero" id="ownCountValue">0</span>
@@ -1143,11 +1143,11 @@ const DRACULA_BET_MATCHED = [
   'Well judged — your wager and the count agree.'
 ];
 const DRACULA_BET_NOT_MATCHED_QUIZ = "Your wager did not match the count's true favor. Even after all these centuries, some lessons repeat.";
-function draculaBetTooTimid(tcLabel, recUnits){
-  return 'The grimoire hungers for more at TC ' + tcLabel + ' — wager ~' + recUnits + ' unit' + (recUnits > 1 ? 's' : '') + ' (' + (recUnits * 5) + ' Blood Drops).';
+function draculaBetTooTimid(recUnits){
+  return 'The count favors you right now — that usually means betting more. Try around ' + (recUnits * 5) + ' 🩸 this hand.';
 }
-function draculaBetTooBold(tcLabel, recUnits){
-  return 'The grimoire counsels restraint at TC ' + tcLabel + ' — ~' + recUnits + ' unit' + (recUnits > 1 ? 's' : '') + ' (' + (recUnits * 5) + ' Blood Drops) is enough.';
+function draculaBetTooBold(recUnits){
+  return "The count doesn't favor you right now — that usually means betting less. Try keeping it around " + (recUnits * 5) + ' 🩸 this hand.';
 }
 const DRACULA_HAND_REVIEW_PROMPT = [
   'You strayed from the book — tap to see where.',
@@ -1229,7 +1229,7 @@ function setActiveTab(tab){
     document.getElementById('peekBtn').style.display = (tab === 'peek') ? 'flex' : 'none';
     document.getElementById('quizScore').style.display = (tab === 'quiz') ? 'block' : 'none';
     document.getElementById('dealerModeHint').textContent = (tab === 'peek')
-      ? '👁 Peek the count — 10 🩸 · 📖 Consult the Grimoire — 15 🩸'
+      ? '👁 Peek the count — 10 🩸 · 💡 Betting Tip — 15 🩸'
       : "Count stays hidden — you'll be quizzed on it at random moments.";
     isPeeking = false;
     renderDealer();
@@ -1608,8 +1608,8 @@ function recommendedUnits(tc){
 }
 // Quiz mode only — deliberately vague (never states the true count), since
 // Quiz mode's whole point is that the count stays hidden until you're
-// tested on it. Peek mode's coaching now lives in the paid Grimoire reveal
-// instead, so it doesn't leak the count for free.
+// tested on it. Peek mode's coaching now lives in the paid Betting Tip
+// reveal instead, so it doesn't leak the count for free.
 function gradeBet(tc, bet){
   const actualUnits = Math.max(1, Math.round(bet / 5));
   const recUnits = recommendedUnits(tc);
@@ -1622,28 +1622,27 @@ function currentTrueCount(){
   return dealerState.runningCount / decksRemaining;
 }
 
-const GRIMOIRE_COST = 15;
-let grimoireUsedThisHand = false;
-function grimoireAdvice(){
+const BET_TIP_COST = 15;
+let betTipUsedThisHand = false;
+function betTipAdvice(){
   const tc = currentTrueCount();
-  const tcLabel = fmtSigned(Math.round(tc * 10) / 10);
   const recUnits = recommendedUnits(tc);
   const actualUnits = Math.max(1, Math.round(dealerState.currentBet / 5));
-  if(Math.abs(actualUnits - recUnits) <= 1) return draculaSay(DRACULA_BET_MATCHED) + ' (TC ' + tcLabel + '.)';
+  if(Math.abs(actualUnits - recUnits) <= 1) return draculaSay(DRACULA_BET_MATCHED);
   return actualUnits < recUnits
-    ? draculaBetTooTimid(tcLabel, recUnits)
-    : draculaBetTooBold(tcLabel, recUnits);
+    ? draculaBetTooTimid(recUnits)
+    : draculaBetTooBold(recUnits);
 }
-document.getElementById('grimoireBtn').addEventListener('click', () => {
-  if(grimoireUsedThisHand) return;
-  if(dealerState.drops < GRIMOIRE_COST){
-    showBetFeedback("Too little blood for the grimoire's secrets — the Store awaits.", false);
+document.getElementById('betTipBtn').addEventListener('click', () => {
+  if(betTipUsedThisHand) return;
+  if(dealerState.drops < BET_TIP_COST){
+    showBetFeedback('Too little blood for a tip — the Store awaits.', false);
     return;
   }
-  dealerState.drops -= GRIMOIRE_COST;
+  dealerState.drops -= BET_TIP_COST;
   saveDealerState();
-  grimoireUsedThisHand = true;
-  document.getElementById('grimoireResult').textContent = grimoireAdvice();
+  betTipUsedThisHand = true;
+  document.getElementById('betTipResult').textContent = betTipAdvice();
   renderDealer();
 });
 
@@ -1819,8 +1818,8 @@ function dealNewHand(){
   const trueCountAtBet = currentTrueCount();
   dealerState.drops -= dealerState.currentBet;
   flashBetTaken(dealerState.currentBet);
-  grimoireUsedThisHand = false;
-  document.getElementById('grimoireResult').textContent = '';
+  betTipUsedThisHand = false;
+  document.getElementById('betTipResult').textContent = '';
 
   const hand = {
     id: ++handIdCounter,
@@ -2060,11 +2059,11 @@ function renderDealer(){
   document.getElementById('betDecBtn').disabled = !betIdle || dealerState.currentBet <= BET_MIN;
   document.getElementById('betIncBtn').disabled = !betIdle || dealerState.currentBet >= BET_MAX;
 
-  const grimoireBtn = document.getElementById('grimoireBtn');
-  const grimoireResultEl = document.getElementById('grimoireResult');
-  const grimoireAvailable = betIdle && activeTab === 'peek' && dealerState.betCoachingEnabled;
-  grimoireBtn.style.display = (grimoireAvailable && !grimoireUsedThisHand) ? 'flex' : 'none';
-  grimoireResultEl.style.display = (grimoireAvailable && grimoireUsedThisHand) ? 'block' : 'none';
+  const betTipBtn = document.getElementById('betTipBtn');
+  const betTipResultEl = document.getElementById('betTipResult');
+  const betTipAvailable = betIdle && activeTab === 'peek' && dealerState.betCoachingEnabled;
+  betTipBtn.style.display = (betTipAvailable && !betTipUsedThisHand) ? 'flex' : 'none';
+  betTipResultEl.style.display = (betTipAvailable && betTipUsedThisHand) ? 'block' : 'none';
 
   const dealerCardsEl = document.getElementById('dealerCards');
   const handsAreaEl = document.getElementById('playerHandsArea');
