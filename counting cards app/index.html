@@ -71,6 +71,7 @@ button{user-select:none;-webkit-user-select:none;touch-action:manipulation}
 .menu-card:active{opacity:.75;transform:scale(.99)}
 .menu-icon{font-size:36px}
 .menu-title{font-size:12.5px;font-weight:700;color:var(--text)}
+.menu-subtitle{font-size:10px;color:var(--muted);line-height:1.25;margin-top:1px}
 #C{padding:14px 14px 20px;position:relative}
 #C.with-nav{padding-bottom:90px}
 .bottom-nav{position:fixed;left:0;right:0;bottom:0;max-width:600px;margin:0 auto;display:none;justify-content:space-around;align-items:center;background:linear-gradient(0deg,var(--wine-dark),var(--wine));border-top:1px solid #4a1420;box-shadow:0 -2px 12px rgba(0,0,0,.5);z-index:200;padding:8px 0 calc(8px + env(safe-area-inset-bottom))}
@@ -262,6 +263,9 @@ button{user-select:none;-webkit-user-select:none;touch-action:manipulation}
 }
 .bet-step-btn:disabled{opacity:.35;cursor:default}
 .hand-review-line{font-size:12.5px;font-weight:700;color:var(--wine);text-decoration:underline;cursor:pointer;text-align:center;margin:-4px 0 10px}
+.hand-review-list{text-align:left;font-size:14px;line-height:1.5;margin-bottom:4px}
+.hand-review-list>div{margin-bottom:8px}
+.hand-review-list>div:last-child{margin-bottom:0}
 
 /* Store */
 .store-drops-wrap{position:relative}
@@ -373,26 +377,32 @@ button{user-select:none;-webkit-user-select:none;touch-action:manipulation}
       <button class="menu-card" data-tab="manual">
         <div class="menu-icon">🃏</div>
         <div class="menu-title">Manual</div>
+        <div class="menu-subtitle">Count a real deck</div>
       </button>
       <button class="menu-card" data-tab="peek">
         <div class="menu-icon">👁</div>
         <div class="menu-title">Classic/Peek Practice</div>
+        <div class="menu-subtitle">Play hands, peek allowed</div>
       </button>
       <button class="menu-card" data-tab="quiz">
         <div class="menu-icon">❓</div>
         <div class="menu-title">Quiz Practice</div>
+        <div class="menu-subtitle">Count stays hidden</div>
       </button>
       <button class="menu-card" data-tab="math">
         <div class="menu-icon">➗</div>
         <div class="menu-title">Deck Math</div>
+        <div class="menu-subtitle">Running → true count</div>
       </button>
       <button class="menu-card" data-tab="speed">
         <div class="menu-icon">⚡</div>
         <div class="menu-title">Speed Drill</div>
+        <div class="menu-subtitle">Beat the clock</div>
       </button>
       <button class="menu-card" data-tab="rules">
         <div class="menu-icon">📖</div>
         <div class="menu-title">Rules</div>
+        <div class="menu-subtitle">Learn the Hi-Lo system</div>
       </button>
     </div>
 
@@ -950,6 +960,14 @@ button{user-select:none;-webkit-user-select:none;touch-action:manipulation}
   </div>
 </div>
 
+<div class="quiz-overlay" id="handReviewOverlay" style="display:none">
+  <div class="quiz-box">
+    <div class="quiz-title" id="handReviewTitle">Hand Review</div>
+    <div class="hand-review-list" id="handReviewList"></div>
+    <button class="btn btn-outline" id="handReviewCloseBtn" style="margin-top:8px">Continue</button>
+  </div>
+</div>
+
 <script>
 /* ============================================================ */
 /* Firebase (Auth + Firestore) — sign-in is optional, gated only */
@@ -1131,6 +1149,11 @@ function draculaBetTooTimid(tcLabel, recUnits){
 function draculaBetTooBold(tcLabel, recUnits){
   return 'The grimoire counsels restraint at TC ' + tcLabel + ' — ~' + recUnits + ' unit' + (recUnits > 1 ? 's' : '') + ' (' + (recUnits * 5) + ' Blood Drops) is enough.';
 }
+const DRACULA_HAND_REVIEW_PROMPT = [
+  'You strayed from the book — tap to see where.',
+  'Not every choice pleased me. See for yourself.',
+  'The cards remember what you chose. Tap to review.'
+];
 
 /* ============================================================ */
 /* Basic strategy engine (multi-deck, S17, DAS off, no surrender) */
@@ -1736,16 +1759,46 @@ function showStrategyFeedback(correct, recLabel){
   el.textContent = correct ? draculaSay(DRACULA_STRATEGY_CORRECT) : draculaStrategyIncorrect(recLabel);
   el.className = 'dealer-speech show ' + (correct ? 'correct' : 'incorrect');
 }
+const ACTION_LABELS = { H: 'Hit', S: 'Stand', D: 'Double', P: 'Split' };
 function gradeAndShowStrategy(cur, actionTaken, canDouble, canSplit){
-  const rec = basicStrategyAction(cur.cards, dealerState.hand.dealerUp.rank, canDouble, canSplit);
-  const recLabel = { H: 'Hit', S: 'Stand', D: 'Double', P: 'Split' }[rec];
+  const dealerUpRank = dealerState.hand.dealerUp.rank;
+  const rec = basicStrategyAction(cur.cards, dealerUpRank, canDouble, canSplit);
+  const recLabel = ACTION_LABELS[rec];
   const correct = rec === actionTaken;
   dealerState.strategy.total++;
   if(correct) dealerState.strategy.correct++;
   cur.movesTotal++;
   if(correct) cur.movesCorrect++;
+  const info = softTotalInfo(cur.cards);
+  cur.decisions.push({ playerTotal: info.total, soft: info.soft, dealerUpRank, action: actionTaken, recommended: rec, correct });
   showStrategyFeedback(correct, recLabel);
 }
+
+function describeDeviation(d, handLabel){
+  const totalLabel = (d.soft ? 'soft ' : '') + d.playerTotal;
+  return handLabel + totalLabel + ' vs dealer ' + d.dealerUpRank + ' — you chose ' + ACTION_LABELS[d.action] + ', the book says ' + ACTION_LABELS[d.recommended] + '.';
+}
+function openHandReviewModal(){
+  const h = dealerState.hand;
+  if(!h) return;
+  const multiHand = h.hands.length > 1;
+  const rows = [];
+  h.hands.forEach((hd, i) => {
+    const handLabel = multiHand ? ('Hand ' + (i + 1) + ': ') : '';
+    (hd.decisions || []).forEach(d => {
+      if(!d.correct) rows.push(describeDeviation(d, handLabel));
+    });
+  });
+  const count = rows.length;
+  document.getElementById('handReviewTitle').textContent = count + ' choice' + (count === 1 ? '' : 's') + ' strayed from the book this hand:';
+  document.getElementById('handReviewList').innerHTML = rows.map(r => '<div>' + r + '</div>').join('');
+  document.getElementById('handReviewOverlay').style.display = 'flex';
+}
+document.getElementById('handReviewLine').addEventListener('click', openHandReviewModal);
+document.getElementById('handReviewCloseBtn').addEventListener('click', () => {
+  document.getElementById('handReviewOverlay').style.display = 'none';
+});
+
 function canDoubleNow(h, cur){ return cur.cards.length === 2 && h.hands.length === 1; }
 function canSplitNow(h, cur){ return cur.cards.length === 2 && h.hands.length === 1 && pairKey(cur.cards[0].rank) === pairKey(cur.cards[1].rank); }
 
@@ -1774,7 +1827,7 @@ function dealNewHand(){
     dealerUp: null, dealerHole: null, dealerExtra: [],
     holeRevealed: false,
     stage: 'player',
-    hands: [ { cards: [], doubled: false, stage: 'active', result: null, bet: dealerState.currentBet, isAceSplit: false, movesCorrect: 0, movesTotal: 0 } ],
+    hands: [ { cards: [], doubled: false, stage: 'active', result: null, bet: dealerState.currentBet, isAceSplit: false, movesCorrect: 0, movesTotal: 0, decisions: [] } ],
     activeIndex: 0
   };
   hand.hands[0].cards.push(drawCard(true), drawCard(true));
@@ -1872,7 +1925,7 @@ function playerSplit(){
 
   const isAcePair = cur.cards[0].rank === 'A';
   const movedCard = cur.cards.pop();
-  const hand2 = { cards: [movedCard], doubled: false, stage: 'pending', result: null, bet: cur.bet, isAceSplit: isAcePair, movesCorrect: 0, movesTotal: 0 };
+  const hand2 = { cards: [movedCard], doubled: false, stage: 'pending', result: null, bet: cur.bet, isAceSplit: isAcePair, movesCorrect: 0, movesTotal: 0, decisions: [] };
   h.hands.push(hand2);
 
   cur.cards.push(drawCard(true));
@@ -2115,7 +2168,17 @@ function renderDealer(){
     dealBtnEl.style.display = 'block';
     dealBtnEl.textContent = 'Next Hand';
     dealBtnEl.disabled = false;
+
+    const reviewLineEl = document.getElementById('handReviewLine');
+    const hasDeviations = h.hands.some(hd => (hd.decisions || []).some(d => !d.correct));
+    if(hasDeviations && dealerState.coachingEnabled){
+      reviewLineEl.textContent = draculaSay(DRACULA_HAND_REVIEW_PROMPT);
+      reviewLineEl.style.display = 'block';
+    } else {
+      reviewLineEl.style.display = 'none';
+    }
   } else {
+    document.getElementById('handReviewLine').style.display = 'none';
     bannerEl.innerHTML = '';
     playActionsEl.style.display = 'flex';
     dealBtnEl.style.display = 'none';
