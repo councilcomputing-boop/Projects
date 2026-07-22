@@ -520,6 +520,9 @@ button{user-select:none;-webkit-user-select:none;touch-action:manipulation}
       <div class="hint" style="margin-top:8px">Current bet: <b id="currentBetValue">25</b> 🩸</div>
     </div>
 
+    <button class="btn btn-outline" id="grimoireBtn" style="display:none;width:100%;margin-bottom:10px">📖 Consult the Grimoire — 15 🩸</button>
+    <div class="hint" id="grimoireResult" style="display:none;margin-top:-4px;margin-bottom:10px"></div>
+
     <div class="quiz-score" id="quizScore" style="display:none">Running: 0/0 · True: 0/0</div>
 
     <div class="card" style="position:relative">
@@ -1101,10 +1104,10 @@ const DRACULA_BET_MATCHED = [
 ];
 const DRACULA_BET_NOT_MATCHED_QUIZ = "Your wager did not match the count's true favor. Even after all these centuries, some lessons repeat.";
 function draculaBetTooTimid(tcLabel, recUnits){
-  return 'The count favors you at ' + tcLabel + ' — a bolder wager was warranted. ~' + recUnits + ' unit' + (recUnits > 1 ? 's' : '') + ' (' + (recUnits * 5) + ' Blood Drops) was the hunger you should have indulged.';
+  return 'The grimoire hungers for more at TC ' + tcLabel + ' — wager ~' + recUnits + ' unit' + (recUnits > 1 ? 's' : '') + ' (' + (recUnits * 5) + ' Blood Drops).';
 }
 function draculaBetTooBold(tcLabel, recUnits){
-  return 'The count at ' + tcLabel + ' did not favor such hunger — a smaller wager was wise. ~' + recUnits + ' unit' + (recUnits > 1 ? 's' : '') + ' (' + (recUnits * 5) + ' Blood Drops) would have sufficed.';
+  return 'The grimoire counsels restraint at TC ' + tcLabel + ' — ~' + recUnits + ' unit' + (recUnits > 1 ? 's' : '') + ' (' + (recUnits * 5) + ' Blood Drops) is enough.';
 }
 
 /* ============================================================ */
@@ -1509,25 +1512,46 @@ function recommendedUnits(tc){
   if(tc >= 2) return 2;
   return 1;
 }
+// Quiz mode only — deliberately vague (never states the true count), since
+// Quiz mode's whole point is that the count stays hidden until you're
+// tested on it. Peek mode's coaching now lives in the paid Grimoire reveal
+// instead, so it doesn't leak the count for free.
 function gradeBet(tc, bet){
   const actualUnits = Math.max(1, Math.round(bet / 5));
   const recUnits = recommendedUnits(tc);
   const matched = Math.abs(actualUnits - recUnits) <= 1;
-  if(activeTab === 'quiz'){
-    showBetFeedback(matched ? draculaSay(DRACULA_BET_MATCHED) : DRACULA_BET_NOT_MATCHED_QUIZ, matched);
-  } else {
-    const tcLabel = fmtSigned(Math.round(tc * 10) / 10);
-    const mismatchMsg = actualUnits < recUnits
-      ? draculaBetTooTimid(tcLabel, recUnits)
-      : draculaBetTooBold(tcLabel, recUnits);
-    showBetFeedback(
-      matched
-        ? draculaSay(DRACULA_BET_MATCHED) + ' (TC ' + tcLabel + '.)'
-        : mismatchMsg,
-      matched
-    );
-  }
+  showBetFeedback(matched ? draculaSay(DRACULA_BET_MATCHED) : DRACULA_BET_NOT_MATCHED_QUIZ, matched);
 }
+
+function currentTrueCount(){
+  const decksRemaining = Math.max(dealerState.shoe.length / 52, 0.5);
+  return dealerState.runningCount / decksRemaining;
+}
+
+const GRIMOIRE_COST = 15;
+let grimoireUsedThisHand = false;
+function grimoireAdvice(){
+  const tc = currentTrueCount();
+  const tcLabel = fmtSigned(Math.round(tc * 10) / 10);
+  const recUnits = recommendedUnits(tc);
+  const actualUnits = Math.max(1, Math.round(dealerState.currentBet / 5));
+  if(Math.abs(actualUnits - recUnits) <= 1) return draculaSay(DRACULA_BET_MATCHED) + ' (TC ' + tcLabel + '.)';
+  return actualUnits < recUnits
+    ? draculaBetTooTimid(tcLabel, recUnits)
+    : draculaBetTooBold(tcLabel, recUnits);
+}
+document.getElementById('grimoireBtn').addEventListener('click', () => {
+  if(grimoireUsedThisHand) return;
+  if(dealerState.drops < GRIMOIRE_COST){
+    showBetFeedback("Too little blood for the grimoire's secrets — the Store awaits.", false);
+    return;
+  }
+  dealerState.drops -= GRIMOIRE_COST;
+  saveDealerState();
+  grimoireUsedThisHand = true;
+  document.getElementById('grimoireResult').textContent = grimoireAdvice();
+  renderDealer();
+});
 
 /* --- Quiz trigger (Quiz Practice tab only) --- */
 let isPeeking = false;
@@ -1664,10 +1688,11 @@ function dealNewHand(){
     return;
   }
   maybeReshuffle();
-  const decksRemaining = Math.max(dealerState.shoe.length / 52, 0.5);
-  const trueCountAtBet = dealerState.runningCount / decksRemaining;
+  const trueCountAtBet = currentTrueCount();
   dealerState.drops -= dealerState.currentBet;
   flashBetTaken(dealerState.currentBet);
+  grimoireUsedThisHand = false;
+  document.getElementById('grimoireResult').textContent = '';
 
   const hand = {
     id: ++handIdCounter,
@@ -1682,7 +1707,7 @@ function dealNewHand(){
   hand.dealerHole = drawCard(false);
   dealerState.hand = hand;
 
-  if(dealerState.betCoachingEnabled){
+  if(activeTab === 'quiz' && dealerState.betCoachingEnabled){
     gradeBet(trueCountAtBet, dealerState.currentBet);
   } else {
     document.getElementById('betFeedback').textContent = '';
@@ -1904,6 +1929,12 @@ function renderDealer(){
 
   const h = dealerState.hand;
   document.getElementById('betCard').style.display = h ? 'none' : 'block';
+
+  const grimoireBtn = document.getElementById('grimoireBtn');
+  const grimoireResultEl = document.getElementById('grimoireResult');
+  const grimoireAvailable = (!h || h.stage === 'done') && activeTab === 'peek' && dealerState.betCoachingEnabled;
+  grimoireBtn.style.display = (grimoireAvailable && !grimoireUsedThisHand) ? 'block' : 'none';
+  grimoireResultEl.style.display = (grimoireAvailable && grimoireUsedThisHand) ? 'block' : 'none';
 
   const dealerCardsEl = document.getElementById('dealerCards');
   const handsAreaEl = document.getElementById('playerHandsArea');
