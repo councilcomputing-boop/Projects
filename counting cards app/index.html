@@ -994,6 +994,17 @@ button{user-select:none;-webkit-user-select:none;touch-action:manipulation}
   </div>
 </div>
 
+<div class="quiz-overlay" id="speedMidAskOverlay" style="display:none">
+  <div class="quiz-box">
+    <div class="quiz-title">Quick Check</div>
+    <div class="quiz-question">What's the count so far?</div>
+    <input type="number" id="speedMidAskInput" class="quiz-input" inputmode="numeric" placeholder="e.g. -3">
+    <button class="btn" id="speedMidAskSubmitBtn" style="background:var(--green2);color:#fff">Submit</button>
+    <div class="quiz-feedback" id="speedMidAskFeedback"></div>
+    <button class="btn btn-outline" id="speedMidAskContinueBtn" style="display:none;margin-top:8px">Continue</button>
+  </div>
+</div>
+
 <div class="quiz-overlay" id="handReviewOverlay" style="display:none">
   <div class="quiz-box">
     <div class="quiz-title" id="handReviewTitle">Hand Review</div>
@@ -1690,14 +1701,23 @@ let isPeeking = false;
 let quizPending = false;
 let cardsSinceQuiz = 0;
 let currentQuizType = 'running';
+let pendingQuizResume = null;
 
-function checkQuiz(){
-  if(activeTab !== 'quiz' || quizPending) return;
+// checkQuiz may open the quiz modal, which must pause the game underneath it
+// (dealer draws, hole-card reveal, hand resolution all touch the running
+// count) — otherwise the count the player answers against silently drifts
+// from what they saw. Callers pass their remaining work as onDone; it runs
+// immediately if no quiz triggers, or is deferred until the modal closes.
+function checkQuiz(onDone){
+  if(activeTab !== 'quiz' || quizPending){ if(onDone) onDone(); return; }
   cardsSinceQuiz++;
   if(cardsSinceQuiz >= 3 && Math.random() < 0.35){
     cardsSinceQuiz = 0;
+    pendingQuizResume = onDone || null;
     openQuizModal();
+    return;
   }
+  if(onDone) onDone();
 }
 
 function openQuizModal(){
@@ -1759,7 +1779,9 @@ function submitQuizAnswer(){
 function closeQuizModal(){
   quizPending = false;
   document.getElementById('quizOverlay').style.display = 'none';
-  renderDealer();
+  const resume = pendingQuizResume;
+  pendingQuizResume = null;
+  if(resume) resume(); else renderDealer();
 }
 
 document.getElementById('quizSubmitBtn').addEventListener('click', submitQuizAnswer);
@@ -1908,10 +1930,11 @@ function dealNewHand(){
     resolveHand();
     return;
   }
-  checkQuiz();
-  if(dealerState.drops > dealerState.dropsHigh) dealerState.dropsHigh = dealerState.drops;
-  saveDealerState();
-  renderDealer();
+  checkQuiz(() => {
+    if(dealerState.drops > dealerState.dropsHigh) dealerState.dropsHigh = dealerState.drops;
+    saveDealerState();
+    renderDealer();
+  });
 }
 
 function advanceOrFinish(){
@@ -1934,13 +1957,17 @@ function playerHit(){
   const total = handTotal(cur.cards);
   if(total >= 21){
     cur.stage = total > 21 ? 'bust' : 'stood';
-    checkQuiz();
-    advanceOrFinish();
+    checkQuiz(() => {
+      advanceOrFinish();
+      saveDealerState();
+      renderDealer();
+    });
   } else {
-    checkQuiz();
+    checkQuiz(() => {
+      saveDealerState();
+      renderDealer();
+    });
   }
-  saveDealerState();
-  renderDealer();
 }
 
 function playerStand(){
@@ -1967,10 +1994,11 @@ function playerDouble(){
   cur.doubled = true;
   cur.cards.push(drawCard(true));
   cur.stage = handTotal(cur.cards) > 21 ? 'bust' : 'stood';
-  checkQuiz();
-  advanceOrFinish();
-  saveDealerState();
-  renderDealer();
+  checkQuiz(() => {
+    advanceOrFinish();
+    saveDealerState();
+    renderDealer();
+  });
 }
 
 function playerSplit(){
@@ -1983,6 +2011,7 @@ function playerSplit(){
   dealerState.drops -= cur.bet;
 
   const isAcePair = cur.cards[0].rank === 'A';
+  cur.isAceSplit = isAcePair;
   const movedCard = cur.cards.pop();
   const hand2 = { cards: [movedCard], doubled: false, stage: 'pending', result: null, bet: cur.bet, isAceSplit: isAcePair, movesCorrect: 0, movesTotal: 0, decisions: [] };
   h.hands.push(hand2);
@@ -1995,28 +2024,38 @@ function playerSplit(){
     hand2.stage = 'stood';
   }
 
-  checkQuiz();
-  if(cur.stage === 'stood' || cur.stage === 'bust'){
-    advanceOrFinish();
-  }
-  saveDealerState();
-  renderDealer();
+  checkQuiz(() => {
+    if(cur.stage === 'stood' || cur.stage === 'bust'){
+      advanceOrFinish();
+    }
+    saveDealerState();
+    renderDealer();
+  });
 }
 
+const DEALER_DRAW_DELAY_MS = 650;
 function finishPlayerTurn(){
   const h = dealerState.hand;
   h.stage = 'dealer';
   revealHole();
+  renderDealer();
   const anyLive = h.hands.some(hd => hd.stage !== 'bust');
-  if(anyLive){
-    let dealerCards = [h.dealerUp, h.dealerHole, ...h.dealerExtra];
-    while(handTotal(dealerCards) < 17){
-      const c = drawCard(true);
-      h.dealerExtra.push(c);
-      dealerCards.push(c);
-    }
+  if(!anyLive){
+    resolveHand();
+    return;
   }
-  resolveHand();
+  (function drawNextIfNeeded(){
+    const dealerCards = [h.dealerUp, h.dealerHole, ...h.dealerExtra];
+    if(handTotal(dealerCards) >= 17){
+      resolveHand();
+      return;
+    }
+    setTimeout(() => {
+      h.dealerExtra.push(drawCard(true));
+      renderDealer();
+      drawNextIfNeeded();
+    }, DEALER_DRAW_DELAY_MS);
+  })();
 }
 
 function resolveHand(){
@@ -2052,10 +2091,11 @@ function resolveHand(){
 
   if(dealerState.drops > dealerState.dropsHigh) dealerState.dropsHigh = dealerState.drops;
 
-  checkQuiz();
-  saveDealerState();
-  renderDealer();
-  if(totalWinPayout > 0) celebrateHandWin(totalWinPayout);
+  checkQuiz(() => {
+    saveDealerState();
+    renderDealer();
+    if(totalWinPayout > 0) celebrateHandWin(totalWinPayout);
+  });
 }
 
 document.getElementById('dealBtn').addEventListener('click', dealNewHand);
@@ -2173,12 +2213,20 @@ function renderDealer(){
 
   let handsHTML = '';
   const resultLabels = { win: 'Win', lose: 'Lose', push: 'Push', blackjack: 'Blackjack!' };
+  // A split just happened if there are more hands now than last render tracked.
+  // Hand 1's card count doesn't change from a split (one card swapped for
+  // another), so the plain count-based "isNew" check below would miss its
+  // replacement card entirely — force just that last card to animate.
+  const justSplit = h.hands.length > lastRender.handsCounts.length;
   h.hands.forEach((hd, idx) => {
     const prevCount = lastRender.handsCounts[idx] || 0;
+    const forceLastNew = justSplit && idx === 0;
     let row = '';
     hd.cards.forEach((c, i) => {
-      const isNew = i >= prevCount;
-      row += cardHTML(c, false, isNew ? 'deal-in' : null, isNew ? (i - prevCount) * 220 : 0);
+      const isLast = i === hd.cards.length - 1;
+      const isNew = i >= prevCount || (forceLastNew && isLast);
+      const delay = i >= prevCount ? (i - prevCount) * 220 : 0;
+      row += cardHTML(c, false, isNew ? 'deal-in' : null, isNew ? delay : 0);
     });
     const isActive = h.stage === 'player' && idx === h.activeIndex && hd.stage === 'active';
     const total = handTotal(hd.cards);
@@ -2235,14 +2283,32 @@ function renderDealer(){
     const hasDeviations = dealerState.coachingEnabled && h.hands.some(hd => (hd.decisions || []).some(d => !d.correct));
     reviewLineEl.textContent = draculaSay(hasDeviations ? DRACULA_HAND_REVIEW_PROMPT : DRACULA_HAND_REVIEW_PROMPT_NEUTRAL);
     reviewLineEl.style.display = 'block';
-  } else {
+  } else if(h.stage === 'player'){
     document.getElementById('handReviewLine').style.display = 'none';
     bannerEl.innerHTML = '';
     playActionsEl.style.display = 'flex';
     dealBtnEl.style.display = 'none';
-    doubleBtnEl.disabled = quizPending || !canDoubleNow(h, cur) || dealerState.drops < cur.bet;
-    splitBtnEl.style.display = canSplitNow(h, cur) ? 'flex' : 'none';
+    const canDouble = canDoubleNow(h, cur);
+    const canSplit = canSplitNow(h, cur);
+    doubleBtnEl.disabled = quizPending || !canDouble || dealerState.drops < cur.bet;
+    splitBtnEl.style.display = canSplit ? 'flex' : 'none';
     splitBtnEl.disabled = quizPending || dealerState.drops < cur.bet;
+
+    const hintEl = document.getElementById('dealerModeHint');
+    if(dealerState.coachingEnabled){
+      const rec = basicStrategyAction(cur.cards, h.dealerUp.rank, canDouble, canSplit);
+      hintEl.textContent = 'The book says: ' + ACTION_LABELS[rec];
+      hintEl.style.display = 'block';
+    } else {
+      hintEl.style.display = 'none';
+    }
+  } else {
+    // h.stage === 'dealer' — the dealer is playing out one card at a time;
+    // no player actions and no Deal button until resolveHand() lands.
+    document.getElementById('handReviewLine').style.display = 'none';
+    bannerEl.innerHTML = '';
+    playActionsEl.style.display = 'none';
+    dealBtnEl.style.display = 'none';
   }
 
   hitBtnEl.disabled = quizPending;
@@ -2359,11 +2425,22 @@ function renderSpeedBest(){
 renderSpeedBest();
 
 let speedDeck = [], speedIndex = 0, speedStartTime = 0;
+let speedRunning = false;
+let speedCdInterval = null, speedAdvanceTimer = null;
+let speedCardsSinceAsk = 0;
+let speedResumeAfterAsk = null;
 
 function startSpeedDrill(){
+  if(speedRunning) return; // re-entrancy guard: a run is already in progress
+  speedRunning = true;
+  document.getElementById('speedStartBtn').disabled = true;
+  clearInterval(speedCdInterval);
+  clearTimeout(speedAdvanceTimer);
+
   speedDeck = buildShoe(1); // single shuffled 52-card deck
   speedDeck.splice(Math.floor(Math.random() * 52), 1); // hold one card back, secretly
   speedIndex = 0;
+  speedCardsSinceAsk = 0;
   document.getElementById('speedStage').style.display = 'block';
   document.getElementById('speedAnswerCard').style.display = 'none';
   document.getElementById('speedCardArea').innerHTML = '';
@@ -2373,12 +2450,50 @@ function startSpeedDrill(){
   const cd = document.getElementById('speedCountdown');
   let n = 3;
   cd.textContent = n;
-  const cdInterval = setInterval(() => {
+  speedCdInterval = setInterval(() => {
     n--;
     if(n > 0){ cd.textContent = n; }
-    else { clearInterval(cdInterval); cd.textContent = ''; runSpeedSequence(pace); }
+    else { clearInterval(speedCdInterval); cd.textContent = ''; runSpeedSequence(pace); }
   }, 700);
 }
+
+// Mirrors checkQuiz()'s random mid-session trigger, but tracks the drill's
+// own running sum (Speed Drill never touches dealerState.runningCount) and
+// pauses/resumes the card sequence around the ask instead of the dealer game.
+function maybeAskSpeedMidDrill(onDone){
+  speedCardsSinceAsk++;
+  if(speedIndex < speedDeck.length && speedCardsSinceAsk >= 8 && Math.random() < 0.3){
+    speedCardsSinceAsk = 0;
+    speedResumeAfterAsk = onDone;
+    document.getElementById('speedMidAskInput').value = '';
+    document.getElementById('speedMidAskFeedback').textContent = '';
+    document.getElementById('speedMidAskSubmitBtn').style.display = 'block';
+    document.getElementById('speedMidAskInput').style.display = 'block';
+    document.getElementById('speedMidAskContinueBtn').style.display = 'none';
+    document.getElementById('speedMidAskOverlay').style.display = 'flex';
+    document.getElementById('speedMidAskInput').focus();
+    return;
+  }
+  onDone();
+}
+document.getElementById('speedMidAskSubmitBtn').addEventListener('click', () => {
+  const val = parseInt(document.getElementById('speedMidAskInput').value, 10);
+  const feedback = document.getElementById('speedMidAskFeedback');
+  if(isNaN(val)){ feedback.textContent = DRACULA_ENTER_NUMBER; feedback.className = 'quiz-feedback incorrect'; return; }
+  const sumSoFar = speedDeck.slice(0, speedIndex).reduce((s, c) => s + hiLoValue(c.rank), 0);
+  const correct = val === sumSoFar;
+  feedback.textContent = correct ? draculaQuizCorrect('count', fmtSigned(sumSoFar)) : draculaQuizIncorrect('count', fmtSigned(sumSoFar));
+  feedback.className = 'quiz-feedback ' + (correct ? 'correct' : 'incorrect');
+  document.getElementById('speedMidAskSubmitBtn').style.display = 'none';
+  document.getElementById('speedMidAskInput').style.display = 'none';
+  document.getElementById('speedMidAskContinueBtn').style.display = 'block';
+});
+document.getElementById('speedMidAskContinueBtn').addEventListener('click', () => {
+  document.getElementById('speedMidAskOverlay').style.display = 'none';
+  const resume = speedResumeAfterAsk;
+  speedResumeAfterAsk = null;
+  if(resume) resume();
+});
 
 function runSpeedSequence(pace){
   speedStartTime = performance.now();
@@ -2395,15 +2510,19 @@ function runSpeedSequence(pace){
     area.innerHTML = cardHTML(card, false, 'deal-in', 0);
     speedIndex++;
     animateDracula();
-    if(pace !== 'manual'){
-      setTimeout(showNext, parseInt(pace, 10));
-    }
+    maybeAskSpeedMidDrill(() => {
+      if(pace !== 'manual'){
+        speedAdvanceTimer = setTimeout(showNext, parseInt(pace, 10));
+      }
+    });
   }
   tapBtn.onclick = showNext;
   showNext();
 }
 
 function finishSpeedDrill(){
+  speedRunning = false;
+  document.getElementById('speedStartBtn').disabled = false;
   const elapsedMs = performance.now() - speedStartTime;
   document.getElementById('speedElapsed').textContent = 'Elapsed: ' + (elapsedMs / 1000).toFixed(2) + 's';
   document.getElementById('speedTapBtn').style.display = 'none';
