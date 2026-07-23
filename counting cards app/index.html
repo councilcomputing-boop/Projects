@@ -200,7 +200,7 @@ button{user-select:none;-webkit-user-select:none;touch-action:manipulation}
 .shoe-row{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:13px;color:var(--muted);margin-bottom:4px}
 .shoe-row select{padding:6px 8px;border:1.5px solid var(--border);border-radius:8px;font-size:14px;background:#fff}
 .table-label{font-size:11px;font-weight:700;text-transform:uppercase;color:var(--muted);letter-spacing:.5px;text-align:center;margin-bottom:4px}
-.card-row{display:flex;gap:6px;flex-wrap:nowrap;justify-content:center;margin-bottom:4px;height:60px;overflow-x:auto;overflow-y:hidden}
+.card-row{display:flex;gap:6px;flex-wrap:nowrap;justify-content:flex-start;margin-bottom:4px;height:60px;overflow-x:auto;overflow-y:hidden}
 .playing-card{width:42px;height:58px;border-radius:6px;background:#fff;border:1px solid #ccc;display:flex;flex-direction:column;align-items:center;justify-content:center;font-weight:800;font-size:13px;box-shadow:0 1px 3px rgba(0,0,0,.2)}
 .playing-card.red{color:var(--red)}
 .playing-card.black{color:#1a1a1a}
@@ -209,10 +209,13 @@ button{user-select:none;-webkit-user-select:none;touch-action:manipulation}
 @keyframes flipIn{from{opacity:.5;transform:rotateY(90deg)}to{opacity:1;transform:rotateY(0)}}
 .playing-card.deal-in{animation:dealIn .6s cubic-bezier(.16,.68,.3,1) both}
 .playing-card.flip-in{animation:flipIn .32s ease-out both}
+.playing-card.sideways{transform:rotate(90deg);margin:0 8px;flex-shrink:0}
 .hand-total{font-size:14px;font-weight:700;text-align:center;color:var(--text);margin-bottom:6px}
 .hand-total .muted{color:var(--muted);font-weight:600}
-.hand-block{margin-bottom:6px;padding:6px;border-radius:10px;background:var(--gold-pale);transition:min-height .25s ease}
-#playerHandsArea{transition:min-height .25s ease}
+.hand-block{flex:1;min-width:0;margin-bottom:6px;padding:6px;border-radius:10px;background:var(--gold-pale);transition:min-height .25s ease}
+/* Split hands sit side by side, right to left: hand 1 (played first) on the
+   right, hand 2 on the left — row-reverse achieves this with no JS reordering. */
+#playerHandsArea{display:flex;flex-direction:row-reverse;gap:8px;transition:min-height .25s ease}
 .hand-block.active-hand{background:var(--gold-pale);box-shadow:0 0 0 2px var(--gold)}
 .dealer-card-box{background:var(--gold-pale);border-radius:10px;padding:6px;margin-bottom:4px}
 .hand-badge{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);text-align:center;margin-bottom:4px}
@@ -852,6 +855,8 @@ button{user-select:none;-webkit-user-select:none;touch-action:manipulation}
         <button class="bet-preset-btn" data-preset="50">50</button>
         <button class="bet-preset-btn" data-preset="100">100</button>
         <button class="bet-preset-btn" data-preset="250">250</button>
+        <button class="bet-preset-btn" data-preset="500">500</button>
+        <button class="bet-preset-btn" data-preset="1000">1000</button>
       </div>
       <div class="hint" id="betSetupError" style="color:var(--red);display:none;margin-bottom:8px"></div>
       <button class="btn" id="betSetupConfirmBtn" style="background:var(--wine);color:#f3e6bf">Start Playing</button>
@@ -1145,10 +1150,11 @@ function softTotalInfo(cards){
   return { total, soft: aces > 0 && total <= 21 };
 }
 function animateDracula(){}
-function cardHTML(card, hidden, animClass, delayMs){
+function cardHTML(card, hidden, animClass, delayMs, extraClass){
   const cls = ['playing-card'];
   cls.push(hidden ? 'hidden-card' : ((card.suit === '♥' || card.suit === '♦') ? 'red' : 'black'));
   if(animClass) cls.push(animClass);
+  if(extraClass) cls.push(extraClass);
   const style = animClass ? ' style="animation-delay:' + (delayMs || 0) + 'ms"' : '';
   const inner = hidden ? '?' : '<div>' + card.rank + '</div><div>' + card.suit + '</div>';
   return '<div class="' + cls.join(' ') + '"' + style + '>' + inner + '</div>';
@@ -2227,7 +2233,10 @@ function renderDealer(){
       const isLast = i === hd.cards.length - 1;
       const isNew = i >= prevCount || (forceLastNew && isLast);
       const delay = i >= prevCount ? (i - prevCount) * 220 : 0;
-      row += cardHTML(c, false, isNew ? 'deal-in' : null, isNew ? delay : 0);
+      // Casino convention: the single extra card a double-down draws is
+      // dealt sideways, marking the hand as done without needing more text.
+      const extraClass = hd.doubled && isLast ? 'sideways' : null;
+      row += cardHTML(c, false, isNew ? 'deal-in' : null, isNew ? delay : 0, extraClass);
     });
     const isActive = h.stage === 'player' && idx === h.activeIndex && hd.stage === 'active';
     const total = handTotal(hd.cards);
