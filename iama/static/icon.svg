@@ -1,0 +1,27 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <rect width="512" height="512" rx="80" fill="#0f1420"/>
+
+  <!-- back statement (muted / "carrier") -->
+  <g transform="translate(118,86) rotate(-8 100 130)">
+    <rect x="0" y="0" width="200" height="260" rx="14" fill="#1d2536" stroke="#2a3346" stroke-width="3"/>
+    <rect x="26" y="38" width="148" height="12" rx="6" fill="#3a4560"/>
+    <rect x="26" y="66" width="112" height="10" rx="5" fill="#3a4560"/>
+    <rect x="26" y="92" width="132" height="10" rx="5" fill="#3a4560"/>
+    <rect x="26" y="118" width="92" height="10" rx="5" fill="#3a4560"/>
+    <rect x="26" y="144" width="120" height="10" rx="5" fill="#3a4560"/>
+  </g>
+
+  <!-- front statement (accent / "AMS360") -->
+  <g transform="translate(196,150) rotate(7 100 130)">
+    <rect x="0" y="0" width="200" height="260" rx="14" fill="#171e2e" stroke="#4f8cff" stroke-width="4"/>
+    <rect x="26" y="38" width="148" height="12" rx="6" fill="#4f8cff" opacity="0.9"/>
+    <rect x="26" y="66" width="112" height="10" rx="5" fill="#4f8cff" opacity="0.5"/>
+    <rect x="26" y="92" width="132" height="10" rx="5" fill="#4f8cff" opacity="0.5"/>
+    <rect x="26" y="118" width="92" height="10" rx="5" fill="#4f8cff" opacity="0.5"/>
+    <rect x="26" y="144" width="120" height="10" rx="5" fill="#4f8cff" opacity="0.5"/>
+  </g>
+
+  <!-- reconciled checkmark badge -->
+  <circle cx="366" cy="366" r="76" fill="#2fbf71" stroke="#0f1420" stroke-width="10"/>
+  <path d="M330 368 L354 392 L402 342" fill="none" stroke="#0f1420" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

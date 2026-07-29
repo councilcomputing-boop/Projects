@@ -1,0 +1,357 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="icon" type="image/svg+xml" href="/static/icon.svg">
+<title>Direct Bill Reconciliation — IAMA</title>
+<script>(function(){var t=localStorage.getItem('iama_theme')||'dark';document.documentElement.setAttribute('data-theme',t);})();</script>
+<style>
+  :root {
+    --bg: #0f1420; --panel: #171e2e; --panel2: #1d2536; --border: #2a3346;
+    --text: #e8ecf4; --muted: #9aa5b8; --accent: #4f8cff;
+    --good: #2fbf71; --good-bg: #123322; --warn: #e0a02f; --warn-bg: #332a12;
+    --bad: #e0523f; --bad-bg: #331815;
+  }
+  :root[data-theme="light"] {
+    --bg: #f4f6fb; --panel: #ffffff; --panel2: #eef1f8; --border: #d8dfec;
+    --text: #1b2436; --muted: #5b6478; --accent: #2f6fe0;
+    --good: #1f9d5c; --good-bg: #e3f7ec; --warn: #b5790a; --warn-bg: #fdf1de;
+    --bad: #c23c2b; --bad-bg: #fbe9e6;
+  }
+  * { box-sizing: border-box; }
+  body { background: var(--bg); color: var(--text); font-family: -apple-system, Segoe UI, Roboto, Arial, sans-serif; margin: 0; }
+  .container { padding: 24px; max-width: 1200px; margin-inline: auto; }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  h2 { font-size: 15px; margin: 32px 0 12px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+  .sub { color: var(--muted); font-size: 13px; margin-bottom: 20px; }
+  .hdr { background: var(--panel); border-bottom: 1px solid var(--border); padding: 0 28px; height: 60px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; }
+  .hdr-brand { display: flex; align-items: center; gap: 10px; }
+  .hdr-logo { display: flex; align-items: center; flex-shrink: 0; }
+  .hdr-title { font-size: 17px; font-weight: 600; color: var(--text); }
+  .hdr-sub { font-size: 11px; opacity: 0.6; margin-top: 1px; color: var(--muted); }
+  .hdr-right { display: flex; align-items: center; gap: 10px; font-size: 13px; }
+  .nav-btn { padding: 6px 14px; border-radius: 4px; font-size: 13px; font-weight: 500; background: transparent; border: 1px solid var(--border); color: var(--text); cursor: pointer; text-decoration: none; }
+  .nav-btn:hover { background: var(--panel2); }
+  .nav-btn.active { background: var(--panel2); border-color: var(--accent); }
+  .theme-toggle { padding: 6px 10px; border-radius: 4px; font-size: 14px; background: transparent; border: 1px solid var(--border); color: var(--text); cursor: pointer; line-height: 1; }
+  .theme-toggle:hover { background: var(--panel2); }
+  .carrier-row { margin-bottom: 16px; }
+  .carrier-row select { background: var(--panel); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 8px 12px; font-size: 13px; }
+  .drop-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+  @media (max-width: 700px) { .drop-row { grid-template-columns: 1fr; } }
+  .dropzone { background: var(--panel); border: 2px dashed var(--border); border-radius: 10px; padding: 18px; text-align: center; cursor: pointer; transition: border-color .15s, background .15s; }
+  .dropzone.drag { border-color: var(--accent); background: var(--panel2); }
+  .dropzone.loaded { border-style: solid; border-color: var(--good); }
+  .dropzone h3 { margin: 0 0 6px; font-size: 14px; }
+  .dropzone p { margin: 0; color: var(--muted); font-size: 12px; }
+  .dropzone .filename { color: var(--text); font-size: 13px; margin-top: 8px; word-break: break-all; }
+  input[type=file] { display: none; }
+  button { background: var(--accent); color: white; border: none; border-radius: 6px; padding: 10px 18px; font-size: 14px; cursor: pointer; font-weight: 600; }
+  button:disabled { background: var(--border); color: var(--muted); cursor: not-allowed; }
+  button.secondary { background: var(--panel2); border: 1px solid var(--border); color: var(--text); font-weight: 400; }
+  .controls { display: flex; gap: 10px; align-items: center; margin: 18px 0; flex-wrap: wrap; }
+  .status { color: var(--muted); font-size: 13px; }
+  .summary { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin: 20px 0; }
+  @media (max-width: 700px) { .summary { grid-template-columns: 1fr 1fr; } }
+  .card { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 14px; }
+  .card .label { color: var(--muted); font-size: 12px; }
+  .card .value { font-size: 20px; font-weight: 700; margin-top: 4px; }
+  .note { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .filters { display: flex; gap: 8px; margin: 16px 0 10px; flex-wrap: wrap; }
+  .filters button { padding: 6px 12px; font-size: 12px; }
+  .filters button.off { background: var(--panel2); color: var(--muted); border: 1px solid var(--border); font-weight: 400; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 760px; }
+  th { text-align: left; color: var(--muted); font-weight: 600; font-size: 11px; text-transform: uppercase; padding: 8px 10px; border-bottom: 1px solid var(--border); }
+  td { padding: 9px 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  tr:hover td { background: var(--panel2); }
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 20px; font-size: 11px; font-weight: 600; white-space: nowrap; }
+  .badge.match { background: var(--good-bg); color: var(--good); }
+  .badge.flag_verify, .badge.flag_policy_number { background: var(--warn-bg); color: var(--warn); }
+  .badge.mismatch, .badge.missing_from_ams360, .badge.missing_from_carrier { background: var(--bad-bg); color: var(--bad); }
+  .num { text-align: right; font-variant-numeric: tabular-nums; }
+  .diff-nonzero { color: var(--bad); font-weight: 700; }
+  .muted { color: var(--muted); }
+  #resultsSection { display: none; }
+  .table-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 10px; margin-bottom: 16px; }
+  .history-row { cursor: pointer; }
+  .history-row:hover td { background: var(--panel2); }
+</style>
+</head>
+<body>
+
+<header class="hdr">
+    <div class="hdr-brand">
+        <div class="hdr-logo">
+            <svg width="30" height="30" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+              <rect width="512" height="512" rx="80" fill="#0f1420"/>
+              <g transform="translate(118,86) rotate(-8 100 130)">
+                <rect x="0" y="0" width="200" height="260" rx="14" fill="#1d2536" stroke="#2a3346" stroke-width="3"/>
+                <rect x="26" y="38" width="148" height="12" rx="6" fill="#3a4560"/>
+                <rect x="26" y="66" width="112" height="10" rx="5" fill="#3a4560"/>
+                <rect x="26" y="92" width="132" height="10" rx="5" fill="#3a4560"/>
+              </g>
+              <g transform="translate(196,150) rotate(7 100 130)">
+                <rect x="0" y="0" width="200" height="260" rx="14" fill="#171e2e" stroke="#4f8cff" stroke-width="4"/>
+                <rect x="26" y="38" width="148" height="12" rx="6" fill="#4f8cff" opacity="0.9"/>
+                <rect x="26" y="66" width="112" height="10" rx="5" fill="#4f8cff" opacity="0.5"/>
+                <rect x="26" y="92" width="132" height="10" rx="5" fill="#4f8cff" opacity="0.5"/>
+              </g>
+              <circle cx="366" cy="366" r="76" fill="#2fbf71" stroke="#0f1420" stroke-width="10"/>
+              <path d="M330 368 L354 392 L402 342" fill="none" stroke="#0f1420" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+        </div>
+        <div><div class="hdr-title">Direct Bill Reconciliation</div><div class="hdr-sub">Insurance Agency of Mid America</div></div>
+    </div>
+    <div class="hdr-right">
+        <a href="/" class="nav-btn active">Reconciliations</a>
+        {% if user.role == 'admin' %}
+        <a href="/admin" class="nav-btn">User Management</a>
+        {% endif %}
+        <button class="theme-toggle" id="themeToggle" onclick="toggleTheme()" title="Toggle light/dark theme"></button>
+        <a href="/logout" class="nav-btn">Sign Out</a>
+    </div>
+</header>
+
+<div class="container">
+<p class="sub">Compare a carrier's direct-bill commission statement against your AMS360 export, by client/policy, and see exactly where they disagree.</p>
+
+<div class="carrier-row">
+  <select id="carrierSelect">
+    {% for c in carriers %}<option value="{{ c }}">{{ c }}</option>{% endfor %}
+  </select>
+</div>
+
+<div class="drop-row">
+  <div class="dropzone" id="dz-carrier">
+    <h3>Carrier Statement</h3>
+    <p>PDF from the insurance carrier</p>
+    <div class="filename" id="fn-carrier"></div>
+    <input type="file" id="file-carrier" accept=".pdf" />
+  </div>
+  <div class="dropzone" id="dz-ams">
+    <h3>AMS360 Export</h3>
+    <p>PDF, Excel, or CSV export of the AMS360 Direct Bill Statement</p>
+    <div class="filename" id="fn-ams"></div>
+    <input type="file" id="file-ams" accept=".pdf,.xlsx,.xls,.csv" />
+  </div>
+</div>
+
+<div class="controls">
+  <button id="btnReconcile" disabled>Reconcile</button>
+  <span class="status" id="statusText"></span>
+</div>
+
+<div id="resultsSection">
+  <div class="summary" id="summaryCards"></div>
+  <div class="filters" id="filters"></div>
+  <div class="controls">
+    <button class="secondary" id="btnExport">Export results to CSV</button>
+  </div>
+  <div class="table-wrap">
+    <table id="resultsTable">
+      <thead>
+        <tr>
+          <th>Status</th><th>Client</th><th>Carrier Policy</th><th>AMS360 Policy</th>
+          <th class="num">Carrier Net $</th><th class="num">AMS360 Net $</th><th class="num">Difference</th><th>Notes</th>
+        </tr>
+      </thead>
+      <tbody id="resultsBody"></tbody>
+    </table>
+  </div>
+</div>
+
+<h2>Past runs</h2>
+<div class="table-wrap">
+  <table id="historyTable">
+    <thead>
+      <tr><th>Date</th><th>Carrier</th><th>Carrier file</th><th>AMS360 file</th><th class="num">Diff</th><th class="num">Issues</th><th></th></tr>
+    </thead>
+    <tbody id="historyBody">
+      {% for run in runs %}
+      <tr class="history-row" data-run-id="{{ run.id }}">
+        <td>{{ run.created_at }}</td>
+        <td>{{ run.carrier }}</td>
+        <td>{{ run.carrier_filename }}</td>
+        <td>{{ run.ams_filename }}</td>
+        <td class="num {{ 'diff-nonzero' if run.diff_total|abs > 0.01 else '' }}">${{ '%.2f'|format(run.diff_total) }}</td>
+        <td class="num">{{ run.issue_count }} / {{ run.item_count }}</td>
+        <td><a href="/api/runs/{{ run.id }}/export.csv">CSV</a></td>
+      </tr>
+      {% else %}
+      <tr><td colspan="7" class="muted">No runs yet.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+</div>
+
+<script>
+function applyTheme(t) {
+  document.documentElement.setAttribute('data-theme', t);
+  document.getElementById('themeToggle').textContent = t === 'light' ? '🌙' : '☀️';
+}
+function toggleTheme() {
+  const next = (localStorage.getItem('iama_theme') || 'dark') === 'dark' ? 'light' : 'dark';
+  localStorage.setItem('iama_theme', next);
+  applyTheme(next);
+}
+applyTheme(localStorage.getItem('iama_theme') || 'dark');
+
+const STATUS_META = {
+  match: "Match", flag_verify: "Verify detail", flag_policy_number: "Policy # differs",
+  mismatch: "Amount mismatch", missing_from_ams360: "Missing from AMS360", missing_from_carrier: "Missing from carrier",
+};
+function fmtMoney(n) {
+  if (n === null || n === undefined) return '<span class="muted">—</span>';
+  const sign = n < 0 ? "-" : "";
+  return sign + "$" + Math.abs(n).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+function setStatus(msg) { document.getElementById("statusText").textContent = msg; }
+
+const state = { carrierFile: null, amsFile: null };
+function checkReady() { document.getElementById("btnReconcile").disabled = !(state.carrierFile && state.amsFile); }
+
+function setupDropzone(dzId, inputId, onFile) {
+  const dz = document.getElementById(dzId);
+  const input = document.getElementById(inputId);
+  dz.addEventListener("click", () => input.click());
+  dz.addEventListener("dragover", e => { e.preventDefault(); dz.classList.add("drag"); });
+  dz.addEventListener("dragleave", () => dz.classList.remove("drag"));
+  dz.addEventListener("drop", e => { e.preventDefault(); dz.classList.remove("drag"); if (e.dataTransfer.files.length) onFile(e.dataTransfer.files[0]); });
+  input.addEventListener("change", () => { if (input.files.length) onFile(input.files[0]); });
+}
+setupDropzone("dz-carrier", "file-carrier", f => {
+  state.carrierFile = f;
+  document.getElementById("fn-carrier").textContent = f.name;
+  document.getElementById("dz-carrier").classList.add("loaded");
+  checkReady();
+});
+setupDropzone("dz-ams", "file-ams", f => {
+  state.amsFile = f;
+  document.getElementById("fn-ams").textContent = f.name;
+  document.getElementById("dz-ams").classList.add("loaded");
+  checkReady();
+});
+
+let lastRun = null;
+let activeFilters = new Set(Object.keys(STATUS_META));
+
+document.getElementById("btnReconcile").addEventListener("click", async () => {
+  const btn = document.getElementById("btnReconcile");
+  btn.disabled = true;
+  setStatus("Uploading and processing (OCR can take a minute for a multi-page carrier statement)…");
+  try {
+    const fd = new FormData();
+    fd.append("carrier", document.getElementById("carrierSelect").value);
+    fd.append("carrier_file", state.carrierFile);
+    fd.append("ams_file", state.amsFile);
+    const resp = await fetch("/api/reconcile", { method: "POST", body: fd });
+    const data = await resp.json();
+    if (!resp.ok) throw new Error(data.error || "Request failed.");
+    lastRun = data.run;
+    renderResults(data.run);
+    setStatus("Done.");
+    prependHistoryRow(data.run);
+  } catch (err) {
+    setStatus("Error: " + err.message);
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+function renderResults(run) {
+  document.getElementById("resultsSection").style.display = "block";
+  document.getElementById("summaryCards").innerHTML = `
+    <div class="card"><div class="label">Carrier net total</div><div class="value">${fmtMoney(run.carrier_net_total)}</div></div>
+    <div class="card"><div class="label">AMS360 net total</div><div class="value">${fmtMoney(run.ams_net_total)}</div></div>
+    <div class="card"><div class="label">Difference</div><div class="value" style="color:${Math.abs(run.diff_total)<0.01?'var(--good)':'var(--bad)'}">${fmtMoney(run.diff_total)}</div></div>
+    <div class="card"><div class="label">Items needing review</div><div class="value" style="color:${run.issue_count?'var(--warn)':'var(--good)'}">${run.issue_count} / ${run.item_count}</div></div>
+    ${run.used_ocr ? '<div class="note" style="grid-column:1/-1">Carrier statement was read via OCR (no text layer in the PDF). Header-row totals are highly reliable; "Verify detail" just means the line-item breakdown under a policy did not sum cleanly and is worth a quick visual check against the original PDF.</div>' : ''}
+  `;
+  const filtersEl = document.getElementById("filters");
+  filtersEl.innerHTML = "";
+  const allBtn = document.createElement("button");
+  allBtn.textContent = "All";
+  allBtn.onclick = () => { activeFilters = new Set(Object.keys(STATUS_META)); renderTable(run); updateFilterButtons(); };
+  filtersEl.appendChild(allBtn);
+  for (const key of Object.keys(STATUS_META)) {
+    const count = run.items.filter(i => i.status === key).length;
+    if (!count) continue;
+    const b = document.createElement("button");
+    b.textContent = `${STATUS_META[key]} (${count})`;
+    b.dataset.key = key;
+    b.onclick = () => {
+      if (activeFilters.has(key) && activeFilters.size === 1) activeFilters = new Set(Object.keys(STATUS_META));
+      else activeFilters = new Set([key]);
+      renderTable(run); updateFilterButtons();
+    };
+    filtersEl.appendChild(b);
+  }
+  updateFilterButtons();
+  renderTable(run);
+  document.getElementById("btnExport").onclick = () => { window.location.href = `/api/runs/${run.id}/export.csv`; };
+}
+
+function updateFilterButtons() {
+  document.querySelectorAll("#filters button").forEach(b => {
+    const key = b.dataset.key;
+    if (!key) { b.classList.toggle("off", activeFilters.size !== Object.keys(STATUS_META).length); return; }
+    b.classList.toggle("off", !activeFilters.has(key));
+  });
+}
+
+function renderTable(run) {
+  const tbody = document.getElementById("resultsBody");
+  tbody.innerHTML = "";
+  const order = ["mismatch", "missing_from_ams360", "missing_from_carrier", "flag_policy_number", "flag_verify", "match"];
+  const rows = run.items.filter(i => activeFilters.has(i.status)).sort((a, b) => order.indexOf(a.status) - order.indexOf(b.status));
+  for (const r of rows) {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td><span class="badge ${r.status}">${STATUS_META[r.status] || r.status}</span></td>
+      <td>${r.client_name}</td>
+      <td>${r.carrier_policy || '<span class="muted">—</span>'}</td>
+      <td>${r.ams_policy || '<span class="muted">—</span>'}</td>
+      <td class="num">${fmtMoney(r.carrier_net)}</td>
+      <td class="num">${fmtMoney(r.ams_net)}</td>
+      <td class="num ${Math.abs(r.diff) >= 0.01 ? 'diff-nonzero' : ''}">${fmtMoney(r.diff)}</td>
+      <td>${r.note || ''}</td>
+    `;
+    tbody.appendChild(tr);
+  }
+}
+
+function prependHistoryRow(run) {
+  const tbody = document.getElementById("historyBody");
+  const empty = tbody.querySelector("td.muted");
+  if (empty) empty.closest("tr").remove();
+  const tr = document.createElement("tr");
+  tr.className = "history-row";
+  tr.dataset.runId = run.id;
+  tr.innerHTML = `
+    <td>${run.created_at}</td><td>${run.carrier}</td><td>${run.carrier_filename}</td><td>${run.ams_filename}</td>
+    <td class="num ${Math.abs(run.diff_total) > 0.01 ? 'diff-nonzero' : ''}">${fmtMoney(run.diff_total)}</td>
+    <td class="num">${run.issue_count} / ${run.item_count}</td>
+    <td><a href="/api/runs/${run.id}/export.csv">CSV</a></td>
+  `;
+  tr.addEventListener("click", (e) => { if (e.target.tagName !== 'A') loadRun(run.id); });
+  tbody.prepend(tr);
+}
+
+async function loadRun(id) {
+  setStatus("Loading…");
+  const resp = await fetch(`/api/runs/${id}`);
+  const data = await resp.json();
+  lastRun = data.run;
+  renderResults(data.run);
+  setStatus("");
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+document.querySelectorAll(".history-row").forEach(tr => {
+  tr.addEventListener("click", (e) => { if (e.target.tagName !== 'A') loadRun(tr.dataset.runId); });
+});
+</script>
+</body>
+</html>

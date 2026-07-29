@@ -1,0 +1,6 @@
+# Adds the tesseract OCR binary to the build environment. The CNA carrier
+# statement PDF has no text layer (vector-drawn glyphs), so pytesseract needs
+# the actual `tesseract` binary available at runtime — this isn't needed by
+# Bond App, which is why it doesn't have this file.
+[phases.setup]
+nixPkgs = ["tesseract"]
