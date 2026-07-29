@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#0d1b2a">
+<title>IAMA BondDesk — Surety Bond Tracking for Agencies</title>
+<meta name="description" content="BondDesk keeps every bid bond, final bond, license, and maintenance bond organized, reconciled, and audit-ready — from quote to closeout.">
+<style>
+  :root {
+    --navy:       #0d1b2a;
+    --navy-lt:    #1b2d42;
+    --blue:       #1565c0;
+    --blue-lt:    #1976d2;
+    --accent:     #0288d1;
+    --green:      #2e7d32; --green-bg: #e8f5e9;
+    --red:        #c62828; --red-bg:   #ffebee;
+    --amber:      #e65100; --amber-bg: #fff3e0;
+    --gold:       #ffd54f;
+    --sky:        #4fc3f7;
+    --gray-50:    #f8f9fa; --gray-100: #f1f3f4;
+    --gray-200:   #e8eaed; --gray-300: #dadce0;
+    --gray-600:   #5f6368; --gray-800: #3c4043;
+    --shadow-sm:  0 1px 3px rgba(0,0,0,0.12);
+    --shadow-md:  0 4px 12px rgba(0,0,0,0.15);
+    --shadow-lg:  0 12px 32px rgba(0,0,0,0.22);
+    --r: 8px; --r-sm: 4px; --r-lg: 14px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    color: var(--gray-800);
+    background: var(--gray-50);
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+  a { color: inherit; }
+  img, svg { max-width: 100%; display: block; }
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 0 24px; }
+
+  /* ---------- Nav ---------- */
+  .nav {
+    position: sticky; top: 0; z-index: 200;
+    background: var(--navy);
+    box-shadow: var(--shadow-md);
+  }
+  .nav-inner { display: flex; align-items: center; justify-content: space-between; height: 64px; }
+  .brand { display: flex; align-items: center; gap: 10px; text-decoration: none; }
+  .brand-name { color: #fff; font-weight: 700; font-size: 17px; line-height: 1.1; }
+  .brand-sub  { color: rgba(255,255,255,0.55); font-size: 10.5px; letter-spacing: 0.3px; }
+  .nav-links { display: flex; align-items: center; gap: 6px; }
+  .nav-link {
+    color: rgba(255,255,255,0.8); text-decoration: none; font-size: 14px; font-weight: 500;
+    padding: 9px 14px; border-radius: var(--r-sm); transition: background .15s, color .15s;
+  }
+  .nav-link:hover { background: rgba(255,255,255,0.08); color: #fff; }
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    border: none; border-radius: var(--r-sm); font-family: inherit; font-weight: 600;
+    cursor: pointer; text-decoration: none; transition: background .15s, transform .1s, box-shadow .15s;
+    min-height: 44px;
+  }
+  .btn-primary { background: var(--blue); color: #fff; padding: 11px 22px; font-size: 15px; }
+  .btn-primary:hover { background: var(--blue-lt); box-shadow: var(--shadow-md); }
+  .btn-ghost { background: transparent; color: #fff; padding: 10px 20px; font-size: 14px; border: 1px solid rgba(255,255,255,0.3); }
+  .btn-ghost:hover { background: rgba(255,255,255,0.08); }
+  .btn-nav { background: var(--blue); color: #fff; padding: 9px 18px; font-size: 14px; min-height: 38px; }
+  .btn-nav:hover { background: var(--blue-lt); }
+
+  .nav-toggle { display: none; background: none; border: none; color: #fff; padding: 8px; cursor: pointer; }
+  .nav-toggle svg { width: 24px; height: 24px; }
+
+  /* ---------- Hero ---------- */
+  .hero {
+    background: radial-gradient(1100px 480px at 85% -10%, rgba(21,101,192,0.35), transparent 60%),
+                linear-gradient(180deg, var(--navy) 0%, var(--navy-lt) 100%);
+    padding: 76px 0 90px;
+    position: relative;
+    overflow: hidden;
+  }
+  .hero-grid { display: grid; grid-template-columns: 1.05fr 0.95fr; gap: 56px; align-items: center; }
+  .eyebrow {
+    display: inline-flex; align-items: center; gap: 8px;
+    color: var(--sky); font-size: 12.5px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase;
+    background: rgba(79,195,247,0.12); border: 1px solid rgba(79,195,247,0.3);
+    padding: 6px 12px; border-radius: 999px; margin-bottom: 20px;
+  }
+  .hero h1 { color: #fff; font-size: 44px; line-height: 1.15; font-weight: 800; letter-spacing: -0.5px; }
+  .hero h1 span { color: var(--sky); }
+  .hero p.lead { color: rgba(255,255,255,0.72); font-size: 17px; line-height: 1.6; margin-top: 18px; max-width: 540px; }
+  .hero-cta { display: flex; gap: 14px; margin-top: 30px; flex-wrap: wrap; }
+  .hero-note { margin-top: 16px; color: rgba(255,255,255,0.45); font-size: 12.5px; }
+
+  /* mock product preview */
+  .preview-card {
+    background: #fff; border-radius: var(--r-lg); box-shadow: var(--shadow-lg);
+    overflow: hidden; transform: rotate(0.4deg);
+  }
+  .preview-head {
+    background: var(--navy); padding: 12px 16px; display: flex; align-items: center; gap: 8px;
+  }
+  .dot { width: 9px; height: 9px; border-radius: 50%; background: rgba(255,255,255,0.25); }
+  .preview-title { color: rgba(255,255,255,0.8); font-size: 11.5px; margin-left: 4px; letter-spacing: 0.3px; }
+  .preview-body { padding: 18px; }
+  .p-stats { display: grid; grid-template-columns: repeat(4,1fr); gap: 10px; margin-bottom: 16px; }
+  .p-stat { background: var(--gray-50); border-radius: var(--r-sm); padding: 10px 12px; border-left: 3px solid var(--blue); }
+  .p-stat.g { border-left-color: var(--green); }
+  .p-stat.r { border-left-color: var(--red); }
+  .p-stat.a { border-left-color: var(--amber); }
+  .p-stat-lbl { font-size: 9.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--gray-600); }
+  .p-stat-val { font-size: 19px; font-weight: 700; color: var(--navy); margin-top: 2px; }
+  .p-table { border: 1px solid var(--gray-200); border-radius: var(--r-sm); overflow: hidden; }
+  .p-row { display: grid; grid-template-columns: 1.4fr 1.2fr 0.9fr 0.8fr; gap: 8px; padding: 9px 12px; font-size: 12px; border-bottom: 1px solid var(--gray-100); align-items: center; }
+  .p-row:last-child { border-bottom: none; }
+  .p-row.head { background: var(--gray-50); font-weight: 700; color: var(--gray-600); font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.4px; }
+  .p-badge { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 10.5px; font-weight: 700; }
+  .p-badge.appr { background: var(--green-bg); color: var(--green); }
+  .p-badge.pend { background: var(--amber-bg); color: var(--amber); }
+  .p-badge.recon { background: #e3f2fd; color: var(--blue); }
+  .p-caption { text-align: center; color: rgba(255,255,255,0.4); font-size: 11.5px; margin-top: 14px; }
+
+  /* ---------- Sections ---------- */
+  section { padding: 88px 0; }
+  .section-head { text-align: center; max-width: 640px; margin: 0 auto 52px; }
+  .section-eyebrow { color: var(--blue); font-size: 12.5px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; }
+  .section-head h2 { font-size: 32px; color: var(--navy); font-weight: 800; margin-top: 10px; letter-spacing: -0.3px; }
+  .section-head p { color: var(--gray-600); font-size: 15.5px; margin-top: 12px; line-height: 1.6; }
+
+  /* pain points */
+  .pain-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 24px; }
+  .pain-card { background: #fff; border-radius: var(--r); padding: 26px; box-shadow: var(--shadow-sm); border-top: 3px solid var(--red); }
+  .pain-card h3 { font-size: 16px; color: var(--navy); margin-bottom: 8px; }
+  .pain-card p { font-size: 14px; color: var(--gray-600); line-height: 1.55; }
+
+  /* features */
+  .features { background: #fff; }
+  .feat-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 22px; }
+  .feat-card {
+    border: 1px solid var(--gray-200); border-radius: var(--r); padding: 26px;
+    transition: box-shadow .18s, transform .18s, border-color .18s;
+  }
+  .feat-card:hover { box-shadow: var(--shadow-md); transform: translateY(-3px); border-color: transparent; }
+  .feat-icon {
+    width: 44px; height: 44px; border-radius: 10px; background: var(--navy);
+    display: flex; align-items: center; justify-content: center; margin-bottom: 16px;
+  }
+  .feat-icon svg { width: 22px; height: 22px; stroke: var(--sky); }
+  .feat-card h3 { font-size: 16.5px; color: var(--navy); margin-bottom: 8px; font-weight: 700; }
+  .feat-card p { font-size: 14px; color: var(--gray-600); line-height: 1.6; }
+
+  /* how it works */
+  .how { background: var(--gray-50); }
+  .steps { display: grid; grid-template-columns: repeat(4,1fr); gap: 22px; counter-reset: step; }
+  .step { background: #fff; border-radius: var(--r); padding: 24px 20px; box-shadow: var(--shadow-sm); position: relative; }
+  .step-num {
+    width: 34px; height: 34px; border-radius: 50%; background: var(--blue); color: #fff;
+    display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 15px; margin-bottom: 14px;
+  }
+  .step h3 { font-size: 15.5px; color: var(--navy); margin-bottom: 7px; }
+  .step p { font-size: 13.5px; color: var(--gray-600); line-height: 1.55; }
+
+  /* cta banner */
+  .cta-band {
+    background: linear-gradient(135deg, var(--navy) 0%, var(--navy-lt) 100%);
+    border-radius: var(--r-lg); padding: 52px 40px; text-align: center;
+  }
+  .cta-band h2 { color: #fff; font-size: 27px; font-weight: 800; }
+  .cta-band p { color: rgba(255,255,255,0.65); font-size: 15px; margin-top: 10px; }
+  .cta-band .hero-cta { justify-content: center; margin-top: 26px; }
+
+  /* footer */
+  footer { background: var(--navy); padding: 40px 0 28px; }
+  .foot-inner { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; }
+  .foot-brand { display: flex; align-items: center; gap: 10px; }
+  .foot-brand-name { color: #fff; font-size: 14px; font-weight: 700; }
+  .foot-brand-sub { color: rgba(255,255,255,0.45); font-size: 11.5px; }
+  .foot-links { display: flex; gap: 22px; }
+  .foot-links a { color: rgba(255,255,255,0.6); font-size: 13px; text-decoration: none; }
+  .foot-links a:hover { color: #fff; }
+  .foot-bottom { margin-top: 26px; padding-top: 20px; border-top: 1px solid rgba(255,255,255,0.1); text-align: center; color: rgba(255,255,255,0.35); font-size: 12px; }
+
+  /* ---------- Responsive ---------- */
+  @media (max-width: 1024px) {
+    .hero h1 { font-size: 36px; }
+    .pain-grid, .feat-grid { grid-template-columns: repeat(2,1fr); }
+    .steps { grid-template-columns: repeat(2,1fr); }
+  }
+  @media (max-width: 900px) {
+    .hero-grid { grid-template-columns: 1fr; }
+    .hero { padding: 52px 0 60px; text-align: center; }
+    .hero p.lead { margin-left: auto; margin-right: auto; }
+    .hero-cta { justify-content: center; }
+    .preview-card { transform: none; max-width: 480px; margin: 8px auto 0; }
+  }
+  @media (max-width: 720px) {
+    .nav-links .nav-link { display: none; }
+    .nav-toggle { display: inline-flex; }
+    .p-stats { grid-template-columns: repeat(2,1fr); }
+    .p-row { grid-template-columns: 1.3fr 1fr 0.8fr; }
+    .p-row span.p-col-status { display: none; }
+  }
+  @media (max-width: 640px) {
+    .pain-grid, .feat-grid, .steps { grid-template-columns: 1fr; }
+    .hero h1 { font-size: 30px; }
+    section { padding: 60px 0; }
+    .cta-band { padding: 40px 22px; }
+    .section-head h2 { font-size: 26px; }
+  }
+</style>
+</head>
+<body>
+
+<nav class="nav">
+  <div class="wrap nav-inner">
+    <a class="brand" href="#top">
+      <svg width="30" height="34" viewBox="0 0 54 60" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <defs><clipPath id="scl"><path d="M27 2 L51 10 L51 34 Q51 49 27 58 Q3 49 3 34 L3 10 Z"/></clipPath></defs>
+        <path d="M27 2 L51 10 L51 34 Q51 49 27 58 Q3 49 3 34 L3 10 Z" fill="#1565c0"/>
+        <rect x="0" y="39" width="54" height="21" clip-path="url(#scl)" fill="#071524"/>
+        <rect x="5" y="28" width="7" height="12" clip-path="url(#scl)" fill="#071524"/>
+        <rect x="13" y="22" width="7" height="18" clip-path="url(#scl)" fill="#071524"/>
+        <rect x="21" y="26" width="6" height="14" clip-path="url(#scl)" fill="#071524"/>
+        <rect x="34" y="28" width="10" height="12" clip-path="url(#scl)" fill="#071524"/>
+        <rect x="30" y="14" width="3" height="26" clip-path="url(#scl)" fill="#071524"/>
+        <rect x="22" y="14" width="18" height="2" clip-path="url(#scl)" fill="#071524"/>
+        <rect x="6.5" y="31" width="2" height="2" clip-path="url(#scl)" fill="#ffd54f" opacity="0.85"/>
+        <rect x="9.5" y="31" width="2" height="2" clip-path="url(#scl)" fill="#ffd54f" opacity="0.6"/>
+        <rect x="14" y="24" width="2" height="2" clip-path="url(#scl)" fill="#ffd54f" opacity="0.85"/>
+        <line x1="3" y1="39" x2="51" y2="39" clip-path="url(#scl)" stroke="#90caf9" stroke-width="1"/>
+        <path d="M27 2 L51 10 L51 34 Q51 49 27 58 Q3 49 3 34 L3 10 Z" fill="none" stroke="#4fc3f7" stroke-width="2"/>
+      </svg>
+      <span>
+        <span class="brand-name" style="display:block;">BondDesk</span>
+        <span class="brand-sub">Insurance Agency of Mid America</span>
+      </span>
+    </a>
+    <div class="nav-links">
+      <a class="nav-link" href="#features">Features</a>
+      <a class="nav-link" href="#how">How It Works</a>
+      <a class="btn btn-nav" href="{{ url_for('login') }}">Sign In</a>
+    </div>
+    <button class="nav-toggle" aria-label="Open menu" onclick="document.getElementById('mnav').classList.toggle('open')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+    </button>
+  </div>
+  <div id="mnav" style="display:none;" class="wrap">
+    <div style="display:flex;flex-direction:column;gap:4px;padding:8px 0 16px;">
+      <a class="nav-link" href="#features">Features</a>
+      <a class="nav-link" href="#how">How It Works</a>
+      <a class="btn btn-nav" style="width:fit-content;" href="{{ url_for('login') }}">Sign In</a>
+    </div>
+  </div>
+</nav>
+<style>#mnav.open{display:block !important;}</style>
+
+<header class="hero" id="top">
+  <div class="wrap hero-grid">
+    <div>
+      <div class="eyebrow">Surety bond tracking for agencies</div>
+      <h1>Every bid, bond, and reconciliation — <span>in one place.</span></h1>
+      <p class="lead">BondDesk replaces the spreadsheet chain agencies use to track surety bonds with a single source of truth: bid bonds, final bonds, license and maintenance bonds, carrier reconciliation, and a full audit trail — built for how a bond desk actually works.</p>
+      <div class="hero-cta">
+        <a class="btn btn-primary" href="{{ url_for('login') }}">Sign In to BondDesk</a>
+        <a class="btn btn-ghost" href="#features">Explore Features</a>
+      </div>
+      <div class="hero-note">Already have an account? Sign in above. New to BondDesk? Ask your administrator for an invite.</div>
+    </div>
+    <div>
+      <div class="preview-card" aria-hidden="true">
+        <div class="preview-head">
+          <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+          <span class="preview-title">BONDDESK — BOND REGISTER (SAMPLE VIEW)</span>
+        </div>
+        <div class="preview-body">
+          <div class="p-stats">
+            <div class="p-stat"><div class="p-stat-lbl">Bid Bonds</div><div class="p-stat-val">42</div></div>
+            <div class="p-stat g"><div class="p-stat-lbl">Approved</div><div class="p-stat-val">118</div></div>
+            <div class="p-stat a"><div class="p-stat-lbl">Pending</div><div class="p-stat-val">9</div></div>
+            <div class="p-stat r"><div class="p-stat-lbl">Discrepancy</div><div class="p-stat-val">2</div></div>
+          </div>
+          <div class="p-table">
+            <div class="p-row head">
+              <span>Principal</span><span>Bond Type</span><span class="p-col-status">Status</span><span>Amount</span>
+            </div>
+            <div class="p-row">
+              <span>Sample Contracting Co.</span><span>Final Bond</span>
+              <span class="p-col-status"><span class="p-badge appr">Approved</span></span><span>$250,000</span>
+            </div>
+            <div class="p-row">
+              <span>Example Builders LLC</span><span>Bid Bond</span>
+              <span class="p-col-status"><span class="p-badge pend">Pending</span></span><span>$18,500</span>
+            </div>
+            <div class="p-row">
+              <span>Demo Site Services</span><span>Maintenance</span>
+              <span class="p-col-status"><span class="p-badge recon">Reconciled</span></span><span>$74,200</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="p-caption">Illustrative preview — not real client data</div>
+    </div>
+  </div>
+</header>
+
+<section class="pain">
+  <div class="wrap">
+    <div class="section-head">
+      <div class="section-eyebrow">The problem</div>
+      <h2>Spreadsheets weren't built for a bond desk</h2>
+      <p>Bond registers grow fast, live across multiple files, and rarely agree with the carrier's numbers by the time reconciliation rolls around.</p>
+    </div>
+    <div class="pain-grid">
+      <div class="pain-card">
+        <h3>Scattered records</h3>
+        <p>Bid bonds, final bonds, and license bonds tracked in different tabs or files, with no single view of a principal's full bond history.</p>
+      </div>
+      <div class="pain-card">
+        <h3>Manual reconciliation</h3>
+        <p>Matching your register against a carrier statement line-by-line, by hand, every single month — and hoping nothing gets missed.</p>
+      </div>
+      <div class="pain-card">
+        <h3>No audit trail</h3>
+        <p>When a bond amount or status changes, there's no record of who changed it, when, or what it looked like before.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="features" id="features">
+  <div class="wrap">
+    <div class="section-head">
+      <div class="section-eyebrow">What BondDesk does</div>
+      <h2>Everything your bond desk needs</h2>
+      <p>Purpose-built for surety bond tracking — not a repurposed spreadsheet or generic CRM.</p>
+    </div>
+    <div class="feat-grid">
+      <div class="feat-card">
+        <div class="feat-icon"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12l2 2 4-4M7.8 3h8.4a1.8 1.8 0 011.8 1.8v14.4a1.8 1.8 0 01-1.8 1.8H7.8A1.8 1.8 0 016 19.2V4.8A1.8 1.8 0 017.8 3z"/></svg></div>
+        <h3>Full Bond Lifecycle</h3>
+        <p>Track Bid, Final, License, and Maintenance bonds from quote to closeout. Convert a winning bid straight into a final bond without re-keying a single field.</p>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg></div>
+        <h3>Automatic Reconciliation</h3>
+        <p>Load carrier statement figures against your register and let BondDesk flag matches, discrepancies, and missing bonds automatically.</p>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg></div>
+        <h3>Complete Audit Trail</h3>
+        <p>Every edit is logged — who made it, when, and what changed. Nothing gets altered quietly, and nothing gets lost.</p>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15a4 4 0 100-8 4 4 0 000 8z"/><path d="M12 3v2M12 19v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M3 12h2M19 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4"/></svg></div>
+        <h3>One-Click Reporting</h3>
+        <p>Export filtered bond registers to PDF or Excel for producers, underwriters, or leadership — formatted and ready to send.</p>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="9" rx="1.5"/><path d="M8 11V7a4 4 0 018 0v4"/></svg></div>
+        <h3>Role-Based Access</h3>
+        <p>Admins manage the team through secure email invites. Everyone else sees exactly what they need for their book of business.</p>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 15l4-5 3 3 5-7"/></svg></div>
+        <h3>Work-on-Hand Visibility</h3>
+        <p>Track contractor capacity and bid results — won or lost — alongside every bond, so you always know where a principal stands.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="how" id="how">
+  <div class="wrap">
+    <div class="section-head">
+      <div class="section-eyebrow">How it works</div>
+      <h2>From quote to closeout, in four steps</h2>
+    </div>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <h3>Log the bid</h3>
+        <p>Enter the principal, obligee, project, and bid bond percentage the moment a bid goes out.</p>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <h3>Award it</h3>
+        <p>One click turns an awarded bid bond into a final bond, carrying over every detail already on file.</p>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <h3>Reconcile monthly</h3>
+        <p>Match your register against carrier statements and resolve discrepancies before they pile up.</p>
+      </div>
+      <div class="step">
+        <div class="step-num">4</div>
+        <h3>Report with confidence</h3>
+        <p>Pull an audit-ready PDF or Excel export whenever producers or leadership ask for one.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <div class="cta-band">
+      <h2>Ready to get your bond desk out of the spreadsheet?</h2>
+      <p>Sign in to BondDesk to see your current register, or ask your administrator for an invite.</p>
+      <div class="hero-cta">
+        <a class="btn btn-primary" href="{{ url_for('login') }}">Sign In to BondDesk</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <div class="foot-inner">
+      <div class="foot-brand">
+        <svg width="24" height="27" viewBox="0 0 54 60" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <path d="M27 2 L51 10 L51 34 Q51 49 27 58 Q3 49 3 34 L3 10 Z" fill="#1565c0"/>
+          <path d="M27 2 L51 10 L51 34 Q51 49 27 58 Q3 49 3 34 L3 10 Z" fill="none" stroke="#4fc3f7" stroke-width="2"/>
+        </svg>
+        <span>
+          <span class="foot-brand-name" style="display:block;">IAMA BondDesk</span>
+          <span class="foot-brand-sub">Insurance Agency of Mid America</span>
+        </span>
+      </div>
+      <div class="foot-links">
+        <a href="#features">Features</a>
+        <a href="#how">How It Works</a>
+        <a href="{{ url_for('login') }}">Sign In</a>
+      </div>
+    </div>
+    <div class="foot-bottom">&copy; <span id="yr"></span> Insurance Agency of Mid America. Internal bond tracking tool.</div>
+  </div>
+</footer>
+
+<script>document.getElementById('yr').textContent = new Date().getFullYear();</script>
+</body>
+</html>
