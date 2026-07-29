@@ -1,4 +1,6 @@
+import os
 import re
+import shutil
 
 import pdfplumber
 
@@ -43,6 +45,20 @@ def ocr_pdf_to_lines(file_obj, dpi=300, progress_cb=None):
     same real file. Verify on first real deploy.
     """
     import pytesseract
+
+    if not shutil.which(pytesseract.pytesseract.tesseract_cmd):
+        for candidate in (
+            r'C:\Program Files\Tesseract-OCR\tesseract.exe',
+            r'C:\Program Files (x86)\Tesseract-OCR\tesseract.exe',
+        ):
+            if os.path.exists(candidate):
+                pytesseract.pytesseract.tesseract_cmd = candidate
+                break
+        else:
+            raise RuntimeError(
+                'Tesseract OCR is not installed on this machine. Install it from '
+                'https://github.com/UB-Mannheim/tesseract/wiki, then try again.'
+            )
 
     lines = []
     with pdfplumber.open(file_obj) as pdf:
