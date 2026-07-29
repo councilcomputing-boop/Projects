@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="theme-color" content="#0d1b2a">
 <title>IAMA BondDesk — Surety Bond Tracking for Agencies</title>
-<meta name="description" content="BondDesk keeps every bid bond, final bond, license, and maintenance bond organized, reconciled, and audit-ready — from quote to closeout.">
+<meta name="description" content="BondDesk keeps every bid bond, final bond, license, and maintenance bond organized and audit-ready — from quote to closeout.">
 <style>
   :root {
     --navy:       #0d1b2a;
@@ -117,7 +117,7 @@
   .p-badge { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 10.5px; font-weight: 700; }
   .p-badge.appr { background: var(--green-bg); color: var(--green); }
   .p-badge.pend { background: var(--amber-bg); color: var(--amber); }
-  .p-badge.recon { background: #e3f2fd; color: var(--blue); }
+  .p-badge.notappr { background: var(--red-bg); color: var(--red); }
   .p-caption { text-align: center; color: rgba(255,255,255,0.4); font-size: 11.5px; margin-top: 14px; }
 
   /* ---------- Sections ---------- */
@@ -128,7 +128,7 @@
   .section-head p { color: var(--gray-600); font-size: 15.5px; margin-top: 12px; line-height: 1.6; }
 
   /* pain points */
-  .pain-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 24px; }
+  .pain-grid { display: grid; grid-template-columns: repeat(2,1fr); gap: 24px; max-width: 760px; margin: 0 auto; }
   .pain-card { background: #fff; border-radius: var(--r); padding: 26px; box-shadow: var(--shadow-sm); border-top: 3px solid var(--red); }
   .pain-card h3 { font-size: 16px; color: var(--navy); margin-bottom: 8px; }
   .pain-card p { font-size: 14px; color: var(--gray-600); line-height: 1.55; }
@@ -258,8 +258,8 @@
   <div class="wrap hero-grid">
     <div>
       <div class="eyebrow">Surety bond tracking for agencies</div>
-      <h1>Every bid, bond, and reconciliation — <span>in one place.</span></h1>
-      <p class="lead">BondDesk replaces the spreadsheet chain agencies use to track surety bonds with a single source of truth: bid bonds, final bonds, license and maintenance bonds, carrier reconciliation, and a full audit trail — built for how a bond desk actually works.</p>
+      <h1>Every bid, bond, and status change — <span>in one place.</span></h1>
+      <p class="lead">BondDesk replaces the spreadsheet chain agencies use to track surety bonds with a single source of truth: bid bonds, final bonds, license and maintenance bonds, and a full audit trail — built for how a bond desk actually works.</p>
       <div class="hero-cta">
         <a class="btn btn-primary" href="{{ url_for('login') }}">Sign In to BondDesk</a>
         <a class="btn btn-ghost" href="#features">Explore Features</a>
@@ -277,7 +277,7 @@
             <div class="p-stat"><div class="p-stat-lbl">Bid Bonds</div><div class="p-stat-val">42</div></div>
             <div class="p-stat g"><div class="p-stat-lbl">Approved</div><div class="p-stat-val">118</div></div>
             <div class="p-stat a"><div class="p-stat-lbl">Pending</div><div class="p-stat-val">9</div></div>
-            <div class="p-stat r"><div class="p-stat-lbl">Discrepancy</div><div class="p-stat-val">2</div></div>
+            <div class="p-stat r"><div class="p-stat-lbl">Not Approved</div><div class="p-stat-val">2</div></div>
           </div>
           <div class="p-table">
             <div class="p-row head">
@@ -293,7 +293,7 @@
             </div>
             <div class="p-row">
               <span>Demo Site Services</span><span>Maintenance</span>
-              <span class="p-col-status"><span class="p-badge recon">Reconciled</span></span><span>$74,200</span>
+              <span class="p-col-status"><span class="p-badge notappr">Not Approved</span></span><span>$74,200</span>
             </div>
           </div>
         </div>
@@ -308,16 +308,12 @@
     <div class="section-head">
       <div class="section-eyebrow">The problem</div>
       <h2>Spreadsheets weren't built for a bond desk</h2>
-      <p>Bond registers grow fast, live across multiple files, and rarely agree with the carrier's numbers by the time reconciliation rolls around.</p>
+      <p>Bond registers grow fast and live across multiple files, with no single record of who changed what, or when.</p>
     </div>
     <div class="pain-grid">
       <div class="pain-card">
         <h3>Scattered records</h3>
         <p>Bid bonds, final bonds, and license bonds tracked in different tabs or files, with no single view of a principal's full bond history.</p>
-      </div>
-      <div class="pain-card">
-        <h3>Manual reconciliation</h3>
-        <p>Matching your register against a carrier statement line-by-line, by hand, every single month — and hoping nothing gets missed.</p>
       </div>
       <div class="pain-card">
         <h3>No audit trail</h3>
@@ -339,11 +335,6 @@
         <div class="feat-icon"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12l2 2 4-4M7.8 3h8.4a1.8 1.8 0 011.8 1.8v14.4a1.8 1.8 0 01-1.8 1.8H7.8A1.8 1.8 0 016 19.2V4.8A1.8 1.8 0 017.8 3z"/></svg></div>
         <h3>Full Bond Lifecycle</h3>
         <p>Track Bid, Final, License, and Maintenance bonds from quote to closeout. Convert a winning bid straight into a final bond without re-keying a single field.</p>
-      </div>
-      <div class="feat-card">
-        <div class="feat-icon"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg></div>
-        <h3>Automatic Reconciliation</h3>
-        <p>Load carrier statement figures against your register and let BondDesk flag matches, discrepancies, and missing bonds automatically.</p>
       </div>
       <div class="feat-card">
         <div class="feat-icon"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg></div>
@@ -388,8 +379,8 @@
       </div>
       <div class="step">
         <div class="step-num">3</div>
-        <h3>Reconcile monthly</h3>
-        <p>Match your register against carrier statements and resolve discrepancies before they pile up.</p>
+        <h3>Keep it current</h3>
+        <p>Update status, notes, and work-on-hand as the bond moves through underwriting — every change captured in the audit trail.</p>
       </div>
       <div class="step">
         <div class="step-num">4</div>
