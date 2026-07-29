@@ -73,6 +73,11 @@ def logout():
 
 # ── Pages ──────────────────────────────────────────────────────────────
 
+@app.route('/about')
+def landing():
+    return render_template('landing.html')
+
+
 @app.route('/')
 @login_required
 def index():
