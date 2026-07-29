@@ -1,0 +1,1696 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Project Organizer</title>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --ink:#0f172a;--ink2:#1e293b;--ink3:#334155;
+  --blue:#2563eb;--blue2:#1d4ed8;--blue-light:#eff6ff;--blue-mid:#dbeafe;
+  --green:#059669;--green-light:#ecfdf5;--green-mid:#d1fae5;
+  --amber:#d97706;--amber-light:#fffbeb;
+  --red:#dc2626;--red-light:#fef2f2;
+  --slate:#64748b;--slate-light:#f1f5f9;--slate-mid:#e2e8f0;
+  --purple:#7c3aed;--purple-light:#f5f3ff;
+  --surface:#fff;--bg:#f1f5f9;
+  --border:#e2e8f0;--muted:#64748b;--text:#0f172a;
+  --r:14px;
+  --shadow:0 1px 2px rgba(0,0,0,.04),0 4px 16px rgba(0,0,0,.06);
+  --shadow-pop:0 4px 8px rgba(0,0,0,.06),0 12px 32px rgba(0,0,0,.1);
+}
+html,body{height:100%}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);max-width:640px;margin:0 auto;min-height:100vh;overscroll-behavior:none;-webkit-tap-highlight-color:transparent}
+
+/* ── Header ───────────────────────────────────────────────── */
+.hdr{background:var(--ink);color:#fff;padding:14px 16px;display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:300;box-shadow:0 2px 12px rgba(0,0,0,.3)}
+.hdr-back{background:none;border:none;color:rgba(255,255,255,.75);font-size:24px;cursor:pointer;padding:0;line-height:1;width:28px;flex-shrink:0;display:none}
+.hdr-back:active{color:#fff}
+.hdr-logo{width:26px;height:26px;border-radius:7px;flex-shrink:0}
+.hdr-title{font-size:17px;font-weight:700;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;letter-spacing:-.2px}
+.hdr-ctx-btn{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.15);color:#fff;font-size:12px;font-weight:600;padding:6px 12px;border-radius:20px;cursor:pointer;white-space:nowrap;display:none}
+.hdr-ctx-btn:active{background:rgba(255,255,255,.2)}
+.hdr-avatar{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;cursor:pointer;flex-shrink:0;color:#fff;border:2px solid rgba(255,255,255,.25);transition:border-color .15s}
+.hdr-avatar:active{border-color:rgba(255,255,255,.6)}
+
+/* ── Content ──────────────────────────────────────────────── */
+#C{padding:16px 14px 110px}
+
+/* ── Login ────────────────────────────────────────────────── */
+.login-wrap{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px 20px;background:var(--ink)}
+.login-mark{width:64px;height:64px;border-radius:18px;margin-bottom:16px;box-shadow:0 8px 24px rgba(37,99,235,.4)}
+.login-title{font-size:26px;font-weight:800;color:#fff;margin-bottom:4px;letter-spacing:-.5px}
+.login-sub{font-size:14px;color:rgba(255,255,255,.5);margin-bottom:32px;text-align:center}
+.login-card{background:var(--surface);border-radius:20px;padding:24px;width:100%;max-width:380px;box-shadow:0 20px 60px rgba(0,0,0,.4)}
+.mode-toggle{display:grid;grid-template-columns:1fr 1fr;background:var(--slate-light);border-radius:10px;padding:3px;margin-bottom:20px;gap:3px}
+.mode-btn{padding:9px;border:none;background:transparent;font-size:14px;font-weight:600;cursor:pointer;color:var(--muted);border-radius:8px;transition:all .15s}
+.mode-btn.active{background:var(--surface);color:var(--text);box-shadow:0 1px 4px rgba(0,0,0,.1)}
+.auth-err{background:#fef2f2;color:#dc2626;border-radius:8px;padding:10px 12px;font-size:13px;margin-bottom:14px;display:none;border:1px solid #fecaca}
+.auth-err.show{display:block}
+.fg{margin-bottom:14px}
+.flabel{display:block;font-size:13px;font-weight:600;margin-bottom:5px;color:var(--ink3)}
+.finput{width:100%;padding:11px 13px;border:1.5px solid var(--border);border-radius:10px;font-size:16px;background:var(--surface);color:var(--text);-webkit-appearance:none;appearance:none;transition:border-color .15s}
+.finput:focus{outline:none;border-color:var(--blue)}
+textarea.finput{resize:vertical;min-height:82px;font-family:inherit;line-height:1.5}
+select.finput{cursor:pointer}
+
+/* ── Buttons ──────────────────────────────────────────────── */
+.btn{display:flex;align-items:center;justify-content:center;gap:7px;padding:13px 20px;border-radius:11px;border:none;font-size:15px;font-weight:700;cursor:pointer;width:100%;touch-action:manipulation;letter-spacing:-.1px;transition:transform .1s,opacity .1s}
+.btn:active{transform:scale(.97);opacity:.9}
+.btn:disabled{opacity:.45;cursor:not-allowed;transform:none}
+.btn-ink{background:var(--ink);color:#fff}
+.btn-blue{background:var(--blue);color:#fff}
+.btn-green{background:var(--green);color:#fff}
+.btn-red{background:var(--red-light);color:var(--red)}
+.btn-ghost{background:transparent;color:var(--muted);border:1.5px solid var(--border)}
+.btn-sm{padding:8px 16px;font-size:13px;width:auto;border-radius:9px;font-weight:600}
+.btn-row{display:flex;gap:8px}
+.btn-row .btn{flex:1}
+
+/* ── Cards ────────────────────────────────────────────────── */
+.card{background:var(--surface);border-radius:var(--r);box-shadow:var(--shadow);padding:16px;margin-bottom:12px}
+.card-label{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:12px}
+
+/* ── Group cards ──────────────────────────────────────────── */
+.group-card{background:var(--surface);border-radius:var(--r);box-shadow:var(--shadow);margin-bottom:10px;cursor:pointer;overflow:hidden;border-left:5px solid transparent;transition:transform .12s,box-shadow .12s}
+.group-card:active{transform:scale(.98);box-shadow:var(--shadow-pop)}
+.group-card-main{display:flex;align-items:center;gap:14px;padding:16px 16px 14px}
+.group-card-icon{width:46px;height:46px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0}
+.group-card-body{flex:1;min-width:0}
+.group-card-name{font-size:17px;font-weight:700;color:var(--text);letter-spacing:-.3px;margin-bottom:5px}
+.group-card-avatars{display:flex;align-items:center;gap:0}
+.mini-av{width:22px;height:22px;border-radius:50%;border:2px solid var(--surface);display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;color:#fff;flex-shrink:0}
+.group-card-meta{font-size:12px;color:var(--muted);margin-left:6px;font-weight:500}
+.group-card-arrow{font-size:20px;color:var(--slate-mid);font-weight:400;flex-shrink:0}
+.group-card-live{display:flex;align-items:center;gap:8px;padding:8px 16px;border-top:1px solid var(--border);background:var(--green-light)}
+.group-card-live-dot{width:7px;height:7px;border-radius:50%;background:var(--green);flex-shrink:0;animation:livepulse 1.6s ease-in-out infinite}
+@keyframes livepulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(.8)}}
+.group-card-live-text{font-size:12px;font-weight:600;color:var(--green)}
+
+/* ── New Group card (dashed) ──────────────────────────────── */
+.new-group-card{border:2px dashed var(--border);border-radius:var(--r);padding:18px 20px;display:flex;align-items:center;gap:13px;cursor:pointer;color:var(--muted);margin-bottom:10px;transition:all .15s;background:transparent}
+.new-group-card:active{border-color:var(--blue);color:var(--blue);background:var(--blue-light);transform:scale(.98)}
+.new-group-ring{width:38px;height:38px;border-radius:50%;border:2px dashed currentColor;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;font-weight:300;line-height:1}
+.new-group-text{font-size:15px;font-weight:600}
+.new-group-sub{font-size:12px;opacity:.7;margin-top:1px}
+
+/* ── Join group ───────────────────────────────────────────── */
+.join-section{margin-top:6px}
+.section-rule{display:flex;align-items:center;gap:10px;margin:18px 0 14px}
+.section-rule-line{flex:1;height:1px;background:var(--border)}
+.section-rule-text{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;white-space:nowrap}
+.join-row{display:flex;gap:8px;align-items:center}
+.join-row .finput{flex:1;text-transform:uppercase;letter-spacing:3px;font-size:18px;font-weight:700;padding:12px 14px}
+.join-btn{padding:12px 18px;background:var(--blue);color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;white-space:nowrap;flex-shrink:0}
+.join-btn:active{opacity:.8}
+
+/* ── Invite box ───────────────────────────────────────────── */
+.invite-box{border-radius:14px;padding:20px;text-align:center;margin-bottom:14px;background:linear-gradient(135deg,var(--ink) 0%,var(--ink2) 100%);color:#fff}
+.invite-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;opacity:.6;margin-bottom:10px}
+.invite-code{font-size:38px;font-weight:800;letter-spacing:7px;font-family:'SF Mono','Fira Mono','Consolas',monospace;margin-bottom:12px}
+.copy-btn{background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.2);color:#fff;font-size:13px;font-weight:600;padding:8px 20px;border-radius:20px;cursor:pointer;transition:background .15s}
+.copy-btn:active{background:rgba(255,255,255,.25)}
+
+/* ── Member list ──────────────────────────────────────────── */
+.member-row{display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid var(--border)}
+.member-row:last-child{border-bottom:none}
+.member-av{width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;color:#fff;flex-shrink:0}
+.member-info{flex:1}
+.member-name{font-size:15px;font-weight:600;color:var(--text)}
+.member-email{font-size:12px;color:var(--muted);margin-top:1px}
+.member-role-pill{font-size:11px;font-weight:700;padding:3px 9px;border-radius:10px}
+.role-owner{background:var(--purple-light);color:var(--purple)}
+.role-member{background:var(--slate-light);color:var(--slate)}
+
+/* ── Project cards ────────────────────────────────────────── */
+.proj-card{background:var(--surface);border-radius:var(--r);box-shadow:var(--shadow);padding:16px;margin-bottom:10px;cursor:pointer;border-left:4px solid transparent;transition:transform .12s,box-shadow .12s}
+.proj-card:active{transform:scale(.98);box-shadow:var(--shadow-pop)}
+.proj-card-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:6px}
+.proj-card-name{font-size:16px;font-weight:700;color:var(--text);line-height:1.25;letter-spacing:-.2px}
+.proj-card-desc{font-size:13px;color:var(--muted);line-height:1.5;margin-bottom:8px;display:-webkit-box;-webkit-line-clamp:2;line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.proj-card-meta{display:flex;gap:7px;flex-wrap:wrap;align-items:center}
+.proj-card-live{font-size:12px;color:var(--green);font-weight:600;margin-top:5px;display:flex;align-items:center;gap:5px}
+.proj-card.sel{background:var(--blue-light);box-shadow:0 0 0 2px var(--blue) inset}
+
+/* ── Split (desktop) empty hint ───────────────────────────── */
+.split-hint{display:none}
+.split-hint.show{display:none}
+
+/* ── Badges ───────────────────────────────────────────────── */
+.badge{display:inline-flex;align-items:center;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:700;letter-spacing:.1px}
+.badge-active{background:var(--green-mid);color:var(--green)}
+.badge-paused{background:var(--amber-light);color:var(--amber)}
+.badge-done{background:var(--slate-light);color:var(--slate)}
+.badge-live{background:var(--green);color:#fff;animation:livepulse 1.6s infinite}
+
+/* ── Project form ─────────────────────────────────────────── */
+.form-section{background:var(--surface);border-radius:var(--r);box-shadow:var(--shadow);padding:18px;margin-bottom:12px}
+.form-section-label{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:14px}
+.entry-list{display:flex;flex-direction:column;gap:8px;margin-bottom:12px}
+.entry-row{display:flex;align-items:center;gap:8px;background:var(--slate-light);border-radius:9px;padding:10px 12px}
+.entry-row-info{flex:1;min-width:0}
+.entry-row-name{font-size:14px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.entry-row-url{font-size:12px;color:var(--blue);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.entry-row-url a{color:var(--blue);text-decoration:none}
+.entry-del{background:none;border:none;color:var(--red);font-size:17px;cursor:pointer;padding:3px;line-height:1;flex-shrink:0;opacity:.5}
+.entry-del:active{opacity:1}
+.add-strip{display:flex;flex-direction:column;gap:8px;background:var(--blue-light);border-radius:10px;padding:12px;border:1px solid var(--blue-mid)}
+.add-strip-row{display:flex;gap:8px;flex-wrap:wrap}
+.add-strip-row .finput{flex:1;min-width:130px;padding:9px 11px;font-size:14px;border-radius:8px}
+.add-strip .btn-sm{align-self:flex-start}
+
+/* ── Clock / timer ────────────────────────────────────────── */
+.clock-btn{width:100%;padding:17px;border-radius:12px;border:none;font-size:17px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;touch-action:manipulation;letter-spacing:-.1px;transition:transform .1s,opacity .1s}
+.clock-btn:active{transform:scale(.97);opacity:.85}
+.clock-in{background:var(--green);color:#fff;box-shadow:0 4px 14px rgba(5,150,105,.3)}
+.clock-out{background:var(--red);color:#fff;box-shadow:0 4px 14px rgba(220,38,38,.25)}
+.timer-block{text-align:center;padding:14px 0 10px}
+.timer-label{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px}
+.timer-digits{font-size:46px;font-weight:700;font-variant-numeric:tabular-nums;color:var(--text);letter-spacing:1px;font-family:'SF Mono','Fira Code','Consolas',monospace;line-height:1}
+.timer-since{font-size:12px;color:var(--muted);margin-top:6px}
+.also-working{font-size:13px;color:var(--green);font-weight:600;margin-top:10px;padding:8px 12px;background:var(--green-light);border-radius:9px;border:1px solid var(--green-mid)}
+.stat-row{display:flex;align-items:center;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--border)}
+.stat-row:last-child{border-bottom:none}
+.stat-label{font-size:14px;color:var(--muted)}
+.stat-value{font-size:15px;font-weight:700;color:var(--text)}
+.clockout-form{background:var(--blue-light);border-radius:11px;padding:14px;margin-bottom:12px;border:1px solid var(--blue-mid)}
+.clockout-form textarea{min-height:72px;font-size:14px;border-radius:8px}
+.session-item{padding:13px 0;border-bottom:1px solid var(--border)}
+.session-item:last-child{border-bottom:none;padding-bottom:0}
+.session-top{display:flex;align-items:flex-start;justify-content:space-between;gap:8px}
+.session-who{font-size:14px;font-weight:700;color:var(--text)}
+.session-dur{font-size:14px;font-weight:700;color:var(--blue);white-space:nowrap}
+.session-when{font-size:12px;color:var(--muted);margin-top:2px}
+.session-notes{font-size:13px;color:var(--ink3);margin-top:7px;background:var(--slate-light);border-radius:8px;padding:9px 11px;line-height:1.55;white-space:pre-wrap;word-break:break-word;border-left:3px solid var(--border)}
+.session-del{background:none;border:none;color:var(--red);font-size:15px;cursor:pointer;padding:3px;opacity:.4;flex-shrink:0}
+.session-del:active{opacity:1}
+
+/* ── Detail sections ──────────────────────────────────────── */
+.section-title{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:11px}
+.proj-desc-full{font-size:15px;color:var(--text);line-height:1.65;white-space:pre-wrap;word-break:break-word}
+.empty-hint{font-size:13px;color:var(--muted);font-style:italic;padding:4px 0}
+
+/* ── FAB (projects only) ──────────────────────────────────── */
+.fab{position:fixed;bottom:24px;right:20px;background:var(--ink);color:#fff;border:none;border-radius:50px;padding:15px 22px;font-size:15px;font-weight:700;cursor:pointer;box-shadow:0 4px 20px rgba(0,0,0,.28);display:none;align-items:center;gap:8px;z-index:100;touch-action:manipulation;letter-spacing:-.1px}
+.fab:active{transform:scale(.96);opacity:.9}
+.fab-icon{font-size:20px;font-weight:300;line-height:1}
+
+/* ── Views ────────────────────────────────────────────────── */
+.view{display:none}
+.view.active{display:block}
+
+/* ── Empty / loading ──────────────────────────────────────── */
+.empty-state{text-align:center;padding:52px 20px}
+.empty-icon{font-size:52px;margin-bottom:14px}
+.empty-title{font-size:20px;font-weight:700;margin-bottom:8px;letter-spacing:-.3px}
+.empty-sub{font-size:14px;color:var(--muted);line-height:1.6}
+.loading{text-align:center;padding:50px 20px;color:var(--muted);font-size:15px}
+
+/* ── Toast ────────────────────────────────────────────────── */
+.toast{position:fixed;bottom:88px;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;padding:10px 20px;border-radius:20px;font-size:13px;font-weight:600;z-index:500;opacity:0;transition:opacity .2s;pointer-events:none;white-space:nowrap;box-shadow:0 4px 16px rgba(0,0,0,.2)}
+.toast.show{opacity:1}
+
+/* ── Install banner ───────────────────────────────────────── */
+.install-banner{background:var(--blue);color:#fff;border-radius:var(--r);padding:14px 16px;margin-bottom:12px;display:flex;align-items:center;gap:12px}
+.install-banner .ib-icon{font-size:28px;flex-shrink:0}
+.install-banner .ib-text{flex:1;font-size:13px;line-height:1.4}
+.install-banner .ib-title{font-weight:700;font-size:15px;margin-bottom:2px}
+.install-banner .ib-close{background:none;border:none;color:rgba(255,255,255,.7);font-size:20px;cursor:pointer;padding:0;line-height:1;flex-shrink:0}
+
+/* ── Create group view ────────────────────────────────────── */
+.cg-wrap{padding:0}
+.cg-hero{background:linear-gradient(135deg,var(--ink) 0%,#1e3a5f 100%);border-radius:var(--r);padding:24px 20px;margin-bottom:14px;text-align:center;color:#fff}
+.cg-hero-icon{font-size:44px;margin-bottom:10px}
+.cg-hero-title{font-size:20px;font-weight:800;margin-bottom:6px;letter-spacing:-.3px}
+.cg-hero-sub{font-size:13px;opacity:.6;line-height:1.5}
+
+/* ── Admin ────────────────────────────────────────────────── */
+.hdr-admin-btn{background:rgba(124,58,237,.28);border:1px solid rgba(124,58,237,.45);color:#fff;font-size:12px;font-weight:700;padding:6px 12px;border-radius:20px;cursor:pointer;white-space:nowrap;display:none;flex-shrink:0}
+.hdr-admin-btn:active{background:rgba(124,58,237,.45)}
+.role-toggle-btn{font-size:11px;font-weight:700;padding:5px 11px;border-radius:9px;border:1.5px solid var(--border);background:var(--surface);color:var(--muted);cursor:pointer;flex-shrink:0}
+.role-toggle-btn.is-admin{background:var(--purple-light);color:var(--purple);border-color:var(--purple-light)}
+
+/* ── Task board ───────────────────────────────────────────── */
+.kanban{display:grid;grid-template-columns:1fr;gap:16px;margin-top:4px}
+@media (min-width:560px){.kanban{grid-template-columns:1fr 1fr 1fr}}
+.kanban-col-title{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.7px;margin-bottom:8px}
+.task-chip{background:var(--slate-light);border-radius:9px;padding:10px 12px;margin-bottom:8px}
+.task-chip-text{font-size:13.5px;color:var(--text);line-height:1.4;margin-bottom:8px;word-break:break-word}
+.task-chip-actions{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.task-move-btn{font-size:11px;font-weight:600;padding:4px 9px;border-radius:7px;border:1px solid var(--border);background:var(--surface);color:var(--muted);cursor:pointer}
+.task-move-btn:active{background:var(--blue-light);color:var(--blue)}
+.task-del{background:none;border:none;color:var(--red);font-size:14px;cursor:pointer;padding:2px;opacity:.5;margin-left:auto}
+.task-del:active{opacity:1}
+
+/* ── Resource library ─────────────────────────────────────── */
+.resource-card{background:var(--surface);border-radius:var(--r);box-shadow:var(--shadow);padding:14px 16px;margin-bottom:10px}
+.resource-card-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:4px}
+.resource-card-name{font-size:15px;font-weight:700;color:var(--text)}
+.resource-card-cat{font-size:11px;font-weight:700;color:var(--purple);background:var(--purple-light);padding:2px 8px;border-radius:20px;white-space:nowrap;flex-shrink:0}
+.resource-card-desc{font-size:13px;color:var(--muted);line-height:1.5;margin-bottom:8px}
+.resource-card-meta{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.resource-card-url{font-size:12.5px;color:var(--blue);text-decoration:none;font-weight:600}
+.resource-card-actions{display:flex;gap:12px;flex-shrink:0}
+.resource-card-actions button{background:none;border:none;color:var(--muted);font-size:13px;cursor:pointer;padding:2px}
+
+/* ── Desktop split view (Projects list + detail side by side) ── */
+@media (min-width:900px){
+  body{max-width:none}
+  .hdr{padding-left:26px;padding-right:26px}
+  .hdr-title{max-width:1400px;margin:0 auto;width:100%}
+  #C{padding:20px 14px 60px;max-width:720px;margin:0 auto}
+  #C.is-split-ctx{display:flex;align-items:flex-start;gap:0;max-width:1400px;padding:0}
+  #C.is-split-ctx.ctx-projects #viewList,
+  #C.is-split-ctx.ctx-outreach #viewOutreach{display:block;width:360px;flex-shrink:0;height:calc(100vh - 60px);position:sticky;top:60px;overflow-y:auto;padding:20px 16px 40px;border-right:1px solid var(--border)}
+  #C.is-split-ctx #viewDetail,
+  #C.is-split-ctx #viewForm,
+  #C.is-split-ctx #viewOutreachDetail,
+  #C.is-split-ctx #viewOutreachForm{flex:1;min-width:0;padding:26px 40px 60px;max-width:820px;height:calc(100vh - 60px);overflow-y:auto;box-sizing:border-box}
+  .split-hint{width:100%}
+  .split-hint.show{display:flex;flex:1;min-height:calc(100vh - 60px);align-items:center;justify-content:center;text-align:center;color:var(--muted);padding:40px 20px;flex-direction:column;gap:8px}
+  .split-hint-icon{font-size:38px;opacity:.5}
+}
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="hdr" id="hdr" style="display:none">
+  <button class="hdr-back" id="hdrBack" onclick="goBack()">‹</button>
+  <img class="hdr-logo" id="hdrLogo" alt="">
+  <div class="hdr-title" id="hdrTitle">My Groups</div>
+  <button class="hdr-ctx-btn" id="hdrCtx" onclick="hdrCtxClick()"></button>
+  <button class="hdr-admin-btn" id="hdrAdminBtn" onclick="showView('admin')">🛡️ Admin</button>
+  <div class="hdr-avatar" id="hdrAvatar" onclick="signOut()" title="Sign out"></div>
+</div>
+
+<!-- LOGIN ─────────────────────────────────────────────────── -->
+<div id="loginWrap" class="login-wrap">
+  <img class="login-mark" id="loginMark" alt="Project Organizer logo">
+  <div class="login-title">Project Organizer</div>
+  <div class="login-sub">Track work & time with your team</div>
+  <div class="login-card">
+    <div class="mode-toggle">
+      <button class="mode-btn active" id="btnIn" onclick="setMode('in')">Sign In</button>
+      <button class="mode-btn" id="btnUp" onclick="setMode('up')">Sign Up</button>
+    </div>
+    <div class="auth-err" id="authErr"></div>
+    <div class="fg" id="fgName" style="display:none">
+      <label class="flabel">Your Name</label>
+      <input class="finput" id="authName" type="text" placeholder="John Smith" maxlength="40">
+    </div>
+    <div class="fg">
+      <label class="flabel">Email</label>
+      <input class="finput" id="authEmail" type="email" placeholder="you@example.com" autocomplete="email" onkeydown="if(event.key==='Enter')submitAuth()">
+    </div>
+    <div class="fg" style="margin-bottom:20px">
+      <label class="flabel">Password</label>
+      <input class="finput" id="authPass" type="password" placeholder="••••••••" onkeydown="if(event.key==='Enter')submitAuth()">
+    </div>
+    <button class="btn btn-blue" id="authBtn" onclick="submitAuth()">Sign In</button>
+  </div>
+</div>
+
+<!-- MAIN APP ──────────────────────────────────────────────── -->
+<div id="C" style="display:none">
+
+  <!-- Groups -->
+  <div class="view active" id="viewGroups">
+    <div id="groupList"></div>
+    <div class="join-section">
+      <div class="section-rule">
+        <div class="section-rule-line"></div>
+        <div class="section-rule-text">Join a group</div>
+        <div class="section-rule-line"></div>
+      </div>
+      <div class="card">
+        <div class="fg" style="margin-bottom:10px">
+          <label class="flabel">Invite Code</label>
+          <div class="join-row">
+            <input class="finput" id="joinCode" type="text" placeholder="ABC123" maxlength="8" oninput="this.value=this.value.toUpperCase()" onkeydown="if(event.key==='Enter')joinGroup()">
+            <button class="join-btn" onclick="joinGroup()">Join</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="section-rule">
+      <div class="section-rule-line"></div>
+      <div class="section-rule-text">Resources</div>
+      <div class="section-rule-line"></div>
+    </div>
+    <div class="new-group-card" onclick="showView('resources')">
+      <div class="new-group-ring">📚</div>
+      <div><div class="new-group-text">Resource Library</div><div class="new-group-sub">Shared tools &amp; templates for every group</div></div>
+    </div>
+  </div>
+
+  <!-- Projects list -->
+  <div class="view" id="viewList">
+    <div id="projectList"></div>
+  </div>
+
+  <!-- Members -->
+  <div class="view" id="viewMembers">
+    <div id="membersInvite"></div>
+    <div class="card" id="membersList"></div>
+    <div class="btn-row" style="margin-top:4px">
+      <button class="btn btn-red btn-sm" id="leaveBtn" onclick="leaveGroup()">Leave Group</button>
+    </div>
+  </div>
+
+  <!-- Project Detail -->
+  <div class="view" id="viewDetail">
+    <div class="card" id="detailHeader"></div>
+    <div class="card" id="detailClock"></div>
+    <div class="card" id="detailLinks"></div>
+    <div class="card" id="detailSoftware"></div>
+    <div class="card" id="detailTasks"></div>
+    <div class="card" id="detailMetrics"></div>
+    <div class="card" id="detailNotes"></div>
+    <div class="btn-row" style="margin-top:4px">
+      <button class="btn btn-ghost btn-sm" onclick="startEdit()">✏️ Edit</button>
+      <button class="btn btn-red btn-sm" onclick="deleteProject()">Delete</button>
+    </div>
+  </div>
+
+  <!-- Add/Edit Project -->
+  <div class="view" id="viewForm">
+    <div class="form-section">
+      <div class="fg">
+        <label class="flabel">Project Name *</label>
+        <input class="finput" id="fName" type="text" placeholder="e.g. Bond Portfolio App" maxlength="80">
+      </div>
+      <div class="fg">
+        <label class="flabel">What are you working on?</label>
+        <textarea class="finput" id="fDesc" placeholder="Describe the project, goals, current progress..."></textarea>
+      </div>
+      <div class="fg" style="margin-bottom:0">
+        <label class="flabel">Status</label>
+        <select class="finput" id="fStatus">
+          <option value="active">Active</option>
+          <option value="paused">Paused</option>
+          <option value="done">Done</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-section">
+      <div class="form-section-label">Project Links</div>
+      <div id="fLinkList" class="entry-list"></div>
+      <div class="add-strip">
+        <div class="add-strip-row">
+          <input class="finput" id="fLinkLabel" type="text" placeholder="Label (e.g. GitHub)" maxlength="40">
+          <input class="finput" id="fLinkUrl" type="url" placeholder="https://...">
+        </div>
+        <button class="btn btn-blue btn-sm" onclick="addFormLink()">+ Add Link</button>
+      </div>
+    </div>
+    <div class="form-section">
+      <div class="form-section-label">Software / Tools</div>
+      <div id="fSoftList" class="entry-list"></div>
+      <div class="add-strip">
+        <div class="add-strip-row">
+          <input class="finput" id="fSoftName" type="text" placeholder="e.g. VS Code" maxlength="60">
+          <input class="finput" id="fSoftUrl" type="url" placeholder="Website (optional)">
+        </div>
+        <button class="btn btn-blue btn-sm" onclick="addFormSoft()">+ Add Software</button>
+      </div>
+    </div>
+    <div style="margin-top:4px">
+      <button class="btn btn-ink" id="fSaveBtn" onclick="saveProject()">Save Project</button>
+    </div>
+  </div>
+
+  <!-- Outreach list -->
+  <div class="view" id="viewOutreach">
+    <div id="outreachList"></div>
+  </div>
+
+  <!-- Outreach Detail -->
+  <div class="view" id="viewOutreachDetail">
+    <div class="card" id="outreachDetailHeader"></div>
+    <div class="card" id="outreachDetailActions"></div>
+    <div class="btn-row" style="margin-top:4px">
+      <button class="btn btn-ghost btn-sm" onclick="startEditOutreach()">✏️ Edit</button>
+      <button class="btn btn-red btn-sm" onclick="deleteOutreach()">Delete</button>
+    </div>
+  </div>
+
+  <!-- Add/Edit Outreach -->
+  <div class="view" id="viewOutreachForm">
+    <div class="form-section">
+      <div class="fg">
+        <label class="flabel">Company / Organization *</label>
+        <input class="finput" id="oCompany" type="text" placeholder="e.g. Acme Ventures" maxlength="80">
+      </div>
+      <div class="fg">
+        <label class="flabel">Contact Email</label>
+        <input class="finput" id="oEmail" type="email" placeholder="contact@example.com">
+      </div>
+      <div class="fg">
+        <label class="flabel">Type</label>
+        <select class="finput" id="oType">
+          <option value="company">Company</option>
+          <option value="investor">Investor</option>
+          <option value="customer">Customer</option>
+        </select>
+      </div>
+      <div class="fg">
+        <label class="flabel">Subject</label>
+        <input class="finput" id="oSubject" type="text" placeholder="e.g. Partnership opportunity" maxlength="120">
+      </div>
+      <div class="fg" style="margin-bottom:0">
+        <label class="flabel">Message</label>
+        <textarea class="finput" id="oMessage" placeholder="Write the outreach message..."></textarea>
+      </div>
+    </div>
+    <div style="margin-top:4px">
+      <button class="btn btn-ink" id="oSaveBtn" onclick="saveOutreach()">Save Outreach</button>
+    </div>
+  </div>
+
+  <!-- Desktop-only: shown in the right pane when nothing is selected -->
+  <div class="split-hint" id="splitEmptyHint">
+    <div class="split-hint-icon">📋</div>
+    <div>Select a project to see its details</div>
+  </div>
+
+  <!-- Create Group -->
+  <div class="view" id="viewCreateGroup">
+    <div class="cg-hero">
+      <div class="cg-hero-icon">👥</div>
+      <div class="cg-hero-title">Create a Group</div>
+      <div class="cg-hero-sub">Your group gets a unique invite code.<br>Share it so your team can join.</div>
+    </div>
+    <div class="card">
+      <div class="fg" style="margin-bottom:18px">
+        <label class="flabel">Group Name *</label>
+        <input class="finput" id="newGroupName" type="text" placeholder="e.g. Council Computing" maxlength="60" onkeydown="if(event.key==='Enter')createGroup()">
+      </div>
+      <button class="btn btn-ink" onclick="createGroup()">Create Group</button>
+    </div>
+  </div>
+
+  <!-- Resource Library -->
+  <div class="view" id="viewResources">
+    <div id="resourceList"></div>
+  </div>
+
+  <!-- Add/Edit Resource -->
+  <div class="view" id="viewResourceForm">
+    <div class="form-section">
+      <div class="fg">
+        <label class="flabel">Name *</label>
+        <input class="finput" id="rName" type="text" placeholder="e.g. Stripe Atlas" maxlength="80">
+      </div>
+      <div class="fg">
+        <label class="flabel">URL</label>
+        <input class="finput" id="rUrl" type="url" placeholder="https://...">
+      </div>
+      <div class="fg">
+        <label class="flabel">Category</label>
+        <input class="finput" id="rCategory" type="text" placeholder="e.g. Legal, Fundraising, Design" maxlength="40">
+      </div>
+      <div class="fg" style="margin-bottom:0">
+        <label class="flabel">Description</label>
+        <textarea class="finput" id="rDesc" placeholder="What is this useful for?"></textarea>
+      </div>
+    </div>
+    <div style="margin-top:4px">
+      <button class="btn btn-ink" id="rSaveBtn" onclick="saveResource()">Save Resource</button>
+    </div>
+  </div>
+
+  <!-- Admin Panel -->
+  <div class="view" id="viewAdmin">
+    <div class="card-label" style="margin-top:4px">Users</div>
+    <div class="card" id="adminUsers"></div>
+    <div class="card-label">All Groups</div>
+    <div class="card" id="adminGroups"></div>
+  </div>
+
+</div>
+
+<!-- FAB — dispatches to New Project or New Outreach based on the current tab -->
+<button class="fab" id="fab" onclick="fabClick()">
+  <span class="fab-icon">+</span> <span id="fabLabel">New Project</span>
+</button>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ── Firebase ──────────────────────────────────────────────────────────────────
+const firebaseConfig={apiKey:'AIzaSyAr1NqRx2JDO7nkRKSm30f9bRDfaDGcXso',authDomain:'project-tracker-4fdf1.firebaseapp.com',projectId:'project-tracker-4fdf1',storageBucket:'project-tracker-4fdf1.firebasestorage.app',messagingSenderId:'826880137148',appId:'1:826880137148:web:12b5675820ce484be5fdb9'};
+firebase.initializeApp(firebaseConfig);
+const auth=firebase.auth(), db=firebase.firestore();
+
+// ── EmailJS (outreach sending) ──────────────────────────────────────────────
+// Fill these in from your EmailJS account (emailjs.com) — Service ID, Template ID, Public Key.
+const EMAILJS_SERVICE_ID='YOUR_EMAILJS_SERVICE_ID';
+const EMAILJS_TEMPLATE_ID='YOUR_EMAILJS_TEMPLATE_ID';
+const EMAILJS_PUBLIC_KEY='YOUR_EMAILJS_PUBLIC_KEY';
+const EMAILJS_READY=![EMAILJS_SERVICE_ID,EMAILJS_TEMPLATE_ID,EMAILJS_PUBLIC_KEY].some(v=>v.startsWith('YOUR_'));
+if(EMAILJS_READY&&window.emailjs)emailjs.init({publicKey:EMAILJS_PUBLIC_KEY});
+
+const groupsCol=()=>db.collection('groups');
+const projectsCol=()=>db.collection('groups').doc(currentGroup.id).collection('projects');
+const sessionsCol=pid=>db.collection('groups').doc(currentGroup.id).collection('projects').doc(pid).collection('sessions');
+const usersCol=()=>db.collection('users');
+const notesCol=pid=>db.collection('groups').doc(currentGroup.id).collection('projects').doc(pid).collection('notes');
+const metricsCol=pid=>db.collection('groups').doc(currentGroup.id).collection('projects').doc(pid).collection('metrics');
+const tasksCol=pid=>db.collection('groups').doc(currentGroup.id).collection('projects').doc(pid).collection('tasks');
+const resourcesCol=()=>db.collection('resources');
+const outreachCol=()=>db.collection('groups').doc(currentGroup.id).collection('outreach');
+
+// ── Logo ──────────────────────────────────────────────────────────────────────
+function rr(x,rx,ry,w,h,r){x.beginPath();x.moveTo(rx+r,ry);x.lineTo(rx+w-r,ry);x.quadraticCurveTo(rx+w,ry,rx+w,ry+r);x.lineTo(rx+w,ry+h-r);x.quadraticCurveTo(rx+w,ry+h,rx+w-r,ry+h);x.lineTo(rx+r,ry+h);x.quadraticCurveTo(rx,ry+h,rx,ry+h-r);x.lineTo(rx,ry+r);x.quadraticCurveTo(rx,ry,rx+r,ry);x.closePath();}
+function makeIcon(sz){
+  const c=document.createElement('canvas');c.width=c.height=sz;const x=c.getContext('2d');
+  const gr=x.createLinearGradient(0,0,sz,sz);
+  gr.addColorStop(0,'#1d4ed8');gr.addColorStop(1,'#1e3a8a');
+  x.fillStyle=gr;rr(x,0,0,sz,sz,sz*.22);x.fill();
+  // folder icon
+  const m=sz*.12;
+  x.fillStyle='rgba(255,255,255,.9)';
+  rr(x,m,sz*.32,sz-m*2,sz*.46,sz*.06);x.fill();
+  rr(x,m,sz*.28,sz*.38,sz*.1,sz*.04);x.fill();
+  // lines on folder
+  x.strokeStyle='rgba(30,58,138,.4)';x.lineWidth=sz*.03;x.lineCap='round';
+  const lx1=m+sz*.08,lx2=sz-m-sz*.08,ly1=sz*.46,ly2=sz*.57,ly3=sz*.65;
+  x.beginPath();x.moveTo(lx1,ly1);x.lineTo(lx2,ly1);x.stroke();
+  x.beginPath();x.moveTo(lx1,ly2);x.lineTo(lx2,ly2);x.stroke();
+  x.beginPath();x.moveTo(lx1,ly3);x.lineTo(lx2*(0.7),ly3);x.stroke();
+  return c.toDataURL('image/png');
+}
+const APP_LOGO=makeIcon(128);
+document.getElementById('loginMark').src=APP_LOGO;
+document.getElementById('hdrLogo').src=APP_LOGO;
+
+// ── State ─────────────────────────────────────────────────────────────────────
+let currentUser=null,groups=[],currentGroup=null,projects=[],currentSessions=[];
+let currentView='groups',currentProjectId=null,editingId=null,formLinks=[],formSoft=[];
+let timerInterval=null,clockOutPending=false;
+let unsubGroups=null,unsubProjects=null,unsubSessions=null,loginMode='in';
+let myRole='member',adminGroupsCache=[];
+let currentNotes=[],unsubNotes=null;
+let currentMetrics=[],unsubMetrics=null;
+let currentTasks=[],unsubTasks=null;
+let resources=[],unsubResources=null,editingResourceId=null;
+let outreachItems=[],unsubOutreach=null,currentOutreachId=null,editingOutreachId=null,preMembersView='list';
+const OUTREACH_STATUS_LABEL={pending:'Pending',responded:'Responded',no_response:'No Response'};
+const OUTREACH_STATUS_BADGE={pending:'paused',responded:'active',no_response:'done'};
+const OUTREACH_STATUS_COLOR={pending:'#f59e0b',responded:'#10b981',no_response:'#94a3b8'};
+const OUTREACH_TYPE_LABEL={company:'Company',investor:'Investor',customer:'Customer'};
+
+// ── Group accent colors ───────────────────────────────────────────────────────
+const ACCENTS=['#6366f1','#0ea5e9','#10b981','#f59e0b','#ef4444','#8b5cf6','#ec4899','#0d9488'];
+const ICONS=['💼','🏗️','🎯','🚀','💡','🔧','📊','🌐'];
+const AV_COLORS=['#6366f1','#0ea5e9','#10b981','#f59e0b','#ef4444','#8b5cf6','#ec4899','#0d9488'];
+function accent(id){return ACCENTS[Math.abs(hash(id))%ACCENTS.length];}
+function gIcon(id){return ICONS[Math.abs(hash(id))%ICONS.length];}
+function avColor(i){return AV_COLORS[i%AV_COLORS.length];}
+function hash(s){let h=0;for(let i=0;i<s.length;i++)h=Math.imul(31,h)+s.charCodeAt(i)|0;return h;}
+
+// ── Auth ──────────────────────────────────────────────────────────────────────
+function setMode(m){
+  loginMode=m;
+  document.getElementById('btnIn').classList.toggle('active',m==='in');
+  document.getElementById('btnUp').classList.toggle('active',m==='up');
+  document.getElementById('fgName').style.display=m==='up'?'block':'none';
+  document.getElementById('authBtn').textContent=m==='up'?'Create Account':'Sign In';
+  showAuthErr('');
+}
+function showAuthErr(msg){const el=document.getElementById('authErr');el.textContent=msg;el.classList.toggle('show',!!msg);}
+async function submitAuth(){
+  const email=document.getElementById('authEmail').value.trim();
+  const pass=document.getElementById('authPass').value;
+  const btn=document.getElementById('authBtn');
+  if(!email||!pass){showAuthErr('Please enter email and password.');return;}
+  btn.disabled=true;btn.textContent='…';showAuthErr('');
+  try{
+    if(loginMode==='up'){
+      const name=document.getElementById('authName').value.trim()||email.split('@')[0];
+      const cred=await auth.createUserWithEmailAndPassword(email,pass);
+      await cred.user.updateProfile({displayName:name});
+    }else{
+      await auth.signInWithEmailAndPassword(email,pass);
+    }
+  }catch(e){
+    const msgs={'auth/email-already-in-use':'That email has an account — sign in.','auth/user-not-found':'No account found — sign up.','auth/wrong-password':'Wrong password.','auth/invalid-email':'Enter a valid email.','auth/weak-password':'Password needs 6+ characters.','auth/invalid-credential':'Email or password is incorrect.'};
+    showAuthErr(msgs[e.code]||e.message);
+    btn.disabled=false;btn.textContent=loginMode==='up'?'Create Account':'Sign In';
+  }
+}
+function signOut(){
+  if(!confirm('Sign out?'))return;
+  cleanup();auth.signOut();
+}
+auth.onAuthStateChanged(user=>{
+  currentUser=user;
+  if(user){
+    document.getElementById('loginWrap').style.display='none';
+    document.getElementById('hdr').style.display='flex';
+    document.getElementById('C').style.display='block';
+    const av=document.getElementById('hdrAvatar');
+    const name=user.displayName||user.email;
+    av.textContent=name[0].toUpperCase();
+    av.style.background=avColor(hash(user.uid));
+    startListeningToGroups();
+    startListeningToResources();
+    showView('groups');
+    ensureUserDoc(user).then(role=>{
+      myRole=role;
+      document.getElementById('hdrAdminBtn').style.display=role==='admin'?'flex':'none';
+    });
+  }else{
+    document.getElementById('loginWrap').style.display='flex';
+    document.getElementById('hdr').style.display='none';
+    document.getElementById('C').style.display='none';
+    document.getElementById('fab').style.display='none';
+    document.getElementById('hdrAdminBtn').style.display='none';
+    cleanup();
+  }
+});
+async function ensureUserDoc(user){
+  try{
+    const ref=usersCol().doc(user.uid);
+    const snap=await ref.get();
+    if(snap.exists)return snap.data().role||'member';
+    await ref.set({name:myName(),email:user.email,role:'member',createdAt:Date.now()});
+    return'member';
+  }catch(e){
+    console.error('ensureUserDoc failed (Firestore rules likely need the users/{uid} pattern added):',e);
+    return'member';
+  }
+}
+function cleanup(){
+  [unsubGroups,unsubProjects,unsubSessions,unsubNotes,unsubMetrics,unsubTasks,unsubResources,unsubOutreach].forEach(u=>{if(u)u();});
+  unsubGroups=unsubProjects=unsubSessions=unsubNotes=unsubMetrics=unsubTasks=unsubResources=unsubOutreach=null;
+  stopTimerTick();groups=[];projects=[];currentSessions=[];currentNotes=[];currentMetrics=[];currentTasks=[];resources=[];outreachItems=[];currentGroup=null;myRole='member';
+}
+
+// ── Navigation ────────────────────────────────────────────────────────────────
+function isDesktopSplit(){return window.matchMedia('(min-width:900px)').matches;}
+const PROJECT_VIEWS=['list','detail','form'];
+const OUTREACH_VIEWS=['outreach','outreachDetail','outreachForm'];
+const WORKSPACE_VIEWS=PROJECT_VIEWS.concat(OUTREACH_VIEWS);
+function stopProjectDetailListeners(){stopTimerTick();stopListeningToSessions();stopListeningToNotes();stopListeningToMetrics();stopListeningToTasks();}
+function showView(name){
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  document.getElementById('view'+name[0].toUpperCase()+name.slice(1)).classList.add('active');
+  currentView=name;
+  const isProjectsCtx=PROJECT_VIEWS.includes(name);
+  const isOutreachCtx=OUTREACH_VIEWS.includes(name);
+  const workspaceCtx=isProjectsCtx||isOutreachCtx;
+  const splitActive=workspaceCtx&&isDesktopSplit();
+  const C=document.getElementById('C');
+  C.classList.toggle('is-split-ctx',workspaceCtx);
+  C.classList.toggle('ctx-projects',isProjectsCtx);
+  C.classList.toggle('ctx-outreach',isOutreachCtx);
+  const hint=document.getElementById('splitEmptyHint');
+  const showHint=name==='list'||name==='outreach';
+  hint.classList.toggle('show',showHint);
+  if(showHint)hint.querySelector('div:last-child').textContent=name==='outreach'?'Select an outreach contact to see its details':'Select a project to see its details';
+  const back=document.getElementById('hdrBack');
+  const fab=document.getElementById('fab');
+  const fabLabel=document.getElementById('fabLabel');
+  const ctx=document.getElementById('hdrCtx');
+  const title=document.getElementById('hdrTitle');
+  back.style.display='none';fab.style.display='none';ctx.style.display='none';
+  const showWorkspaceHeader=(label)=>{
+    back.style.display='block';
+    fab.style.display='flex';fabLabel.textContent=label;
+    ctx.style.display='block';ctx.textContent='👥 Members';
+  };
+  if(name==='groups'){
+    title.textContent='My Groups';
+    stopProjectDetailListeners();
+    if(unsubProjects){unsubProjects();unsubProjects=null;}
+    if(unsubOutreach){unsubOutreach();unsubOutreach=null;}
+  }else if(name==='list'){
+    title.textContent=currentGroup?.name||'Projects';
+    showWorkspaceHeader('New Project');
+    stopProjectDetailListeners();
+  }else if(name==='outreach'){
+    title.textContent=currentGroup?.name||'Outreach';
+    showWorkspaceHeader('New Outreach');
+    stopProjectDetailListeners();
+  }else if(name==='members'){
+    title.textContent=currentGroup?.name||'Members';
+    back.style.display='block';
+  }else if(name==='detail'){
+    back.style.display='block';
+    if(splitActive){fab.style.display='flex';fabLabel.textContent='New Project';ctx.style.display='block';ctx.textContent='👥 Members';}
+  }else if(name==='outreachDetail'){
+    back.style.display='block';
+    if(splitActive){fab.style.display='flex';fabLabel.textContent='New Outreach';ctx.style.display='block';ctx.textContent='👥 Members';}
+  }else if(name==='form'){
+    back.style.display='block';stopProjectDetailListeners();clockOutPending=false;
+    if(splitActive){ctx.style.display='block';ctx.textContent='👥 Members';}
+  }else if(name==='outreachForm'){
+    back.style.display='block';
+    if(splitActive){ctx.style.display='block';ctx.textContent='👥 Members';}
+  }else if(name==='createGroup'){
+    title.textContent='New Group';back.style.display='block';
+  }else if(name==='admin'){
+    title.textContent='Admin Panel';back.style.display='block';
+    renderAdmin();
+  }else if(name==='resources'){
+    title.textContent='Resource Library';back.style.display='block';
+    renderResources();
+  }else if(name==='resourceForm'){
+    back.style.display='block';
+  }
+  window.scrollTo(0,0);
+}
+function goBack(){
+  const toGroups=()=>{currentGroup=null;currentProjectId=null;currentOutreachId=null;showView('groups');};
+  if(currentView==='list'||currentView==='outreach')toGroups();
+  else if(currentView==='members'){
+    if(OUTREACH_VIEWS.includes(preMembersView)){
+      if(isDesktopSplit()&&currentOutreachId)showOutreachDetail(currentOutreachId);else showView('outreach');
+    }else{
+      if(isDesktopSplit()&&currentProjectId)showDetail(currentProjectId);else showView('list');
+    }
+  }
+  else if(currentView==='detail'){
+    if(isDesktopSplit())toGroups();else showView('list');
+  }
+  else if(currentView==='outreachDetail'){
+    if(isDesktopSplit())toGroups();else showView('outreach');
+  }
+  else if(currentView==='form'){
+    if(editingId)showDetail(editingId);
+    else if(isDesktopSplit())toGroups();
+    else showView('list');
+  }
+  else if(currentView==='outreachForm'){
+    if(editingOutreachId)showOutreachDetail(editingOutreachId);
+    else if(isDesktopSplit())toGroups();
+    else showView('outreach');
+  }
+  else if(currentView==='createGroup')showView('groups');
+  else if(currentView==='admin')showView('groups');
+  else if(currentView==='resources')showView('groups');
+  else if(currentView==='resourceForm')showView('resources');
+}
+function hdrCtxClick(){
+  if(WORKSPACE_VIEWS.includes(currentView))showMembers();
+}
+function fabClick(){
+  if(currentView==='list'||currentView==='detail')startAdd();
+  else if(currentView==='outreach'||currentView==='outreachDetail')startAddOutreach();
+}
+
+// ── Groups ────────────────────────────────────────────────────────────────────
+function startListeningToGroups(){
+  if(unsubGroups)unsubGroups();
+  unsubGroups=groupsCol().where('memberIds','array-contains',currentUser.uid).onSnapshot(snap=>{
+    groups=snap.docs.map(d=>({id:d.id,...d.data()}));
+    renderGroups();
+  },err=>console.error(err));
+}
+
+function renderGroups(){
+  const el=document.getElementById('groupList');
+  const isIOS=/iphone|ipad|ipod/i.test(navigator.userAgent);
+  const isStandalone=window.navigator.standalone===true;
+  const dismissed=localStorage.getItem('po_install_dismissed');
+  const installBanner=isIOS&&!isStandalone&&!dismissed?`<div class="install-banner"><div class="ib-icon">📋</div><div class="ib-text"><div class="ib-title">Add to Home Screen</div>Tap <strong>Share ↑</strong> → <strong>View More</strong> → <strong>"Add to Home Screen"</strong></div><button class="ib-close" data-dismiss-install>✕</button></div>`:'';
+  let html=installBanner;
+  if(groups.length===0){
+    html=`<div class="empty-state"><div class="empty-icon">👥</div><div class="empty-title">No groups yet</div><div class="empty-sub">Create a group below, or<br>enter an invite code to join one.</div></div>`;
+  }else{
+    html=groups.map(g=>{
+      const color=accent(g.id);
+      const icon=gIcon(g.id);
+      const members=Object.entries(g.members||{});
+      const liveNames=Object.values(g.activeSessions||{}).map(s=>s.userName);
+      const avatars=members.slice(0,4).map(([,m],i)=>`<div class="mini-av" style="background:${avColor(i)};z-index:${5-i};margin-left:${i>0?'-7px':'0'}">${(m.name||'?')[0].toUpperCase()}</div>`).join('');
+      const extra=members.length>4?`<div class="mini-av" style="background:var(--slate);margin-left:-7px">+${members.length-4}</div>`:'';
+      return `<div class="group-card" onclick="openGroup('${g.id}')" style="border-left-color:${color}">
+        <div class="group-card-main">
+          <div class="group-card-icon" style="background:${color}18">${icon}</div>
+          <div class="group-card-body">
+            <div class="group-card-name">${esc(g.name)}</div>
+            <div class="group-card-avatars">${avatars}${extra}<span class="group-card-meta">${members.length} member${members.length!==1?'s':''}</span></div>
+          </div>
+          <div class="group-card-arrow">›</div>
+        </div>
+        ${liveNames.length?`<div class="group-card-live"><div class="group-card-live-dot"></div><div class="group-card-live-text">${esc(liveNames.join(', '))} working now</div></div>`:''}
+      </div>`;
+    }).join('');
+  }
+  // Dashed "New Group" card — visually separate from actual groups
+  html+=`<div class="new-group-card" onclick="showView('createGroup')">
+    <div class="new-group-ring">+</div>
+    <div><div class="new-group-text">Create New Group</div><div class="new-group-sub">Set up a workspace for your team</div></div>
+  </div>`;
+  el.innerHTML=html;
+}
+
+async function createGroup(){
+  const name=document.getElementById('newGroupName').value.trim();
+  if(!name){document.getElementById('newGroupName').focus();return;}
+  const uid=currentUser.uid;
+  try{
+    await groupsCol().add({name,inviteCode:genCode(),createdBy:uid,createdAt:Date.now(),
+      memberIds:[uid],members:{[uid]:{name:myName(),email:currentUser.email,role:'owner',joinedAt:Date.now()}},activeSessions:{}});
+    document.getElementById('newGroupName').value='';
+    showView('groups');toast('Group created!');
+  }catch(e){alert('Error: '+e.message);}
+}
+
+async function joinGroup(){
+  const code=document.getElementById('joinCode').value.trim().toUpperCase();
+  if(!code){document.getElementById('joinCode').focus();return;}
+  try{
+    const snap=await groupsCol().where('inviteCode','==',code).limit(1).get();
+    if(snap.empty){toast('Invalid invite code.');return;}
+    const doc=snap.docs[0];
+    const uid=currentUser.uid;
+    if(doc.data().memberIds?.includes(uid)){toast("You're already in this group.");return;}
+    await doc.ref.update({[`members.${uid}`]:{name:myName(),email:currentUser.email,role:'member',joinedAt:Date.now()},memberIds:firebase.firestore.FieldValue.arrayUnion(uid)});
+    document.getElementById('joinCode').value='';
+    toast('Joined '+doc.data().name+'!');
+  }catch(e){alert('Error: '+e.message);}
+}
+
+function openGroup(id){
+  currentGroup=groups.find(g=>g.id===id);
+  if(!currentGroup)return;
+  projects=[];currentProjectId=null;
+  outreachItems=[];currentOutreachId=null;
+  startListeningToProjects();
+  startListeningToOutreach();
+  showView('list');
+}
+
+// ── Members ───────────────────────────────────────────────────────────────────
+function showMembers(){
+  if(!currentGroup)return;
+  preMembersView=currentView;
+  const g=groups.find(x=>x.id===currentGroup.id)||currentGroup;
+  const isOwner=g.members?.[currentUser.uid]?.role==='owner';
+  document.getElementById('membersInvite').innerHTML=`
+    <div class="invite-box">
+      <div class="invite-label">Share this code to invite people</div>
+      <div class="invite-code">${esc(g.inviteCode)}</div>
+      <button class="copy-btn" onclick="copyCode('${esc(g.inviteCode)}')">Copy Code</button>
+    </div>`;
+  const sorted=Object.entries(g.members||{}).sort(([,a],[,b])=>a.role==='owner'?-1:b.role==='owner'?1:0);
+  document.getElementById('membersList').innerHTML=`
+    <div class="card-label">Members (${sorted.length})</div>
+    ${sorted.map(([uid,m],i)=>`<div class="member-row">
+      <div class="member-av" style="background:${avColor(i)}">${(m.name||'?')[0].toUpperCase()}</div>
+      <div class="member-info">
+        <div class="member-name">${esc(m.name||'Unknown')}${uid===currentUser.uid?' <span style="font-size:11px;color:var(--muted);font-weight:500">(you)</span>':''}</div>
+        <div class="member-email">${esc(m.email||'')}</div>
+      </div>
+      <span class="member-role-pill role-${m.role}">${m.role}</span>
+    </div>`).join('')}`;
+  document.getElementById('leaveBtn').textContent=isOwner?'Delete Group':'Leave Group';
+  document.getElementById('hdrTitle').textContent=g.name;
+  showView('members');
+}
+
+async function leaveGroup(){
+  if(!currentGroup)return;
+  const g=groups.find(x=>x.id===currentGroup.id)||currentGroup;
+  const isOwner=g.members?.[currentUser.uid]?.role==='owner';
+  if(!confirm(isOwner?'Delete this group? This cannot be undone.':'Leave this group?'))return;
+  const uid=currentUser.uid;
+  try{
+    if(isOwner){await groupsCol().doc(currentGroup.id).delete();toast('Group deleted.');}
+    else{await groupsCol().doc(currentGroup.id).update({[`members.${uid}`]:firebase.firestore.FieldValue.delete(),memberIds:firebase.firestore.FieldValue.arrayRemove(uid)});toast('Left group.');}
+    currentGroup=null;showView('groups');
+  }catch(e){alert('Error: '+e.message);}
+}
+
+function copyCode(code){
+  navigator.clipboard?.writeText(code).then(()=>toast('Copied!')).catch(()=>{
+    const t=document.createElement('textarea');t.value=code;document.body.appendChild(t);t.select();document.execCommand('copy');document.body.removeChild(t);toast('Copied!');
+  });
+}
+
+// ── Admin ─────────────────────────────────────────────────────────────────────
+async function renderAdmin(){
+  const usersEl=document.getElementById('adminUsers');
+  const groupsEl=document.getElementById('adminGroups');
+  usersEl.innerHTML='<div class="loading">Loading…</div>';
+  groupsEl.innerHTML='<div class="loading">Loading…</div>';
+  try{
+    const snap=await usersCol().get();
+    const users=snap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(a.name||'').localeCompare(b.name||''));
+    usersEl.innerHTML=users.length?users.map((u,i)=>`<div class="member-row">
+      <div class="member-av" style="background:${avColor(i)}">${(u.name||'?')[0].toUpperCase()}</div>
+      <div class="member-info">
+        <div class="member-name">${esc(u.name||'Unknown')}${u.id===currentUser.uid?' <span style="font-size:11px;color:var(--muted);font-weight:500">(you)</span>':''}</div>
+        <div class="member-email">${esc(u.email||'')}</div>
+      </div>
+      <button class="role-toggle-btn${u.role==='admin'?' is-admin':''}" onclick="toggleUserRole('${u.id}','${u.role==='admin'?'member':'admin'}')">${u.role==='admin'?'Admin':'Member'}</button>
+    </div>`).join(''):'<div class="empty-hint">No users yet.</div>';
+  }catch(e){usersEl.innerHTML=`<div class="empty-hint">Couldn't load users — ${esc(e.message)}</div>`;}
+  try{
+    const snap=await groupsCol().get();
+    adminGroupsCache=snap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(a.name||'').localeCompare(b.name||''));
+    groupsEl.innerHTML=adminGroupsCache.length?adminGroupsCache.map(g=>{
+      const n=Object.keys(g.members||{}).length;
+      return `<div class="entry-row">
+        <div class="entry-row-info"><div class="entry-row-name">${esc(g.name)}</div><div class="entry-row-url">${n} member${n!==1?'s':''}</div></div>
+        <button class="entry-del" onclick="adminDeleteGroup('${g.id}')">✕</button>
+      </div>`;
+    }).join(''):'<div class="empty-hint">No groups yet.</div>';
+  }catch(e){groupsEl.innerHTML=`<div class="empty-hint">Couldn't load groups — ${esc(e.message)}</div>`;}
+}
+async function toggleUserRole(uid,newRole){
+  try{
+    await usersCol().doc(uid).update({role:newRole});
+    if(uid===currentUser.uid){myRole=newRole;document.getElementById('hdrAdminBtn').style.display=newRole==='admin'?'flex':'none';}
+    renderAdmin();
+  }catch(e){alert('Error: '+e.message);}
+}
+async function adminDeleteGroup(gid){
+  const g=adminGroupsCache.find(x=>x.id===gid);
+  if(!confirm(`Delete group "${g?g.name:'this group'}"? This cannot be undone.`))return;
+  try{await groupsCol().doc(gid).delete();renderAdmin();}catch(e){alert('Error: '+e.message);}
+}
+
+// ── Resource library ─────────────────────────────────────────────────────────
+function startListeningToResources(){
+  if(unsubResources)unsubResources();
+  unsubResources=resourcesCol().orderBy('createdAt','desc').onSnapshot(snap=>{
+    resources=snap.docs.map(d=>({id:d.id,...d.data()}));
+    if(currentView==='resources')renderResources();
+  },err=>console.error(err));
+}
+function renderResources(){
+  const el=document.getElementById('resourceList');
+  const canManage=r=>myRole==='admin'||r.createdBy===currentUser?.uid;
+  let html=resources.length?resources.map(r=>`<div class="resource-card">
+    <div class="resource-card-top">
+      <div class="resource-card-name">${esc(r.name)}</div>
+      ${r.category?`<span class="resource-card-cat">${esc(r.category)}</span>`:''}
+    </div>
+    ${r.description?`<div class="resource-card-desc">${esc(r.description)}</div>`:''}
+    <div class="resource-card-meta">
+      ${r.url?`<a class="resource-card-url" href="${esc(r.url)}" target="_blank" rel="noopener">${esc(r.url)} ↗</a>`:'<span></span>'}
+      ${canManage(r)?`<div class="resource-card-actions"><button onclick="startEditResource('${r.id}')">✏️ Edit</button><button onclick="deleteResource('${r.id}')">🗑️</button></div>`:''}
+    </div>
+  </div>`).join(''):'<div class="empty-state"><div class="empty-icon">📚</div><div class="empty-title">No resources yet</div><div class="empty-sub">Add the first tool or template below.</div></div>';
+  html+=`<div class="new-group-card" onclick="startAddResource()">
+    <div class="new-group-ring">+</div>
+    <div><div class="new-group-text">Add Resource</div><div class="new-group-sub">Share a tool, template, or link with everyone</div></div>
+  </div>`;
+  el.innerHTML=html;
+}
+function startAddResource(){
+  editingResourceId=null;
+  document.getElementById('rName').value='';
+  document.getElementById('rUrl').value='';
+  document.getElementById('rCategory').value='';
+  document.getElementById('rDesc').value='';
+  document.getElementById('rSaveBtn').textContent='Save Resource';
+  document.getElementById('hdrTitle').textContent='New Resource';
+  showView('resourceForm');
+}
+function startEditResource(id){
+  const r=resources.find(x=>x.id===id);if(!r)return;
+  editingResourceId=id;
+  document.getElementById('rName').value=r.name||'';
+  document.getElementById('rUrl').value=r.url||'';
+  document.getElementById('rCategory').value=r.category||'';
+  document.getElementById('rDesc').value=r.description||'';
+  document.getElementById('rSaveBtn').textContent='Save Changes';
+  document.getElementById('hdrTitle').textContent='Edit Resource';
+  showView('resourceForm');
+}
+async function saveResource(){
+  const name=document.getElementById('rName').value.trim();
+  if(!name){document.getElementById('rName').focus();alert('Please enter a name.');return;}
+  const url=document.getElementById('rUrl').value.trim();
+  const category=document.getElementById('rCategory').value.trim();
+  const description=document.getElementById('rDesc').value.trim();
+  const btn=document.getElementById('rSaveBtn');
+  btn.disabled=true;btn.textContent='Saving…';
+  try{
+    if(editingResourceId){
+      await resourcesCol().doc(editingResourceId).update({name,url,category,description});
+    }else{
+      await resourcesCol().add({name,url,category,description,createdAt:Date.now(),createdBy:currentUser.uid,createdByName:myName()});
+    }
+    editingResourceId=null;showView('resources');
+  }catch(e){alert('Error: '+e.message);btn.disabled=false;btn.textContent=editingResourceId?'Save Changes':'Save Resource';}
+}
+async function deleteResource(id){
+  if(!confirm('Delete this resource?'))return;
+  try{await resourcesCol().doc(id).delete();}catch(e){alert('Error: '+e.message);}
+}
+
+// ── Projects listener ─────────────────────────────────────────────────────────
+function startListeningToProjects(){
+  if(unsubProjects)unsubProjects();
+  unsubProjects=projectsCol().orderBy('createdAt','desc').onSnapshot(snap=>{
+    projects=snap.docs.map(d=>({id:d.id,...d.data()}));
+    renderList();
+    if(currentView==='detail'&&currentProjectId){
+      const p=projects.find(x=>x.id===currentProjectId);
+      if(p)refreshDetailActive(p);
+    }
+  },err=>console.error(err));
+}
+function startListeningToSessions(pid){
+  if(unsubSessions){unsubSessions();unsubSessions=null;}
+  unsubSessions=sessionsCol(pid).orderBy('start','desc').onSnapshot(snap=>{
+    currentSessions=snap.docs.map(d=>({id:d.id,...d.data()}));
+    if(currentView==='detail'&&currentProjectId===pid){
+      const p=projects.find(x=>x.id===pid);if(p)renderClockCard(p);
+    }
+  },err=>console.error(err));
+}
+function stopListeningToSessions(){if(unsubSessions){unsubSessions();unsubSessions=null;}currentSessions=[];}
+function startListeningToNotes(pid){
+  if(unsubNotes){unsubNotes();unsubNotes=null;}
+  unsubNotes=notesCol(pid).orderBy('createdAt','desc').onSnapshot(snap=>{
+    currentNotes=snap.docs.map(d=>({id:d.id,...d.data()}));
+    if(currentView==='detail'&&currentProjectId===pid)renderNotesCard();
+  },err=>console.error(err));
+}
+function stopListeningToNotes(){if(unsubNotes){unsubNotes();unsubNotes=null;}currentNotes=[];}
+function renderNotesCard(){
+  const el=document.getElementById('detailNotes');
+  if(!el)return;
+  const list=currentNotes.length?currentNotes.map(n=>`<div class="session-item">
+      <div class="session-top">
+        <div><div class="session-who">${esc(n.createdByName||'Unknown')}</div><div class="session-when">${formatDateTime(n.createdAt)}</div></div>
+        <button class="session-del" onclick="deleteNote('${n.id}')">✕</button>
+      </div>
+      <div class="session-notes">${esc(n.text)}</div>
+    </div>`).join(''):'<div class="empty-hint">No notes yet.</div>';
+  el.innerHTML=`
+    <div class="section-title" style="margin-bottom:10px">Notes &amp; Decisions</div>
+    <div class="clockout-form" style="margin-bottom:12px">
+      <textarea class="finput" id="noteInput" placeholder="Log a decision, idea, or update..."></textarea>
+    </div>
+    <div style="margin-bottom:12px"><button class="btn btn-blue btn-sm" onclick="addNote()">+ Add Note</button></div>
+    ${list}`;
+}
+async function addNote(){
+  const el=document.getElementById('noteInput');
+  const text=(el?.value||'').trim();
+  if(!text)return;
+  try{await notesCol(currentProjectId).add({text,createdAt:Date.now(),createdBy:currentUser.uid,createdByName:myName()});}
+  catch(e){alert('Error: '+e.message);}
+}
+async function deleteNote(id){
+  if(!confirm('Delete this note?'))return;
+  try{await notesCol(currentProjectId).doc(id).delete();}catch(e){alert('Error: '+e.message);}
+}
+
+// ── Metrics ───────────────────────────────────────────────────────────────────
+function startListeningToMetrics(pid){
+  if(unsubMetrics){unsubMetrics();unsubMetrics=null;}
+  unsubMetrics=metricsCol(pid).onSnapshot(snap=>{
+    currentMetrics=snap.docs.map(d=>({id:d.id,...d.data()}));
+    if(currentView==='detail'&&currentProjectId===pid)renderMetricsCard();
+  },err=>console.error(err));
+}
+function stopListeningToMetrics(){if(unsubMetrics){unsubMetrics();unsubMetrics=null;}currentMetrics=[];}
+function fmtNum(n){return n==null||isNaN(n)?'—':Number(n).toLocaleString('en-US',{maximumFractionDigits:2});}
+function drawSparkline(canvas,values){
+  const ctx=canvas.getContext('2d'),w=canvas.width,h=canvas.height,pad=6;
+  ctx.clearRect(0,0,w,h);
+  if(values.length<2){
+    ctx.fillStyle='#94a3b8';ctx.font='12px sans-serif';ctx.fillText('Log another entry to see a trend',pad,h/2+4);
+    return;
+  }
+  const min=Math.min(...values),max=Math.max(...values),range=(max-min)||1;
+  const step=(w-pad*2)/(values.length-1);
+  ctx.beginPath();
+  values.forEach((v,i)=>{
+    const x=pad+i*step,y=h-pad-((v-min)/range)*(h-pad*2);
+    if(i===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);
+  });
+  ctx.strokeStyle='#2563eb';ctx.lineWidth=2;ctx.lineJoin='round';ctx.lineCap='round';ctx.stroke();
+  const lastV=values[values.length-1];
+  const lastX=pad+(values.length-1)*step,lastY=h-pad-((lastV-min)/range)*(h-pad*2);
+  ctx.beginPath();ctx.arc(lastX,lastY,3,0,Math.PI*2);ctx.fillStyle='#2563eb';ctx.fill();
+}
+function renderMetricsCard(){
+  const el=document.getElementById('detailMetrics');
+  if(!el)return;
+  const groupsMap={};
+  currentMetrics.forEach(m=>{(groupsMap[m.label]=groupsMap[m.label]||[]).push(m);});
+  const labels=Object.keys(groupsMap).sort();
+  const groupData=labels.map((label,i)=>({label,canvasId:'spark_'+i,entries:groupsMap[label].slice().sort((a,b)=>a.date-b.date)}));
+  const groupsHtml=groupData.length?groupData.map(g=>{
+    const latest=g.entries[g.entries.length-1];
+    const prev=g.entries.length>1?g.entries[g.entries.length-2]:null;
+    const delta=prev?latest.value-prev.value:null;
+    const deltaColor=!delta?'var(--muted)':delta>0?'var(--green)':'var(--red)';
+    const deltaText=delta==null?'':(delta>0?'+':'')+fmtNum(delta);
+    return `<div style="margin-bottom:16px">
+      <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:6px">
+        <div style="font-size:13px;font-weight:700;color:var(--text)">${esc(g.label)}</div>
+        <div style="display:flex;align-items:baseline;gap:8px">
+          <div style="font-size:18px;font-weight:800;color:var(--text)">${fmtNum(latest.value)}</div>
+          ${delta!==null?`<div style="font-size:12px;font-weight:700;color:${deltaColor}">${deltaText}</div>`:''}
+          <button class="entry-del" onclick="deleteMetric('${latest.id}')" title="Delete latest entry">✕</button>
+        </div>
+      </div>
+      <canvas id="${g.canvasId}" width="600" height="60" style="width:100%;height:44px;display:block;margin-bottom:6px"></canvas>
+      <div style="font-size:11px;color:var(--muted)">${g.entries.length} entr${g.entries.length!==1?'ies':'y'} · latest ${formatDate(latest.date)}</div>
+    </div>`;
+  }).join(''):'<div class="empty-hint">No metrics logged yet.</div>';
+  el.innerHTML=`
+    <div class="section-title" style="margin-bottom:10px">Metrics</div>
+    <div class="add-strip" style="margin-bottom:14px">
+      <div class="add-strip-row">
+        <input class="finput" id="mLabel" type="text" placeholder="Label (e.g. MRR)" maxlength="40">
+        <input class="finput" id="mValue" type="number" placeholder="Value" step="any">
+        <input class="finput" id="mDate" type="date">
+      </div>
+      <button class="btn btn-blue btn-sm" onclick="addMetric()">+ Log Metric</button>
+    </div>
+    ${groupsHtml}`;
+  groupData.forEach(g=>{const c=document.getElementById(g.canvasId);if(c)drawSparkline(c,g.entries.map(e=>e.value));});
+}
+async function addMetric(){
+  const label=document.getElementById('mLabel').value.trim();
+  const value=parseFloat(document.getElementById('mValue').value);
+  const dateRaw=document.getElementById('mDate').value;
+  if(!label){document.getElementById('mLabel').focus();return;}
+  if(isNaN(value)){document.getElementById('mValue').focus();return;}
+  const date=dateRaw?new Date(dateRaw+'T00:00:00').getTime():Date.now();
+  try{await metricsCol(currentProjectId).add({label,value,date,createdAt:Date.now(),createdBy:currentUser.uid,createdByName:myName()});}
+  catch(e){alert('Error: '+e.message);}
+}
+async function deleteMetric(id){
+  if(!confirm('Delete this entry?'))return;
+  try{await metricsCol(currentProjectId).doc(id).delete();}catch(e){alert('Error: '+e.message);}
+}
+
+// ── Tasks ─────────────────────────────────────────────────────────────────────
+function startListeningToTasks(pid){
+  if(unsubTasks){unsubTasks();unsubTasks=null;}
+  unsubTasks=tasksCol(pid).orderBy('createdAt','asc').onSnapshot(snap=>{
+    currentTasks=snap.docs.map(d=>({id:d.id,...d.data()}));
+    if(currentView==='detail'&&currentProjectId===pid)renderTasksCard();
+  },err=>console.error(err));
+}
+function stopListeningToTasks(){if(unsubTasks){unsubTasks();unsubTasks=null;}currentTasks=[];}
+const TASK_COLS=[{key:'todo',label:'To Do'},{key:'doing',label:'Doing'},{key:'done',label:'Done'}];
+function renderTasksCard(){
+  const el=document.getElementById('detailTasks');
+  if(!el)return;
+  const colHtml=TASK_COLS.map(col=>{
+    const items=currentTasks.filter(t=>t.status===col.key);
+    const chips=items.length?items.map(t=>{
+      const moveBtns=TASK_COLS.filter(c=>c.key!==col.key).map(o=>`<button class="task-move-btn" onclick="moveTask('${t.id}','${o.key}')">→ ${esc(o.label)}</button>`).join('');
+      return `<div class="task-chip">
+        <div class="task-chip-text">${esc(t.text)}</div>
+        <div class="task-chip-actions">${moveBtns}<button class="task-del" onclick="deleteTask('${t.id}')">✕</button></div>
+      </div>`;
+    }).join(''):'<div class="empty-hint" style="padding:2px 0">Nothing here</div>';
+    return `<div><div class="kanban-col-title">${esc(col.label)} (${items.length})</div>${chips}</div>`;
+  }).join('');
+  el.innerHTML=`
+    <div class="section-title" style="margin-bottom:10px">Tasks</div>
+    <div class="add-strip" style="margin-bottom:14px">
+      <div class="add-strip-row">
+        <input class="finput" id="taskInput" type="text" placeholder="Add a task..." maxlength="140" onkeydown="if(event.key==='Enter')addTask()">
+      </div>
+      <button class="btn btn-blue btn-sm" onclick="addTask()">+ Add Task</button>
+    </div>
+    <div class="kanban">${colHtml}</div>`;
+}
+async function addTask(){
+  const el=document.getElementById('taskInput');
+  const text=(el?.value||'').trim();
+  if(!text)return;
+  try{
+    await tasksCol(currentProjectId).add({text,status:'todo',createdAt:Date.now(),createdBy:currentUser.uid,createdByName:myName()});
+    if(el)el.value='';
+  }catch(e){alert('Error: '+e.message);}
+}
+async function moveTask(id,status){
+  try{await tasksCol(currentProjectId).doc(id).update({status});}catch(e){alert('Error: '+e.message);}
+}
+async function deleteTask(id){
+  if(!confirm('Delete this task?'))return;
+  try{await tasksCol(currentProjectId).doc(id).delete();}catch(e){alert('Error: '+e.message);}
+}
+
+// ── List view ─────────────────────────────────────────────────────────────────
+function workspaceTabsHtml(active){
+  return `<div class="mode-toggle" style="margin-bottom:14px">
+    <button class="mode-btn${active==='list'?' active':''}" onclick="showView('list')">Projects</button>
+    <button class="mode-btn${active==='outreach'?' active':''}" onclick="showView('outreach')">Outreach</button>
+  </div>`;
+}
+function renderList(){
+  const el=document.getElementById('projectList');
+  const tabs=workspaceTabsHtml('list');
+  if(projects.length===0){
+    el.innerHTML=tabs+`<div class="empty-state"><div class="empty-icon">📋</div><div class="empty-title">No projects yet</div><div class="empty-sub">Tap "New Project" to add one.</div></div>`;
+    return;
+  }
+  const statusColor={active:'#10b981',paused:'#f59e0b',done:'#94a3b8'};
+  const sorted=[...projects].sort((a,b)=>{
+    const al=Object.keys(a.activeSessions||{}).length,bl=Object.keys(b.activeSessions||{}).length;
+    if(bl!==al)return bl-al;
+    const o={active:0,paused:1,done:2};
+    return (o[a.status]||0)-(o[b.status]||0)||(b.createdAt||0)-(a.createdAt||0);
+  });
+  if(isDesktopSplit()&&currentView==='list'&&!currentProjectId&&sorted.length){
+    showDetail(sorted[0].id);
+  }
+  el.innerHTML=tabs+sorted.map(p=>{
+    const active=p.activeSessions||{};
+    const keys=Object.keys(active);
+    const isLive=keys.length>0;
+    const isMeLive=!!active[currentUser?.uid];
+    const color=statusColor[p.status]||'#94a3b8';
+    const statusBadge=`<span class="badge badge-${p.status}">${statusLabel(p.status)}</span>`;
+    const liveBadge=isMeLive?`<span class="badge badge-live">● Live</span>`:isLive?`<span class="badge badge-live" style="background:var(--blue)">● Live</span>`:'';
+    const who=isLive?`<div class="proj-card-live"><div class="group-card-live-dot"></div>${keys.map(u=>active[u].userName).join(', ')} working now</div>`:'';
+    const sel=p.id===currentProjectId?' sel':'';
+    return `<div class="proj-card${sel}" data-id="${p.id}" style="border-left-color:${color}" onclick="showDetail('${p.id}')">
+      <div class="proj-card-top"><div class="proj-card-name">${esc(p.name)}</div>${statusBadge}</div>
+      ${p.description?`<div class="proj-card-desc">${esc(p.description)}</div>`:''}
+      <div class="proj-card-meta">${liveBadge}</div>
+      ${who}
+    </div>`;
+  }).join('');
+}
+
+// ── Detail view ───────────────────────────────────────────────────────────────
+function showDetail(id){
+  currentProjectId=id;currentSessions=[];currentNotes=[];currentMetrics=[];currentTasks=[];clockOutPending=false;
+  const p=projects.find(x=>x.id===id);
+  if(!p){showView('list');return;}
+  document.getElementById('hdrTitle').textContent=p.name;
+  renderDetailAll(p);showView('detail');
+  startListeningToSessions(id);
+  startListeningToNotes(id);
+  startListeningToMetrics(id);
+  startListeningToTasks(id);
+  const myActive=(p.activeSessions||{})[currentUser?.uid];
+  if(myActive)startTimerTick();else stopTimerTick();
+  renderList();
+}
+function renderDetailAll(p){
+  document.getElementById('detailHeader').innerHTML=`
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:12px">
+      <span class="badge badge-${p.status}">${statusLabel(p.status)}</span>
+      <span style="font-size:12px;color:var(--muted)">${formatDate(p.createdAt)}</span>
+    </div>
+    <div class="proj-desc-full">${p.description?esc(p.description):'<span style="color:var(--muted);font-style:italic">No description yet.</span>'}</div>`;
+  const links=p.links||[];
+  document.getElementById('detailLinks').innerHTML=`
+    <div class="section-title">Project Links</div>
+    ${links.length?links.map(l=>`<div class="entry-row"><div class="entry-row-info"><div class="entry-row-name">${esc(l.label)}</div>${l.url?`<div class="entry-row-url"><a href="${esc(l.url)}" target="_blank" rel="noopener">${esc(l.url)}</a></div>`:''}</div>${l.url?`<a href="${esc(l.url)}" target="_blank" rel="noopener" style="color:var(--blue);font-size:18px;text-decoration:none;flex-shrink:0">↗</a>`:''}</div>`).join(''):'<div class="empty-hint">No links added yet.</div>'}`;
+  const soft=p.software||[];
+  document.getElementById('detailSoftware').innerHTML=`
+    <div class="section-title">Software &amp; Tools</div>
+    ${soft.length?soft.map(s=>`<div class="entry-row"><div class="entry-row-info"><div class="entry-row-name">${esc(s.name)}</div>${s.url?`<div class="entry-row-url"><a href="${esc(s.url)}" target="_blank" rel="noopener">${esc(s.url)}</a></div>`:''}</div>${s.url?`<a href="${esc(s.url)}" target="_blank" rel="noopener" style="color:var(--blue);font-size:18px;text-decoration:none;flex-shrink:0">↗</a>`:''}</div>`).join(''):'<div class="empty-hint">No software added yet.</div>'}`;
+  renderClockCard(p);
+  renderTasksCard();
+  renderMetricsCard();
+  renderNotesCard();
+}
+function refreshDetailActive(p){
+  const myActive=(p.activeSessions||{})[currentUser?.uid];
+  if(myActive&&!timerInterval)startTimerTick();
+  if(!myActive)stopTimerTick();
+  renderClockCard(p);
+}
+function renderClockCard(p){
+  const active=p.activeSessions||{};
+  const myActive=active[currentUser?.uid];
+  const others=Object.entries(active).filter(([u])=>u!==currentUser?.uid).map(([,v])=>v.userName);
+  const elapsed=myActive?Date.now()-myActive.start:0;
+  const total=totalMs(p),today=todayMs(p);
+
+  const timerSection=myActive?`
+    <div class="timer-block">
+      <div class="timer-label">You've been working for</div>
+      <div class="timer-digits" id="timerDisplay">${fmtMsClock(elapsed)}</div>
+      <div class="timer-since">Prompted in ${formatDateTime(myActive.start)}</div>
+    </div>
+    <div class="also-working" id="alsoWorking" style="display:${others.length?'block':'none'}">${others.length?'Also working: '+others.join(', '):''}</div>
+  `:others.length?`<div class="also-working" id="alsoWorking" style="margin-bottom:12px">🕐 Working now: ${others.join(', ')}</div>`:`<div id="alsoWorking" style="display:none"></div>`;
+
+  const statsSection=(total>0||currentSessions.length>0)?`
+    <div style="margin:12px 0 14px">
+      <div class="stat-row"><span class="stat-label">Total time</span><span class="stat-value">${total>0?fmtMs(total):'—'}</span></div>
+      <div class="stat-row"><span class="stat-label">Today</span><span class="stat-value">${today>0?fmtMs(today):'—'}</span></div>
+      <div class="stat-row"><span class="stat-label">Sessions</span><span class="stat-value">${currentSessions.length}</span></div>
+    </div>`:'<div style="height:10px"></div>';
+
+  const coForm=clockOutPending?`
+    <div class="clockout-form">
+      <label class="flabel">What did you work on? <span style="color:var(--muted);font-weight:400">(optional)</span></label>
+      <textarea class="finput" id="clockOutNotes" placeholder="e.g. Fixed the login bug, reviewed PR, set up deploy..."></textarea>
+    </div>
+    <div class="btn-row" style="margin-bottom:12px">
+      <button class="btn btn-ink btn-sm" onclick="clockOut('${p.id}')">Save &amp; Prompt Out</button>
+      <button class="btn btn-ghost btn-sm" onclick="cancelClockOut('${p.id}')">Cancel</button>
+    </div>`:'';
+
+  const actionBtn=!clockOutPending?(myActive
+    ?`<button class="clock-btn clock-out" onclick="promptClockOut('${p.id}')">■ Prompt Out</button>`
+    :`<button class="clock-btn clock-in" onclick="clockIn('${p.id}')">▶ Prompt In</button>`
+  ):'';
+
+  const history=currentSessions.length?`
+    <hr style="border:none;border-top:1px solid var(--border);margin:16px 0 12px">
+    <div class="section-title">Session History</div>
+    ${currentSessions.map(s=>`<div class="session-item">
+      <div class="session-top">
+        <div><div class="session-who">${esc(s.userName||'Unknown')}</div><div class="session-when">${formatDateTime(s.start)} → ${formatDateTime(s.end)}</div></div>
+        <div style="display:flex;align-items:center;gap:4px">
+          <div class="session-dur">${fmtMs(s.duration||(s.end-s.start))}</div>
+          <button class="session-del" onclick="deleteSession('${s.id}')">✕</button>
+        </div>
+      </div>
+      ${s.notes?`<div class="session-notes">${esc(s.notes)}</div>`:''}
+    </div>`).join('')}`:'';
+
+  document.getElementById('detailClock').innerHTML=`
+    <div class="section-title" style="margin-bottom:10px">Time Tracking</div>
+    ${timerSection}${statsSection}${coForm}${actionBtn}${history}`;
+  if(myActive&&!timerInterval)startTimerTick();
+}
+function cancelClockOut(pid){clockOutPending=false;const p=projects.find(x=>x.id===pid);if(p)renderClockCard(p);}
+
+// ── Clock in/out ──────────────────────────────────────────────────────────────
+async function clockIn(pid){
+  try{await projectsCol().doc(pid).update({[`activeSessions.${currentUser.uid}`]:{start:Date.now(),userName:myName()}});clockOutPending=false;}
+  catch(e){alert('Error: '+e.message);}
+}
+function promptClockOut(pid){
+  clockOutPending=true;
+  const p=projects.find(x=>x.id===pid);if(p)renderClockCard(p);
+  setTimeout(()=>document.getElementById('clockOutNotes')?.focus(),80);
+}
+async function clockOut(pid){
+  const uid=currentUser.uid;
+  const notes=(document.getElementById('clockOutNotes')?.value||'').trim();
+  const p=projects.find(x=>x.id===pid);if(!p)return;
+  const myActive=(p.activeSessions||{})[uid];if(!myActive)return;
+  const now=Date.now();
+  try{
+    await sessionsCol(pid).add({start:myActive.start,end:now,duration:now-myActive.start,userId:uid,userName:myName(),notes:notes||''});
+    await projectsCol().doc(pid).update({[`activeSessions.${uid}`]:firebase.firestore.FieldValue.delete()});
+    clockOutPending=false;stopTimerTick();
+  }catch(e){alert('Error: '+e.message);}
+}
+async function deleteSession(sid){
+  if(!confirm('Delete this session?'))return;
+  try{await sessionsCol(currentProjectId).doc(sid).delete();}catch(e){alert('Error: '+e.message);}
+}
+
+// ── Timer ─────────────────────────────────────────────────────────────────────
+function startTimerTick(){
+  stopTimerTick();
+  timerInterval=setInterval(()=>{
+    if(currentView!=='detail'){stopTimerTick();return;}
+    const p=projects.find(x=>x.id===currentProjectId);if(!p)return;
+    const m=(p.activeSessions||{})[currentUser?.uid];if(!m){stopTimerTick();return;}
+    const el=document.getElementById('timerDisplay');if(el)el.textContent=fmtMsClock(Date.now()-m.start);
+  },1000);
+}
+function stopTimerTick(){if(timerInterval){clearInterval(timerInterval);timerInterval=null;}}
+
+// ── Time helpers ──────────────────────────────────────────────────────────────
+function totalMs(p){
+  const fin=currentSessions.reduce((s,x)=>s+((x.end||0)-x.start),0);
+  const m=(p.activeSessions||{})[currentUser?.uid];
+  return fin+(m?Date.now()-m.start:0);
+}
+function todayMs(p){
+  const t=new Date();t.setHours(0,0,0,0);const ts=t.getTime();
+  const fin=currentSessions.filter(s=>s.start>=ts).reduce((s,x)=>s+((x.end||0)-x.start),0);
+  const m=(p.activeSessions||{})[currentUser?.uid];
+  const live=m&&m.start>=ts?Date.now()-m.start:0;
+  return fin+live;
+}
+function fmtMs(ms){
+  if(ms<60000)return'<1m';
+  const h=Math.floor(ms/3600000),m=Math.floor((ms%3600000)/60000);
+  return h===0?`${m}m`:m>0?`${h}h ${m}m`:`${h}h`;
+}
+function fmtMsClock(ms){
+  const s=Math.floor(ms/1000),h=Math.floor(s/3600),m=Math.floor((s%3600)/60),sec=s%60;
+  return h>0?`${h}:${p2(m)}:${p2(sec)}`:`${m}:${p2(sec)}`;
+}
+function p2(n){return String(n).padStart(2,'0');}
+
+// ── Project form ──────────────────────────────────────────────────────────────
+function startAdd(){
+  editingId=null;formLinks=[];formSoft=[];
+  document.getElementById('fName').value='';
+  document.getElementById('fDesc').value='';
+  document.getElementById('fStatus').value='active';
+  document.getElementById('fSaveBtn').textContent='Save Project';
+  document.getElementById('hdrTitle').textContent='New Project';
+  renderFormLinks();renderFormSoft();showView('form');
+}
+function startEdit(){
+  const p=projects.find(x=>x.id===currentProjectId);if(!p)return;
+  editingId=p.id;
+  formLinks=JSON.parse(JSON.stringify(p.links||[]));
+  formSoft=JSON.parse(JSON.stringify(p.software||[]));
+  document.getElementById('fName').value=p.name;
+  document.getElementById('fDesc').value=p.description||'';
+  document.getElementById('fStatus').value=p.status||'active';
+  document.getElementById('fSaveBtn').textContent='Save Changes';
+  document.getElementById('hdrTitle').textContent='Edit Project';
+  renderFormLinks();renderFormSoft();showView('form');
+}
+async function saveProject(){
+  const name=document.getElementById('fName').value.trim();
+  if(!name){document.getElementById('fName').focus();alert('Please enter a project name.');return;}
+  const desc=document.getElementById('fDesc').value.trim();
+  const status=document.getElementById('fStatus').value;
+  const btn=document.getElementById('fSaveBtn');
+  btn.disabled=true;btn.textContent='Saving…';
+  try{
+    if(editingId){
+      await projectsCol().doc(editingId).update({name,description:desc,status,links:formLinks,software:formSoft});
+      currentProjectId=editingId;
+    }else{
+      const ref=await projectsCol().add({name,description:desc,status,links:formLinks,software:formSoft,activeSessions:{},createdAt:Date.now(),createdBy:currentUser.uid,createdByName:myName()});
+      currentProjectId=ref.id;
+    }
+    editingId=null;showDetail(currentProjectId);
+  }catch(e){alert('Error: '+e.message);btn.disabled=false;btn.textContent=editingId?'Save Changes':'Save Project';}
+}
+async function deleteProject(){
+  const p=projects.find(x=>x.id===currentProjectId);if(!p)return;
+  if(!confirm(`Delete "${p.name}"? This cannot be undone.`))return;
+  try{
+    const snap=await sessionsCol(currentProjectId).get();
+    const batch=db.batch();
+    snap.docs.forEach(d=>batch.delete(d.ref));
+    batch.delete(projectsCol().doc(currentProjectId));
+    await batch.commit();currentProjectId=null;showView('list');
+  }catch(e){alert('Error: '+e.message);}
+}
+
+// ── Form links/software ───────────────────────────────────────────────────────
+function addFormLink(){
+  const label=document.getElementById('fLinkLabel').value.trim();
+  const url=document.getElementById('fLinkUrl').value.trim();
+  if(!label){document.getElementById('fLinkLabel').focus();return;}
+  formLinks.push({id:uid(),label,url});
+  document.getElementById('fLinkLabel').value='';document.getElementById('fLinkUrl').value='';
+  renderFormLinks();
+}
+function removeFormLink(id){formLinks=formLinks.filter(l=>l.id!==id);renderFormLinks();}
+function renderFormLinks(){
+  document.getElementById('fLinkList').innerHTML=formLinks.map(l=>`<div class="entry-row"><div class="entry-row-info"><div class="entry-row-name">${esc(l.label)}</div>${l.url?`<div class="entry-row-url">${esc(l.url)}</div>`:''}</div><button class="entry-del" onclick="removeFormLink('${l.id}')">✕</button></div>`).join('');
+}
+function addFormSoft(){
+  const name=document.getElementById('fSoftName').value.trim();
+  const url=document.getElementById('fSoftUrl').value.trim();
+  if(!name){document.getElementById('fSoftName').focus();return;}
+  formSoft.push({id:uid(),name,url});
+  document.getElementById('fSoftName').value='';document.getElementById('fSoftUrl').value='';
+  renderFormSoft();
+}
+function removeFormSoft(id){formSoft=formSoft.filter(s=>s.id!==id);renderFormSoft();}
+function renderFormSoft(){
+  document.getElementById('fSoftList').innerHTML=formSoft.map(s=>`<div class="entry-row"><div class="entry-row-info"><div class="entry-row-name">${esc(s.name)}</div>${s.url?`<div class="entry-row-url">${esc(s.url)}</div>`:''}</div><button class="entry-del" onclick="removeFormSoft('${s.id}')">✕</button></div>`).join('');
+}
+
+// ── Outreach ──────────────────────────────────────────────────────────────────
+function startListeningToOutreach(){
+  if(unsubOutreach)unsubOutreach();
+  unsubOutreach=outreachCol().orderBy('createdAt','desc').onSnapshot(snap=>{
+    outreachItems=snap.docs.map(d=>({id:d.id,...d.data()}));
+    renderOutreachList();
+    if(currentView==='outreachDetail'&&currentOutreachId){
+      const o=outreachItems.find(x=>x.id===currentOutreachId);
+      if(o)renderOutreachDetailAll(o);
+    }
+  },err=>console.error(err));
+}
+function renderOutreachList(){
+  const el=document.getElementById('outreachList');
+  if(!el)return;
+  const tabs=workspaceTabsHtml('outreach');
+  if(outreachItems.length===0){
+    el.innerHTML=tabs+`<div class="empty-state"><div class="empty-icon">📮</div><div class="empty-title">No outreach yet</div><div class="empty-sub">Tap "New Outreach" to log your first contact.</div></div>`;
+    return;
+  }
+  const sorted=[...outreachItems].sort((a,b)=>{
+    const o={pending:0,responded:1,no_response:2};
+    return (o[a.status]||0)-(o[b.status]||0)||(b.createdAt||0)-(a.createdAt||0);
+  });
+  if(isDesktopSplit()&&currentView==='outreach'&&!currentOutreachId&&sorted.length){
+    showOutreachDetail(sorted[0].id);
+  }
+  el.innerHTML=tabs+sorted.map(o=>{
+    const sel=o.id===currentOutreachId?' sel':'';
+    const statusBadge=`<span class="badge badge-${OUTREACH_STATUS_BADGE[o.status]||'done'}">${OUTREACH_STATUS_LABEL[o.status]||o.status}</span>`;
+    return `<div class="proj-card${sel}" data-id="${o.id}" style="border-left-color:${OUTREACH_STATUS_COLOR[o.status]||'#94a3b8'}" onclick="showOutreachDetail('${o.id}')">
+      <div class="proj-card-top"><div class="proj-card-name">${esc(o.company)}</div>${statusBadge}</div>
+      <div class="proj-card-desc">${esc(OUTREACH_TYPE_LABEL[o.type]||o.type||'')}${o.contactEmail?' · '+esc(o.contactEmail):''}</div>
+    </div>`;
+  }).join('');
+}
+function showOutreachDetail(id){
+  currentOutreachId=id;
+  const o=outreachItems.find(x=>x.id===id);
+  if(!o){showView('outreach');return;}
+  document.getElementById('hdrTitle').textContent=o.company;
+  renderOutreachDetailAll(o);showView('outreachDetail');
+  renderOutreachList();
+}
+function renderOutreachDetailAll(o){
+  document.getElementById('outreachDetailHeader').innerHTML=`
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:12px">
+      <span class="badge badge-${OUTREACH_STATUS_BADGE[o.status]||'done'}">${OUTREACH_STATUS_LABEL[o.status]||o.status}</span>
+      <span style="font-size:12px;color:var(--muted)">${formatDate(o.createdAt)}</span>
+    </div>
+    <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.7px;margin-bottom:4px">${esc(OUTREACH_TYPE_LABEL[o.type]||o.type||'')}</div>
+    <div style="font-size:15px;color:var(--text);margin-bottom:14px">${o.contactEmail?esc(o.contactEmail):'<span style="color:var(--muted);font-style:italic">No contact email yet.</span>'}</div>
+    <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:4px">${esc(o.subject||'')}</div>
+    <div class="proj-desc-full">${o.message?esc(o.message):'<span style="color:var(--muted);font-style:italic">No message written.</span>'}</div>`;
+  document.getElementById('outreachDetailActions').innerHTML=`
+    <div class="section-title" style="margin-bottom:10px">Status</div>
+    <div class="btn-row" style="margin-bottom:${o.status!=='pending'?'10px':'12px'}">
+      <button class="btn ${o.status==='responded'?'btn-green':'btn-ghost'} btn-sm" onclick="setOutreachStatus('responded')">Responded</button>
+      <button class="btn ${o.status==='no_response'?'btn-red':'btn-ghost'} btn-sm" onclick="setOutreachStatus('no_response')">No Response</button>
+    </div>
+    ${o.status!=='pending'?`<button class="btn btn-ghost btn-sm" onclick="setOutreachStatus('pending')" style="margin-bottom:12px">Reset to Pending</button>`:''}
+    <hr style="border:none;border-top:1px solid var(--border);margin:4px 0 14px">
+    <div class="section-title" style="margin-bottom:10px">Send</div>
+    ${EMAILJS_READY?`
+    <button class="btn btn-blue btn-sm" id="sendEmailBtn" onclick="sendOutreachEmail()"${!o.contactEmail?' disabled':''}>✉️ Send Email</button>
+    ${!o.contactEmail?'<div class="empty-hint">Add a contact email to send.</div>':''}
+    ${o.sentAt?`<div style="font-size:12px;color:var(--muted);margin-top:8px">Sent ${formatDateTime(o.sentAt)}</div>`:''}
+    `:`<div class="empty-hint">Email sending isn't set up yet — add your EmailJS Service ID, Template ID, and Public Key near the top of the script.</div>`}`;
+}
+async function sendOutreachEmail(){
+  if(!EMAILJS_READY)return;
+  const o=outreachItems.find(x=>x.id===currentOutreachId);if(!o||!o.contactEmail)return;
+  const btn=document.getElementById('sendEmailBtn');
+  if(btn){btn.disabled=true;btn.textContent='Sending…';}
+  try{
+    await emailjs.send(EMAILJS_SERVICE_ID,EMAILJS_TEMPLATE_ID,{
+      to_email:o.contactEmail,company:o.company,subject:o.subject||'',message:o.message||'',from_name:myName()
+    });
+    await outreachCol().doc(o.id).update({sentAt:Date.now()});
+    toast('Email sent!');
+  }catch(e){
+    alert('Error sending email: '+(e?.text||e?.message||JSON.stringify(e)));
+    if(btn){btn.disabled=false;btn.textContent='✉️ Send Email';}
+  }
+}
+function startAddOutreach(){
+  editingOutreachId=null;
+  document.getElementById('oCompany').value='';
+  document.getElementById('oEmail').value='';
+  document.getElementById('oType').value='company';
+  document.getElementById('oSubject').value='';
+  document.getElementById('oMessage').value='';
+  document.getElementById('oSaveBtn').textContent='Save Outreach';
+  document.getElementById('hdrTitle').textContent='New Outreach';
+  showView('outreachForm');
+}
+function startEditOutreach(){
+  const o=outreachItems.find(x=>x.id===currentOutreachId);if(!o)return;
+  editingOutreachId=o.id;
+  document.getElementById('oCompany').value=o.company||'';
+  document.getElementById('oEmail').value=o.contactEmail||'';
+  document.getElementById('oType').value=o.type||'company';
+  document.getElementById('oSubject').value=o.subject||'';
+  document.getElementById('oMessage').value=o.message||'';
+  document.getElementById('oSaveBtn').textContent='Save Changes';
+  document.getElementById('hdrTitle').textContent='Edit Outreach';
+  showView('outreachForm');
+}
+async function saveOutreach(){
+  const company=document.getElementById('oCompany').value.trim();
+  if(!company){document.getElementById('oCompany').focus();alert('Please enter a company/organization name.');return;}
+  const contactEmail=document.getElementById('oEmail').value.trim();
+  const type=document.getElementById('oType').value;
+  const subject=document.getElementById('oSubject').value.trim();
+  const message=document.getElementById('oMessage').value.trim();
+  const btn=document.getElementById('oSaveBtn');
+  btn.disabled=true;btn.textContent='Saving…';
+  try{
+    if(editingOutreachId){
+      await outreachCol().doc(editingOutreachId).update({company,contactEmail,type,subject,message});
+      currentOutreachId=editingOutreachId;
+    }else{
+      const ref=await outreachCol().add({company,contactEmail,type,subject,message,status:'pending',sentAt:null,createdAt:Date.now(),createdBy:currentUser.uid,createdByName:myName()});
+      currentOutreachId=ref.id;
+    }
+    editingOutreachId=null;showOutreachDetail(currentOutreachId);
+  }catch(e){alert('Error: '+e.message);btn.disabled=false;btn.textContent=editingOutreachId?'Save Changes':'Save Outreach';}
+}
+async function deleteOutreach(){
+  const o=outreachItems.find(x=>x.id===currentOutreachId);if(!o)return;
+  if(!confirm(`Delete outreach to "${o.company}"? This cannot be undone.`))return;
+  try{await outreachCol().doc(currentOutreachId).delete();currentOutreachId=null;showView('outreach');}catch(e){alert('Error: '+e.message);}
+}
+async function setOutreachStatus(status){
+  if(!currentOutreachId)return;
+  try{await outreachCol().doc(currentOutreachId).update({status});}catch(e){alert('Error: '+e.message);}
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function formatDate(ts){if(!ts)return'';return new Date(ts).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});}
+function formatDateTime(ts){if(!ts)return'';return new Date(ts).toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'});}
+function statusLabel(s){return{active:'Active',paused:'Paused',done:'Done'}[s]||s;}
+function myName(){return currentUser?.displayName||currentUser?.email?.split('@')[0]||'Me';}
+function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,7);}
+function genCode(){const c='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';return Array.from({length:6},()=>c[Math.floor(Math.random()*c.length)]).join('');}
+function toast(msg){const el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');setTimeout(()=>el.classList.remove('show'),2500);}
+
+// ── PWA Setup ─────────────────────────────────────────────────────────────────
+;(function(){
+  const icon192=makeIcon(192),icon512=makeIcon(512);
+  const al=document.createElement('link');al.rel='apple-touch-icon';al.href=icon512;document.head.appendChild(al);
+  const fv=document.createElement('link');fv.rel='icon';fv.type='image/png';fv.href=makeIcon(64);document.head.appendChild(fv);
+  const manifest={name:'Project Organizer',short_name:'Projects',description:'Team project tracking and time logging',start_url:'.',display:'standalone',background_color:'#1e3a8a',theme_color:'#2563eb',orientation:'portrait',icons:[{src:icon192,sizes:'192x192',type:'image/png'},{src:icon512,sizes:'512x512',type:'image/png'}]};
+  const ml=document.createElement('link');ml.rel='manifest';ml.href='data:application/manifest+json,'+encodeURIComponent(JSON.stringify(manifest));document.head.appendChild(ml);
+
+  document.addEventListener('click',e=>{
+    if(e.target.closest('[data-dismiss-install]')){localStorage.setItem('po_install_dismissed','1');renderGroups();}
+  });
+})();
+</script>
+</body>
+</html>

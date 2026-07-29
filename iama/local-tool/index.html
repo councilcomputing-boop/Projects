@@ -1,0 +1,606 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Direct Bill Reconciliation — IAMA</title>
+<style>
+  :root {
+    --bg: #0f1420; --panel: #171e2e; --panel2: #1d2536; --border: #2a3346;
+    --text: #e8ecf4; --muted: #9aa5b8; --accent: #4f8cff;
+    --good: #2fbf71; --good-bg: #123322; --warn: #e0a02f; --warn-bg: #332a12;
+    --bad: #e0523f; --bad-bg: #331815; --info-bg: #1a2338;
+  }
+  * { box-sizing: border-box; }
+  body {
+    background: var(--bg); color: var(--text); font-family: -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+    margin: 0; padding: 24px; max-width: 1200px; margin-inline: auto;
+  }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  .sub { color: var(--muted); font-size: 13px; margin-bottom: 20px; }
+  .drop-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+  @media (max-width: 700px) { .drop-row { grid-template-columns: 1fr; } }
+  .dropzone {
+    background: var(--panel); border: 2px dashed var(--border); border-radius: 10px;
+    padding: 18px; text-align: center; cursor: pointer; transition: border-color .15s, background .15s;
+  }
+  .dropzone.drag { border-color: var(--accent); background: var(--panel2); }
+  .dropzone.loaded { border-style: solid; border-color: var(--good); }
+  .dropzone h3 { margin: 0 0 6px; font-size: 14px; }
+  .dropzone p { margin: 0; color: var(--muted); font-size: 12px; }
+  .dropzone .filename { color: var(--text); font-size: 13px; margin-top: 8px; word-break: break-all; }
+  input[type=file] { display: none; }
+  button {
+    background: var(--accent); color: white; border: none; border-radius: 6px;
+    padding: 10px 18px; font-size: 14px; cursor: pointer; font-weight: 600;
+  }
+  button:disabled { background: var(--border); color: var(--muted); cursor: not-allowed; }
+  button.secondary { background: var(--panel2); border: 1px solid var(--border); color: var(--text); font-weight: 400; }
+  .controls { display: flex; gap: 10px; align-items: center; margin: 18px 0; flex-wrap: wrap; }
+  .status { color: var(--muted); font-size: 13px; }
+  .progress-wrap { background: var(--panel2); border-radius: 6px; height: 6px; width: 220px; overflow: hidden; display: none; }
+  .progress-wrap.active { display: block; }
+  .progress-bar { background: var(--accent); height: 100%; width: 0%; transition: width .2s; }
+  .summary { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin: 20px 0; }
+  @media (max-width: 700px) { .summary { grid-template-columns: 1fr 1fr; } }
+  .card { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 14px; }
+  .card .label { color: var(--muted); font-size: 12px; }
+  .card .value { font-size: 20px; font-weight: 700; margin-top: 4px; }
+  .filters { display: flex; gap: 8px; margin: 16px 0 10px; flex-wrap: wrap; }
+  .filters button { padding: 6px 12px; font-size: 12px; }
+  .filters button.off { background: var(--panel2); color: var(--muted); border: 1px solid var(--border); font-weight: 400; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { text-align: left; color: var(--muted); font-weight: 600; font-size: 11px; text-transform: uppercase; padding: 8px 10px; border-bottom: 1px solid var(--border); }
+  td { padding: 9px 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  tr:hover td { background: var(--panel2); }
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 20px; font-size: 11px; font-weight: 600; white-space: nowrap; }
+  .badge.match { background: var(--good-bg); color: var(--good); }
+  .badge.flag { background: var(--warn-bg); color: var(--warn); }
+  .badge.mismatch { background: var(--bad-bg); color: var(--bad); }
+  .badge.missing { background: var(--bad-bg); color: var(--bad); }
+  .num { text-align: right; font-variant-numeric: tabular-nums; }
+  .diff-pos, .diff-neg { font-weight: 700; }
+  .diff-pos { color: var(--bad); }
+  .diff-neg { color: var(--bad); }
+  .muted { color: var(--muted); }
+  .note { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  #resultsSection { display: none; }
+  .table-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 10px; }
+  table { min-width: 760px; }
+  .log { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; font-family: ui-monospace, monospace; font-size: 11px; color: var(--muted); max-height: 140px; overflow-y: auto; margin-top: 10px; white-space: pre-wrap; }
+</style>
+</head>
+<body>
+
+<h1>Direct Bill Reconciliation</h1>
+<p class="sub">Compare a carrier's direct-bill commission statement against your AMS360 export, by client/policy, and see exactly where they disagree. Everything runs locally in this browser — no files are uploaded anywhere.</p>
+
+<div class="drop-row">
+  <div class="dropzone" id="dz-carrier">
+    <h3>Carrier Statement</h3>
+    <p>PDF from the insurance carrier (e.g. CNA Direct Bill Commissions)</p>
+    <div class="filename" id="fn-carrier"></div>
+    <input type="file" id="file-carrier" accept=".pdf" />
+  </div>
+  <div class="dropzone" id="dz-ams">
+    <h3>AMS360 Export</h3>
+    <p>PDF, Excel, or CSV export of the AMS360 Direct Bill Statement</p>
+    <div class="filename" id="fn-ams"></div>
+    <input type="file" id="file-ams" accept=".pdf,.xlsx,.xls,.csv" />
+  </div>
+</div>
+
+<div class="controls">
+  <button id="btnReconcile" disabled>Reconcile</button>
+  <div class="progress-wrap" id="progressWrap"><div class="progress-bar" id="progressBar"></div></div>
+  <span class="status" id="statusText"></span>
+</div>
+<div class="log" id="log" style="display:none;"></div>
+
+<div id="resultsSection">
+  <div class="summary" id="summaryCards"></div>
+  <div class="filters" id="filters"></div>
+  <div class="controls">
+    <button class="secondary" id="btnExport">Export results to CSV</button>
+  </div>
+  <div class="table-wrap">
+    <table id="resultsTable">
+      <thead>
+        <tr>
+          <th>Status</th><th>Client</th><th>Carrier Policy</th><th>AMS360 Policy</th>
+          <th class="num">Carrier Net $</th><th class="num">AMS360 Net $</th><th class="num">Difference</th><th>Notes</th>
+        </tr>
+      </thead>
+      <tbody id="resultsBody"></tbody>
+    </table>
+  </div>
+</div>
+
+<script src="./vendor/pdf.min.js"></script>
+<script src="./vendor/tesseract.min.js"></script>
+<script src="./vendor/xlsx.full.min.js"></script>
+<script>
+pdfjsLib.GlobalWorkerOptions.workerSrc = "./vendor/pdf.worker.min.js";
+
+const logEl = document.getElementById("log");
+function log(msg) {
+  logEl.style.display = "block";
+  logEl.textContent += msg + "\n";
+  logEl.scrollTop = logEl.scrollHeight;
+}
+function setStatus(msg) { document.getElementById("statusText").textContent = msg; }
+function setProgress(frac) {
+  const wrap = document.getElementById("progressWrap");
+  const bar = document.getElementById("progressBar");
+  if (frac === null) { wrap.classList.remove("active"); return; }
+  wrap.classList.add("active");
+  bar.style.width = Math.round(frac * 100) + "%";
+}
+
+// ---------- shared helpers ----------
+function toNum(s) {
+  if (typeof s === "number") return s;
+  s = String(s).trim();
+  const neg = s.startsWith("(") && s.endsWith(")");
+  s = s.replace(/[(),$]/g, "").replace(/,/g, "");
+  const n = parseFloat(s);
+  if (Number.isNaN(n)) return 0;
+  return neg ? -n : n;
+}
+function normPolicyDigits(policyStr) {
+  const m = String(policyStr).match(/(\d{6,})/);
+  return m ? m[1] : null;
+}
+function normName(s) {
+  return String(s).toLowerCase().replace(/[^a-z0-9]/g, "")
+    .replace(/\b(inc|llc|ltd|co|corp|corporation|company|and)\b/g, "");
+}
+function fmtMoney(n) {
+  const sign = n < 0 ? "-" : "";
+  return sign + "$" + Math.abs(n).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+// ---------- PDF text extraction (row clustering) ----------
+async function extractPdfLines(arrayBuffer, tolerance = 3) {
+  const doc = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+  const lines = [];
+  let totalWords = 0;
+  for (let p = 1; p <= doc.numPages; p++) {
+    const page = await doc.getPage(p);
+    const content = await page.getTextContent();
+    totalWords += content.items.length;
+    const items = content.items.map(it => ({ x: it.transform[4], y: it.transform[5], str: it.str }));
+    const sorted = [...items].sort((a, b) => b.y - a.y || a.x - b.x);
+    let current = null;
+    const rows = [];
+    for (const it of sorted) {
+      if (current && Math.abs(current.anchorY - it.y) <= tolerance) current.items.push(it);
+      else { current = { anchorY: it.y, items: [it] }; rows.push(current); }
+    }
+    for (const r of rows) {
+      r.items.sort((a, b) => a.x - b.x);
+      const text = r.items.map(i => i.str).join(" ").replace(/\s+/g, " ").trim();
+      if (text) lines.push({ page: p, y: r.anchorY, text });
+    }
+  }
+  return { lines, totalWords, numPages: doc.numPages };
+}
+
+async function renderPdfPageToCanvas(doc, pageNum, scale = 4.17) {
+  const page = await doc.getPage(pageNum);
+  const viewport = page.getViewport({ scale });
+  const canvas = document.createElement("canvas");
+  canvas.width = viewport.width;
+  canvas.height = viewport.height;
+  const ctx = canvas.getContext("2d");
+  await page.render({ canvasContext: ctx, viewport }).promise;
+  return canvas;
+}
+
+function parseTsvWords(tsv) {
+  const rows = tsv.split("\n").slice(1).filter(Boolean);
+  const words = [];
+  for (const l of rows) {
+    const parts = l.split("\t");
+    if (parts.length < 12) continue;
+    const [level, , block, par, line, word, left, top, , , , ...textParts] = parts;
+    if (Number(level) !== 5) continue;
+    const text = textParts.join("\t");
+    if (!text.trim()) continue;
+    words.push({ block: Number(block), par: Number(par), line: Number(line), x: Number(left), y: Number(top), text });
+  }
+  return words;
+}
+
+async function ocrPdfToLines(arrayBuffer, onProgress) {
+  const doc = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+  const worker = await Tesseract.createWorker("eng", 1, {
+    workerPath: "./vendor/worker.min.js",
+    corePath: "./vendor/tesseract-core-simd-lstm.js",
+    workerBlobURL: false,
+    logger: (m) => {
+      if (m.status && typeof m.progress === "number") onProgress(m.status, m.progress);
+    }
+  });
+  const lines = [];
+  for (let p = 1; p <= doc.numPages; p++) {
+    onProgress(`rendering page ${p}/${doc.numPages}`, 0);
+    const canvas = await renderPdfPageToCanvas(doc, p);
+    const { data } = await worker.recognize(canvas, {}, { text: true, tsv: true });
+    const words = parseTsvWords(data.tsv);
+    const byLine = new Map();
+    for (const w of words) {
+      const key = `${w.block}-${w.par}-${w.line}`;
+      if (!byLine.has(key)) byLine.set(key, []);
+      byLine.get(key).push(w);
+    }
+    const pageLines = [...byLine.values()].map(ws => {
+      ws.sort((a, b) => a.x - b.x);
+      return { page: p, y: Math.min(...ws.map(w => w.y)), text: ws.map(w => w.text).join(" ") };
+    });
+    pageLines.sort((a, b) => a.y - b.y);
+    lines.push(...pageLines);
+  }
+  await worker.terminate();
+  return lines;
+}
+
+// ---------- AMS360 parser ----------
+const AMS_TAIL_RE = /(-?[\d,]+\.\d{2})\s+([\d.]+)\s*%\s+([A-Za-z])\s+(-?[\d,]+\.\d{2})\s+(-?[\d,]+\.\d{2})\s+(-?[\d,]+\.\d{2})\s+(-?[\d,]+\.\d{2})\s+(YES|NO)\s*$/;
+const DATE_RE = /(\d{1,2}\/\d{1,2}\/\d{2,4})/;
+const LOB_PREFIXES = ["BUA", "CUE", "PMT", "WC", "CNP", "IM", "C"];
+
+function parseAms360Lines(lines) {
+  const rows = [];
+  for (const r of lines) {
+    const tailMatch = r.text.match(AMS_TAIL_RE);
+    if (!tailMatch) continue;
+    const [, premFee, agcyPct, , agcyComm] = tailMatch;
+    const head = r.text.slice(0, tailMatch.index).trim();
+    const dateMatch = head.match(DATE_RE);
+    if (!dateMatch) continue;
+    const afterDate = head.slice(dateMatch.index + dateMatch[0].length).trim();
+    const beforeDate = head.slice(0, dateMatch.index).trim();
+    const afterParts = afterDate.split(/\s+/);
+    afterParts.pop(); // invoice
+    afterParts.pop(); // tran
+    const policyMatch = beforeDate.match(/(\d{6,})/);
+    if (!policyMatch) continue;
+    const policyCore = policyMatch[1];
+    let namePart = beforeDate.slice(0, policyMatch.index).trim();
+    for (const p of LOB_PREFIXES) {
+      if (namePart.endsWith(" " + p)) { namePart = namePart.slice(0, -p.length).trim(); break; }
+      if (namePart.endsWith(p) && p.length > 1) { namePart = namePart.slice(0, -p.length).trim(); break; }
+    }
+    rows.push({ name: namePart, policyCore, premFee: toNum(premFee), agcyPct: toNum(agcyPct), agcyComm: toNum(agcyComm) });
+  }
+  return rows;
+}
+
+function parseAms360Spreadsheet(workbook) {
+  const sheet = workbook.Sheets[workbook.SheetNames[0]];
+  const json = XLSX.utils.sheet_to_json(sheet, { defval: "" });
+  const rows = [];
+  for (const row of json) {
+    const keys = Object.keys(row);
+    const find = (needle) => keys.find(k => k.toLowerCase().replace(/[^a-z]/g, "").includes(needle));
+    const nameKey = find("name") || find("insured");
+    const policyKey = find("policy");
+    const commKey = find("agcycomm") || find("commission");
+    const premKey = find("premfee") || find("premium");
+    if (!nameKey || !policyKey || !commKey) continue;
+    const policyCore = normPolicyDigits(row[policyKey]);
+    if (!policyCore) continue;
+    rows.push({
+      name: String(row[nameKey]).trim(),
+      policyCore,
+      premFee: toNum(row[premKey] ?? 0),
+      agcyComm: toNum(row[commKey])
+    });
+  }
+  return rows;
+}
+
+// ---------- Carrier parser: CNA ----------
+const MONEY = String.raw`\(?-?[\d,]+\.\d{2}\)?`;
+const CNA_HEADER_RE = new RegExp(`^(.*?)\\s+([A-Z]{1,4}-\\d{5,10}\\S*)\\s+(\\d{1,2}/\\d{1,2}/\\d{2,4})\\s+(${MONEY})\\s+(${MONEY})\\s*$`);
+const TRANS_TYPES = ["Renewal", "New Business", "Endorsement", "Cancellation", "Audit Prm Incr", "Audit Prm Decr", "Reinstatement", "Non-Renewal", "Rewrite"];
+const CNA_DETAIL_RE = new RegExp(`^(${TRANS_TYPES.join("|")})\\s+(\\d{1,2}/\\d{1,2}/\\d{2,4})\\s+(\\d{1,2}/\\d{1,2}/\\d{2,4})\\s+(${MONEY})\\s+(${MONEY})\\s+([\\d.,]+)\\s+(${MONEY})\\s+(${MONEY})\\s*$`);
+const CNA_SKIP_RE = /^(INSURANCE AGENCY|AMERICA INC|PO ?BOX|POC BOX|Consolidation|Direct Bill Commissions$|\d{3}-\d{6} -|Commission Commission|Name of Insured|N fl d|ES CU LIES|Page \d|Continental Casualty|CNA is a registered|Agency \d+ Total|Total amount due|You will receive|Trans Type Trans Date)/;
+
+function parseCnaLines(lines) {
+  const policies = [];
+  let current = null;
+  for (const line of lines) {
+    const text = line.text.trim();
+    if (!text || CNA_SKIP_RE.test(text)) continue;
+    const h = text.match(CNA_HEADER_RE);
+    if (h) {
+      const [, name, policy, effDate, cnaAmt, agentAmt] = h;
+      current = { name: name.trim(), policy, effDate, headerCna: toNum(cnaAmt), headerAgent: toNum(agentAmt), details: [] };
+      policies.push(current);
+      continue;
+    }
+    const d = text.match(CNA_DETAIL_RE);
+    if (d) {
+      const [, transType, transDate, effDate, gross, net, commPct, cnaAmt, agentAmt] = d;
+      if (current) current.details.push({
+        transType, transDate, effDate, gross: toNum(gross), net: toNum(net),
+        commPct: toNum(commPct.replace(",", ".")), cnaAmt: toNum(cnaAmt), agentAmt: toNum(agentAmt)
+      });
+      continue;
+    }
+    if (current && !/\d/.test(text) && text.length <= 20 && !/amount due/i.test(text)) current.name = (current.name + " " + text).trim();
+  }
+  return policies;
+}
+
+// aggregate header blocks sharing the same policy digits, and flag when
+// a policy's own detail rows don't sum to its printed header total
+// (a sign the OCR misread a digit somewhere in the detail lines)
+function aggregateCnaPolicies(policies) {
+  const byPolicy = new Map();
+  for (const p of policies) {
+    const digits = normPolicyDigits(p.policy) || p.policy;
+    if (!byPolicy.has(digits)) byPolicy.set(digits, { name: p.name, policy: p.policy, net: 0, headerCna: 0, headerAgent: 0, blocks: [], detailSumOff: false });
+    const b = byPolicy.get(digits);
+    b.net += p.headerAgent - p.headerCna;
+    b.headerCna += p.headerCna;
+    b.headerAgent += p.headerAgent;
+    b.blocks.push(p);
+    const detCna = p.details.reduce((s, d) => s + d.cnaAmt, 0);
+    const detAgent = p.details.reduce((s, d) => s + d.agentAmt, 0);
+    if (p.details.length && (Math.abs(detCna - p.headerCna) > 0.02 || Math.abs(detAgent - p.headerAgent) > 0.02)) {
+      b.detailSumOff = true;
+    }
+  }
+  return byPolicy;
+}
+
+// ---------- Matching engine ----------
+function reconcile(cnaByPolicy, amsRows) {
+  const amsByPolicy = new Map();
+  for (const r of amsRows) {
+    if (!amsByPolicy.has(r.policyCore)) amsByPolicy.set(r.policyCore, { name: r.name, comm: 0, prem: 0 });
+    const b = amsByPolicy.get(r.policyCore);
+    b.comm += r.agcyComm;
+    b.prem += r.premFee;
+  }
+
+  const results = [];
+  const usedAms = new Set();
+
+  for (const [digits, cp] of cnaByPolicy.entries()) {
+    let matchKey = null, matchType = null;
+    if (amsByPolicy.has(digits)) { matchKey = digits; matchType = "policy_number"; }
+    else {
+      const cnName = normName(cp.name);
+      for (const [key, b] of amsByPolicy.entries()) {
+        if (usedAms.has(key)) continue;
+        const amsName = normName(b.name);
+        const nameClose = cnName.length > 4 && (amsName.includes(cnName.slice(0, 8)) || cnName.includes(amsName.slice(0, 8)));
+        const amountClose = Math.abs(b.comm - cp.net) < 0.01;
+        if (nameClose && amountClose) { matchKey = key; matchType = "name_amount_fallback"; break; }
+      }
+    }
+    if (matchKey) {
+      usedAms.add(matchKey);
+      const b = amsByPolicy.get(matchKey);
+      const diff = cp.net - b.comm;
+      let status;
+      if (Math.abs(diff) >= 0.01) status = "mismatch";
+      else if (matchType === "name_amount_fallback") status = "flag_policy_number";
+      else if (cp.detailSumOff) status = "flag_verify";
+      else status = "match";
+      results.push({ status, name: cp.name, cnaPolicy: cp.policy, amsPolicy: matchKey, cnaNet: cp.net, amsComm: b.comm, diff,
+        note: status === "flag_policy_number" ? "Policy # differs between statements, but client/amount line up — verify by eye." :
+              status === "flag_verify" ? "Carrier PDF: detail lines under this policy don't add up to its own subtotal — likely an OCR misread on a line item, not necessarily a real discrepancy." : "" });
+    } else {
+      results.push({ status: "missing_from_ams360", name: cp.name, cnaPolicy: cp.policy, amsPolicy: "", cnaNet: cp.net, amsComm: null, diff: cp.net, note: "Not found in the AMS360 export." });
+    }
+  }
+  for (const [key, b] of amsByPolicy.entries()) {
+    if (!usedAms.has(key)) {
+      results.push({ status: "missing_from_carrier", name: b.name, cnaPolicy: "", amsPolicy: key, cnaNet: null, amsComm: b.comm, diff: -b.comm, note: "Not found in the carrier statement." });
+    }
+  }
+  return results;
+}
+
+// ---------- File handling / UI ----------
+const state = { carrierBuf: null, carrierFile: null, amsBuf: null, amsFile: null, amsIsSpreadsheet: false };
+
+function setupDropzone(dzId, fileInputId, onFile) {
+  const dz = document.getElementById(dzId);
+  const input = document.getElementById(fileInputId);
+  dz.addEventListener("click", () => input.click());
+  dz.addEventListener("dragover", e => { e.preventDefault(); dz.classList.add("drag"); });
+  dz.addEventListener("dragleave", () => dz.classList.remove("drag"));
+  dz.addEventListener("drop", e => {
+    e.preventDefault(); dz.classList.remove("drag");
+    if (e.dataTransfer.files.length) onFile(e.dataTransfer.files[0]);
+  });
+  input.addEventListener("change", () => { if (input.files.length) onFile(input.files[0]); });
+}
+
+function checkReady() {
+  document.getElementById("btnReconcile").disabled = !(state.carrierBuf && state.amsBuf);
+}
+
+setupDropzone("dz-carrier", "file-carrier", async (file) => {
+  state.carrierFile = file;
+  state.carrierBuf = await file.arrayBuffer();
+  document.getElementById("fn-carrier").textContent = file.name;
+  document.getElementById("dz-carrier").classList.add("loaded");
+  checkReady();
+});
+
+setupDropzone("dz-ams", "file-ams", async (file) => {
+  state.amsFile = file;
+  state.amsIsSpreadsheet = /\.(xlsx|xls|csv)$/i.test(file.name);
+  state.amsBuf = await file.arrayBuffer();
+  document.getElementById("fn-ams").textContent = file.name;
+  document.getElementById("dz-ams").classList.add("loaded");
+  checkReady();
+});
+
+document.getElementById("btnReconcile").addEventListener("click", async () => {
+  const btn = document.getElementById("btnReconcile");
+  btn.disabled = true;
+  logEl.textContent = "";
+  try {
+    // --- AMS360 side ---
+    setStatus("Reading AMS360 file…");
+    let amsRows;
+    if (state.amsIsSpreadsheet) {
+      const wb = XLSX.read(state.amsBuf, { type: "array" });
+      amsRows = parseAms360Spreadsheet(wb);
+      log(`AMS360: parsed ${amsRows.length} rows from spreadsheet.`);
+    } else {
+      const { lines } = await extractPdfLines(state.amsBuf.slice(0));
+      amsRows = parseAms360Lines(lines);
+      log(`AMS360: parsed ${amsRows.length} transaction rows from PDF text.`);
+    }
+    if (amsRows.length === 0) throw new Error("Could not find any transaction rows in the AMS360 file. The column layout may differ from what this tool expects.");
+
+    // --- Carrier side ---
+    setStatus("Reading carrier statement…");
+    const { lines: carrierTextLines, totalWords } = await extractPdfLines(state.carrierBuf.slice(0));
+    let carrierLines = carrierTextLines;
+    let usedOcr = false;
+    if (totalWords < 20) {
+      usedOcr = true;
+      log("Carrier PDF has no real text layer — running OCR (this can take a minute per page)…");
+      setProgress(0);
+      carrierLines = await ocrPdfToLines(state.carrierBuf.slice(0), (status, progress) => {
+        setStatus(`OCR: ${status}`);
+        setProgress(progress);
+      });
+      setProgress(null);
+      log(`OCR complete: extracted ${carrierLines.length} lines of text.`);
+    } else {
+      log(`Carrier PDF has a real text layer — extracted ${carrierLines.length} lines directly, no OCR needed.`);
+    }
+
+    const cnaPolicies = parseCnaLines(carrierLines);
+    if (cnaPolicies.length === 0) throw new Error("Could not recognize this carrier statement's layout. Currently only the CNA Direct Bill Commissions format is supported.");
+    const cnaByPolicy = aggregateCnaPolicies(cnaPolicies);
+    log(`Carrier: recognized ${cnaPolicies.length} policy line items (${cnaByPolicy.size} distinct policies).`);
+
+    setStatus("Matching…");
+    const results = reconcile(cnaByPolicy, amsRows);
+    renderResults(results, usedOcr);
+    setStatus("Done.");
+  } catch (err) {
+    console.error(err);
+    setStatus("Error: " + err.message);
+    log("ERROR: " + err.message);
+  } finally {
+    btn.disabled = false;
+    setProgress(null);
+  }
+});
+
+const STATUS_META = {
+  match: { label: "Match", cls: "match" },
+  flag_verify: { label: "Verify detail", cls: "flag" },
+  flag_policy_number: { label: "Policy # differs", cls: "flag" },
+  mismatch: { label: "Amount mismatch", cls: "mismatch" },
+  missing_from_ams360: { label: "Missing from AMS360", cls: "missing" },
+  missing_from_carrier: { label: "Missing from carrier", cls: "missing" }
+};
+
+let lastResults = [];
+let activeFilters = new Set(Object.keys(STATUS_META));
+
+function renderResults(results, usedOcr) {
+  lastResults = results;
+  document.getElementById("resultsSection").style.display = "block";
+
+  const totalCarrier = results.reduce((s, r) => s + (r.cnaNet || 0), 0);
+  const totalAms = results.reduce((s, r) => s + (r.amsComm || 0), 0);
+  const issues = results.filter(r => r.status !== "match").length;
+
+  document.getElementById("summaryCards").innerHTML = `
+    <div class="card"><div class="label">Carrier net total</div><div class="value">${fmtMoney(totalCarrier)}</div></div>
+    <div class="card"><div class="label">AMS360 net total</div><div class="value">${fmtMoney(totalAms)}</div></div>
+    <div class="card"><div class="label">Difference</div><div class="value" style="color:${Math.abs(totalCarrier-totalAms)<0.01?'var(--good)':'var(--bad)'}">${fmtMoney(totalCarrier - totalAms)}</div></div>
+    <div class="card"><div class="label">Items needing review</div><div class="value" style="color:${issues?'var(--warn)':'var(--good)'}">${issues} / ${results.length}</div></div>
+  `;
+  if (usedOcr) {
+    document.getElementById("summaryCards").innerHTML += `<div class="note" style="grid-column:1/-1">Carrier statement was read via OCR (no text layer in the PDF). Header-row totals are highly reliable; anything flagged "Verify detail" just means the line-item breakdown under a policy didn't sum cleanly and is worth a quick visual check against the original PDF.</div>`;
+  }
+
+  const filtersEl = document.getElementById("filters");
+  filtersEl.innerHTML = "";
+  const allBtn = document.createElement("button");
+  allBtn.textContent = "All"; allBtn.className = "";
+  allBtn.onclick = () => { activeFilters = new Set(Object.keys(STATUS_META)); renderTable(); updateFilterButtons(); };
+  filtersEl.appendChild(allBtn);
+  for (const key of Object.keys(STATUS_META)) {
+    const count = results.filter(r => r.status === key).length;
+    if (!count) continue;
+    const b = document.createElement("button");
+    b.textContent = `${STATUS_META[key].label} (${count})`;
+    b.dataset.key = key;
+    b.onclick = () => {
+      if (activeFilters.has(key) && activeFilters.size === 1) activeFilters = new Set(Object.keys(STATUS_META));
+      else activeFilters = new Set([key]);
+      renderTable(); updateFilterButtons();
+    };
+    filtersEl.appendChild(b);
+  }
+  updateFilterButtons();
+  renderTable();
+}
+
+function updateFilterButtons() {
+  document.querySelectorAll("#filters button").forEach(b => {
+    const key = b.dataset.key;
+    if (!key) { b.classList.toggle("off", activeFilters.size !== Object.keys(STATUS_META).length); return; }
+    b.classList.toggle("off", !activeFilters.has(key));
+  });
+}
+
+function renderTable() {
+  const tbody = document.getElementById("resultsBody");
+  tbody.innerHTML = "";
+  const rows = lastResults.filter(r => activeFilters.has(r.status));
+  const order = ["mismatch", "missing_from_ams360", "missing_from_carrier", "flag_policy_number", "flag_verify", "match"];
+  rows.sort((a, b) => order.indexOf(a.status) - order.indexOf(b.status));
+  for (const r of rows) {
+    const meta = STATUS_META[r.status];
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td><span class="badge ${meta.cls}">${meta.label}</span></td>
+      <td>${r.name}</td>
+      <td>${r.cnaPolicy || '<span class="muted">—</span>'}</td>
+      <td>${r.amsPolicy || '<span class="muted">—</span>'}</td>
+      <td class="num">${r.cnaNet === null ? '<span class="muted">—</span>' : fmtMoney(r.cnaNet)}</td>
+      <td class="num">${r.amsComm === null ? '<span class="muted">—</span>' : fmtMoney(r.amsComm)}</td>
+      <td class="num ${Math.abs(r.diff) >= 0.01 ? 'diff-pos' : ''}">${fmtMoney(r.diff)}</td>
+      <td>${r.note || ''}</td>
+    `;
+    tbody.appendChild(tr);
+  }
+}
+
+document.getElementById("btnExport").addEventListener("click", () => {
+  const header = ["Status", "Client", "Carrier Policy", "AMS360 Policy", "Carrier Net $", "AMS360 Net $", "Difference", "Notes"];
+  const escape = (v) => `"${String(v ?? "").replace(/"/g, '""')}"`;
+  const csvRows = [header.join(",")];
+  for (const r of lastResults) {
+    csvRows.push([
+      STATUS_META[r.status].label, r.name, r.cnaPolicy, r.amsPolicy,
+      r.cnaNet ?? "", r.amsComm ?? "", r.diff, r.note
+    ].map(escape).join(","));
+  }
+  const blob = new Blob([csvRows.join("\n")], { type: "text/csv" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "direct-bill-reconciliation.csv";
+  a.click();
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/svg+xml" href="/static/icon.svg">
+    <title>Direct Bill Reconciliation — Insurance Agency of Mid America</title>
+    <script>(function(){var t=localStorage.getItem('iama_theme')||'dark';document.documentElement.setAttribute('data-theme',t);})();</script>
+    <style>
+        :root { --page-bg: #0f1420; --toggle-fg: white; --toggle-bg: rgba(255,255,255,0.08); --toggle-bg-hover: rgba(255,255,255,0.16); --toggle-border: rgba(255,255,255,0.2); }
+        :root[data-theme="light"] { --page-bg: #eef1f8; --toggle-fg: #1b2436; --toggle-bg: rgba(255,255,255,0.7); --toggle-bg-hover: #ffffff; --toggle-border: #c7d0e0; }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background: var(--page-bg);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            position: relative;
+        }
+        .theme-toggle {
+            position: absolute; top: 18px; right: 18px;
+            padding: 7px 11px; border-radius: 4px; font-size: 14px; line-height: 1;
+            background: var(--toggle-bg); border: 1px solid var(--toggle-border);
+            color: var(--toggle-fg); cursor: pointer;
+        }
+        .theme-toggle:hover { background: var(--toggle-bg-hover); }
+        .card {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+            width: 100%;
+            max-width: 400px;
+            overflow: hidden;
+        }
+        .card-header { background: #0f1420; padding: 26px 32px; text-align: center; }
+        .logo { display: flex; justify-content: center; margin: 0 auto 12px; }
+        .app-name { color: white; font-size: 20px; font-weight: 700; }
+        .app-sub  { color: rgba(255,255,255,0.55); font-size: 12px; margin-top: 4px; }
+        .card-body { padding: 32px; }
+        .sign-in-label { font-size: 15px; font-weight: 600; color: #0f1420; margin-bottom: 22px; text-align: center; }
+        .form-grp { margin-bottom: 16px; }
+        .form-lbl { display: block; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.7px; color: #5f6368; margin-bottom: 6px; }
+        .form-ctrl { width: 100%; padding: 10px 13px; border: 1px solid #dadce0; border-radius: 4px; font-size: 14px; color: #3c4043; outline: none; transition: border-color 0.2s, box-shadow 0.2s; font-family: inherit; }
+        .form-ctrl:focus { border-color: #4f8cff; box-shadow: 0 0 0 3px rgba(79,140,255,0.15); }
+        .error-msg { background: #ffebee; color: #c62828; border: 1px solid #ef9a9a; border-radius: 4px; padding: 10px 14px; font-size: 13px; margin-bottom: 16px; }
+        .btn-login { width: 100%; padding: 11px; background: #4f8cff; color: white; border: none; border-radius: 4px; font-size: 15px; font-weight: 600; cursor: pointer; font-family: inherit; transition: background 0.15s; }
+        .btn-login:hover { background: #3d7bef; }
+        .btn-login:disabled { opacity: 0.6; cursor: not-allowed; }
+        .card-footer { padding: 14px 32px 20px; text-align: center; font-size: 12px; color: #9aa0a6; border-top: 1px solid #f1f3f4; }
+    </style>
+</head>
+<body>
+    <button class="theme-toggle" id="themeToggle" onclick="toggleTheme()" title="Toggle light/dark theme"></button>
+    <div class="card">
+        <div class="card-header">
+            <div class="logo">
+                <svg width="56" height="56" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+                    <rect width="512" height="512" rx="80" fill="#0f1420"/>
+                    <g transform="translate(118,86) rotate(-8 100 130)">
+                        <rect x="0" y="0" width="200" height="260" rx="14" fill="#1d2536" stroke="#2a3346" stroke-width="3"/>
+                        <rect x="26" y="38" width="148" height="12" rx="6" fill="#3a4560"/>
+                        <rect x="26" y="66" width="112" height="10" rx="5" fill="#3a4560"/>
+                        <rect x="26" y="92" width="132" height="10" rx="5" fill="#3a4560"/>
+                        <rect x="26" y="118" width="92" height="10" rx="5" fill="#3a4560"/>
+                        <rect x="26" y="144" width="120" height="10" rx="5" fill="#3a4560"/>
+                    </g>
+                    <g transform="translate(196,150) rotate(7 100 130)">
+                        <rect x="0" y="0" width="200" height="260" rx="14" fill="#171e2e" stroke="#4f8cff" stroke-width="4"/>
+                        <rect x="26" y="38" width="148" height="12" rx="6" fill="#4f8cff" opacity="0.9"/>
+                        <rect x="26" y="66" width="112" height="10" rx="5" fill="#4f8cff" opacity="0.5"/>
+                        <rect x="26" y="92" width="132" height="10" rx="5" fill="#4f8cff" opacity="0.5"/>
+                        <rect x="26" y="118" width="92" height="10" rx="5" fill="#4f8cff" opacity="0.5"/>
+                        <rect x="26" y="144" width="120" height="10" rx="5" fill="#4f8cff" opacity="0.5"/>
+                    </g>
+                    <circle cx="366" cy="366" r="76" fill="#2fbf71" stroke="#0f1420" stroke-width="10"/>
+                    <path d="M330 368 L354 392 L402 342" fill="none" stroke="#0f1420" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+            </div>
+            <div class="app-name">Direct Bill Reconciliation</div>
+            <div class="app-sub">Insurance Agency of Mid America</div>
+        </div>
+        <div class="card-body">
+            <div class="sign-in-label">Sign in to your account</div>
+
+            {% if error %}
+            <div class="error-msg">{{ error }}</div>
+            {% endif %}
+
+            <div id="jsError" class="error-msg" style="display:none;"></div>
+
+            <form id="loginForm">
+                <div class="form-grp">
+                    <label class="form-lbl" for="username">Username</label>
+                    <input type="text" class="form-ctrl" id="username" name="username"
+                           placeholder="Enter your username" autocomplete="username" required autofocus>
+                </div>
+                <div class="form-grp">
+                    <label class="form-lbl" for="password">Password</label>
+                    <input type="password" class="form-ctrl" id="password" name="password"
+                           placeholder="Enter your password" autocomplete="current-password" required>
+                </div>
+                <button type="submit" class="btn-login" id="submitBtn">Sign In</button>
+            </form>
+        </div>
+        <div class="card-footer">
+            Contact your administrator if you need access.
+        </div>
+    </div>
+
+    <script>
+    function applyTheme(t) {
+        document.documentElement.setAttribute('data-theme', t);
+        document.getElementById('themeToggle').textContent = t === 'light' ? '🌙' : '☀️';
+    }
+    function toggleTheme() {
+        const next = (localStorage.getItem('iama_theme') || 'dark') === 'dark' ? 'light' : 'dark';
+        localStorage.setItem('iama_theme', next);
+        applyTheme(next);
+    }
+    applyTheme(localStorage.getItem('iama_theme') || 'dark');
+
+    document.getElementById('loginForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        const btn = document.getElementById('submitBtn');
+        const err = document.getElementById('jsError');
+        btn.disabled = true;
+        btn.textContent = 'Signing in...';
+        err.style.display = 'none';
+
+        const resp = await fetch('/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                username: document.getElementById('username').value.trim(),
+                password: document.getElementById('password').value,
+            })
+        });
+
+        const data = await resp.json();
+        if (data.ok) {
+            window.location.href = '/';
+        } else {
+            err.textContent = data.error || 'Login failed.';
+            err.style.display = '';
+            btn.disabled = false;
+            btn.textContent = 'Sign In';
+        }
+    });
+    </script>
+</body>
+</html>

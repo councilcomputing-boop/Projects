@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Hayes McNeill</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="desktop" id="desktop">
+
+    <div class="checker-bar"></div>
+
+    <!-- Desktop Icons -->
+    <div class="icon-col">
+      <div class="dicon" ondblclick="openWin('about')">
+        <span class="dicon-img">👤</span>
+        <span class="dicon-lbl">About</span>
+      </div>
+      <div class="dicon" ondblclick="openWin('projects')">
+        <span class="dicon-img">💼</span>
+        <span class="dicon-lbl">Projects</span>
+      </div>
+      <div class="dicon" ondblclick="openWin('contact')">
+        <span class="dicon-img">📧</span>
+        <span class="dicon-lbl">Contact</span>
+      </div>
+      <div class="dicon" ondblclick="openWin('terminal')">
+        <span class="dicon-img">🖥️</span>
+        <span class="dicon-lbl">Terminal</span>
+      </div>
+    </div>
+
+    <!-- TERMINAL WINDOW -->
+    <div class="win" id="win-terminal" style="left:220px;top:55px;width:560px;height:360px;">
+      <div class="title-bar" onmousedown="dragStart(event,'terminal')">
+        <span>🖥️ C:\WINDOWS\System32\cmd.exe</span>
+        <div class="wb-group">
+          <button class="wb" onclick="minWin('terminal')">─</button>
+          <button class="wb" onclick="maxWin('terminal')">□</button>
+          <button class="wb red" onclick="closeWin('terminal')">✕</button>
+        </div>
+      </div>
+      <div class="terminal-body" id="term-body">
+        <div id="term-out"></div>
+        <div class="term-row">
+          <span class="term-ps">C:\&gt;&nbsp;</span>
+          <input id="term-in" class="term-in" autocomplete="off" spellcheck="false">
+        </div>
+      </div>
+    </div>
+
+    <!-- ABOUT WINDOW -->
+    <div class="win hidden" id="win-about" style="left:200px;top:65px;width:460px;height:280px;">
+      <div class="title-bar" onmousedown="dragStart(event,'about')">
+        <span>👤 About Me</span>
+        <div class="wb-group">
+          <button class="wb" onclick="minWin('about')">─</button>
+          <button class="wb" onclick="maxWin('about')">□</button>
+          <button class="wb red" onclick="closeWin('about')">✕</button>
+        </div>
+      </div>
+      <div class="content-body">
+        <h2>Hayes McNeill</h2>
+        <p>Welcome to my corner of the internet — styled like it's 1998, built with modern code.</p>
+        <p>I build tools that solve real problems: a golf bet tracker, a surety bond manager, and whatever comes next.</p>
+        <p>Explore using the desktop icons, or open the Terminal and type <code>help</code>.</p>
+      </div>
+    </div>
+
+    <!-- PROJECTS WINDOW -->
+    <div class="win hidden" id="win-projects" style="left:240px;top:75px;width:500px;height:260px;">
+      <div class="title-bar" onmousedown="dragStart(event,'projects')">
+        <span>💼 Projects</span>
+        <div class="wb-group">
+          <button class="wb" onclick="minWin('projects')">─</button>
+          <button class="wb" onclick="maxWin('projects')">□</button>
+          <button class="wb red" onclick="closeWin('projects')">✕</button>
+        </div>
+      </div>
+      <div class="content-body">
+        <table class="ptable">
+          <thead>
+            <tr><th>Project</th><th>Description</th><th>Status</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>⛳ Golf Bet App</td>
+              <td>Track wagers on the course</td>
+              <td><span class="badge live">Live</span></td>
+            </tr>
+            <tr>
+              <td>🏦 Bond App</td>
+              <td>Surety bond management</td>
+              <td><span class="badge wip">In Progress</span></td>
+            </tr>
+            <tr>
+              <td>🖥️ This Site</td>
+              <td>Retro desktop portfolio</td>
+              <td><span class="badge build">Building</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- CONTACT WINDOW -->
+    <div class="win hidden" id="win-contact" style="left:260px;top:85px;width:420px;height:170px;">
+      <div class="title-bar" onmousedown="dragStart(event,'contact')">
+        <span>📧 Contact</span>
+        <div class="wb-group">
+          <button class="wb" onclick="minWin('contact')">─</button>
+          <button class="wb" onclick="maxWin('contact')">□</button>
+          <button class="wb red" onclick="closeWin('contact')">✕</button>
+        </div>
+      </div>
+      <div class="content-body">
+        <div class="crow">
+          <strong>📧</strong>
+          <a href="mailto:councilcomputing@gmail.com">councilcomputing@gmail.com</a>
+        </div>
+        <div class="crow">
+          <strong>💻</strong>
+          <a href="https://github.com" target="_blank">github.com</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Grass -->
+    <div class="grass"></div>
+
+    <!-- Taskbar -->
+    <div class="taskbar">
+      <button class="start-btn" onclick="toggleStart()">⊞ Start</button>
+      <div class="tb-sep"></div>
+      <div class="tb-wins" id="tb-wins"></div>
+      <div class="tb-clock" id="tb-clock"></div>
+    </div>
+
+    <!-- Start Menu -->
+    <div class="smenu hidden" id="smenu">
+      <div class="smenu-side">Hayes McNeill</div>
+      <div class="smenu-items">
+        <div class="sitem" onclick="openWin('terminal');closeStart()">🖥️ Terminal</div>
+        <div class="sitem" onclick="openWin('about');closeStart()">👤 About Me</div>
+        <div class="sitem" onclick="openWin('projects');closeStart()">💼 Projects</div>
+        <div class="sitem" onclick="openWin('contact');closeStart()">📧 Contact</div>
+        <div class="sdiv"></div>
+        <div class="sitem shutdown" onclick="shutdown()">🔌 Shut Down…</div>
+      </div>
+    </div>
+
+  </div>
+  <script src="script.js"></script>
+</body>
+</html>
