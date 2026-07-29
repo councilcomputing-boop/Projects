@@ -1,1 +1,8 @@
 .claude/
+
+# Local Netlify folder
+.netlify
+
+# ...except council-website, whose site source lives inside .netlify/
+!council-website/.netlify/
+!council-website/.netlify/**
