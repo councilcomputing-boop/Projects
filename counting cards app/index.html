@@ -204,7 +204,63 @@ button{user-select:none;-webkit-user-select:none;touch-action:manipulation}
 .playing-card{width:42px;height:58px;border-radius:6px;background:#fff;border:1px solid #ccc;display:flex;flex-direction:column;align-items:center;justify-content:center;font-weight:800;font-size:13px;box-shadow:0 1px 3px rgba(0,0,0,.2)}
 .playing-card.red{color:var(--red)}
 .playing-card.black{color:#1a1a1a}
-.playing-card.hidden-card{background:repeating-linear-gradient(45deg,var(--cardback1),var(--cardback1) 6px,var(--cardback2) 6px,var(--cardback2) 12px);color:transparent;font-size:20px}
+.playing-card.hidden-card{position:relative;overflow:hidden;color:transparent;font-size:20px;border-color:transparent;background:var(--cardback1)}
+.playing-card.hidden-card::before,.playing-card.hidden-card::after{content:'';position:absolute}
+
+/* ---- Card back skins (Store > Card Backs) ---- */
+/* Base art for every skin is an illustrated SVG in cardbacks/. Pricier tiers
+   layer a CSS effect (glow / shimmer / sparkle / foil rotation) on top rather
+   than redrawing the art, so nothing fights the illustration underneath. */
+@keyframes cbRotateOnly{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+@keyframes cbGlowPulseGold{0%,100%{box-shadow:inset 0 0 0 1px rgba(201,162,39,.5),0 0 3px rgba(201,162,39,.4)}50%{box-shadow:inset 0 0 0 1px rgba(201,162,39,.9),0 0 14px 3px rgba(201,162,39,.8)}}
+@keyframes cbShimmerSweep{0%{transform:translateX(-160%) skewX(-15deg)}100%{transform:translateX(360%) skewX(-15deg)}}
+@keyframes cbTwinkle{0%,100%{opacity:.25;transform:translate(-50%,-50%) scale(.6)}50%{opacity:1;transform:translate(-50%,-50%) scale(1.2)}}
+
+.hidden-card.cardback-classic{background-image:url('cardbacks/cardback-classic.svg')}
+.hidden-card.cardback-slate{background-image:url('cardbacks/cardback-slate.svg')}
+.hidden-card.cardback-bone{background-image:url('cardbacks/cardback-bone.svg')}
+.hidden-card.cardback-coffin{background-image:url('cardbacks/cardback-coffin.svg')}
+.hidden-card.cardback-bloodfade{background-image:url('cardbacks/cardback-bloodfade.svg')}
+.hidden-card.cardback-silvermist{background-image:url('cardbacks/cardback-silvermist.svg')}
+.hidden-card.cardback-ivoryrose{background-image:url('cardbacks/cardback-ivoryrose.svg')}
+.hidden-card.cardback-onyxgold{background-image:url('cardbacks/cardback-onyxgold.svg')}
+.hidden-card.cardback-garnet{background-image:url('cardbacks/cardback-garnet.svg')}
+.hidden-card.cardback-moonstone{background-image:url('cardbacks/cardback-moonstone.svg')}
+.hidden-card.cardback-velvetplum{background-image:url('cardbacks/cardback-velvetplum.svg')}
+.hidden-card.cardback-champagne{background-image:url('cardbacks/cardback-champagne.svg')}
+.hidden-card.cardback-crimsonpulse{background-image:url('cardbacks/cardback-crimsonpulse.svg')}
+.hidden-card.cardback-silvershimmer{background-image:url('cardbacks/cardback-silvershimmer.svg')}
+.hidden-card.cardback-batsigil{background-image:url('cardbacks/cardback-batsigil.svg')}
+.hidden-card.cardback-frostbite{background-image:url('cardbacks/cardback-frostbite.svg')}
+.hidden-card.cardback-draculaseal{background-image:url('cardbacks/cardback-draculaseal.svg')}
+.hidden-card.cardback-eternalnight{background-image:url('cardbacks/cardback-eternalnight.svg')}
+.hidden-card.cardback-fullmoon{background-image:url('cardbacks/cardback-fullmoon.svg')}
+.hidden-card.cardback-vampirehoard{background-image:url('cardbacks/cardback-vampirehoard.svg')}
+.playing-card.hidden-card[class*="cardback-"]{background-size:cover;background-position:center}
+
+/* Epic — one effect layered over the art */
+.hidden-card.cardback-crimsonpulse{animation:cbGlowPulseGold 2.2s ease-in-out infinite}
+.hidden-card.cardback-batsigil{animation:cbGlowPulseGold 2.6s ease-in-out infinite}
+.cardback-silvershimmer::before{top:0;left:0;width:35%;height:100%;background:linear-gradient(115deg,transparent,rgba(255,255,255,.55),transparent);animation:cbShimmerSweep 3.2s ease-in-out infinite}
+.cardback-frostbite::before{top:35%;left:35%;width:12%;height:12%;border-radius:50%;background:#dff0ff;animation:cbTwinkle 2s ease-in-out infinite}
+.cardback-frostbite::after{top:62%;left:62%;width:12%;height:12%;border-radius:50%;background:#dff0ff;animation:cbTwinkle 2s ease-in-out infinite .6s}
+
+/* Legendary — two effects layered over the art */
+.hidden-card.cardback-draculaseal{animation:cbGlowPulseGold 3s ease-in-out infinite}
+.cardback-draculaseal::before{top:0;left:0;width:30%;height:100%;background:linear-gradient(115deg,transparent,rgba(243,230,191,.55),transparent);animation:cbShimmerSweep 4.5s ease-in-out infinite}
+.hidden-card.cardback-eternalnight{animation:cbGlowPulseGold 3.4s ease-in-out infinite}
+.cardback-eternalnight::before{top:0;left:0;width:35%;height:100%;background:linear-gradient(115deg,transparent,rgba(220,190,255,.5),transparent);animation:cbShimmerSweep 4s ease-in-out infinite}
+.hidden-card.cardback-fullmoon{animation:cbGlowPulseGold 3.8s ease-in-out infinite}
+.cardback-fullmoon::before{top:0;left:0;width:30%;height:100%;background:linear-gradient(115deg,transparent,rgba(255,255,255,.4),transparent);animation:cbShimmerSweep 4.6s ease-in-out infinite}
+
+/* Mythic — flagship: glow + shimmer + a slow rotating foil glint */
+.hidden-card.cardback-vampirehoard{animation:cbGlowPulseGold 1.9s ease-in-out infinite}
+.cardback-vampirehoard::before{top:0;left:0;width:30%;height:100%;background:linear-gradient(115deg,transparent,rgba(243,230,191,.6),transparent);animation:cbShimmerSweep 3.4s ease-in-out infinite}
+.cardback-vampirehoard::after{
+  top:-30%;left:-30%;width:160%;height:160%;border-radius:50%;opacity:.22;mix-blend-mode:screen;
+  background:conic-gradient(from 0deg,transparent 0deg,rgba(243,230,191,.9) 20deg,transparent 60deg,transparent 180deg,rgba(243,230,191,.7) 200deg,transparent 240deg);
+  animation:cbRotateOnly 6s linear infinite
+}
 @keyframes dealIn{from{opacity:0;transform:translate(210px,-150px) scale(.55) rotate(14deg)}to{opacity:1;transform:translate(0,0) scale(1) rotate(0deg)}}
 @keyframes flipIn{from{opacity:.5;transform:rotateY(90deg)}to{opacity:1;transform:rotateY(0)}}
 .playing-card.deal-in{animation:dealIn .6s cubic-bezier(.16,.68,.3,1) both}
@@ -327,6 +383,24 @@ button{user-select:none;-webkit-user-select:none;touch-action:manipulation}
 .vial-price{font-size:10.5px;font-weight:600;color:var(--muted)}
 .vial-bonus{font-size:9.5px;font-weight:700;color:#7a5f00;background:var(--gold-pale);border-radius:6px;padding:1px 7px;margin-top:2px}
 .store-buy-amount{font-family:var(--display-font);font-weight:700;color:#7a5f00}
+.cardback-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.cardback-tile{display:flex;flex-direction:column;align-items:center;gap:5px;background:var(--gray-pale);border:none;border-radius:var(--r);padding:9px 4px 8px;cursor:pointer;text-align:center}
+.cardback-tile:active{opacity:.75}
+.cardback-tile .playing-card{width:38px;height:52px;box-shadow:0 1px 4px rgba(0,0,0,.35)}
+.cardback-tile-tier{font-size:8.5px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--muted)}
+.cardback-tile-tier.tier-Starter{color:#7a8a6b}
+.cardback-tile-tier.tier-Common{color:#6b7280}
+.cardback-tile-tier.tier-Uncommon{color:#2e7d5b}
+.cardback-tile-tier.tier-Rare{color:#3563c9}
+.cardback-tile-tier.tier-Epic{color:#8a3fc9}
+.cardback-tile-tier.tier-Legendary{color:#c98a1a}
+.cardback-tile-tier.tier-Mythic{color:#c9314a}
+.cardback-tile-name{font-size:10.5px;font-weight:700;color:var(--text);line-height:1.15}
+.cardback-tile-price{font-size:10px;font-weight:700;color:#7a5f00}
+.cardback-tile-price.owned{color:var(--green2)}
+.cardback-tile-price.equipped{color:var(--muted)}
+.cardback-tile.locked{opacity:.65}
+.cardback-tile.equipped-tile{box-shadow:0 0 0 2px var(--gold)}
 .ad-progress-track{background:var(--gray-pale);border-radius:10px;height:10px;overflow:hidden;margin:12px 0}
 .ad-progress-bar{background:var(--gold);height:100%;width:0%}
 .wheel-wrap{display:flex;flex-direction:column;align-items:center;margin:6px 0}
@@ -746,6 +820,12 @@ button{user-select:none;-webkit-user-select:none;touch-action:manipulation}
     </div>
 
     <div class="card">
+      <div class="card-title">Card Backs</div>
+      <div class="hint" style="margin-top:-6px;margin-bottom:10px">Spend Blood Drops to unlock a new look for the dealer's hidden card. Purely cosmetic — equip any owned back at any time.</div>
+      <div class="cardback-grid" id="cardBackGrid"></div>
+    </div>
+
+    <div class="card">
       <div class="card-title">Blood Vials</div>
       <div class="hint" style="margin-top:-6px;margin-bottom:10px">Entertainment only — no cash value, no cash-out. No purchase is ever necessary — every game mode is fully playable for free.</div>
       <div class="vial-grid">
@@ -1153,6 +1233,7 @@ function animateDracula(){}
 function cardHTML(card, hidden, animClass, delayMs, extraClass){
   const cls = ['playing-card'];
   cls.push(hidden ? 'hidden-card' : ((card.suit === '♥' || card.suit === '♦') ? 'red' : 'black'));
+  if(hidden) cls.push('cardback-' + (storeState.cardBacks.equipped || 'classic'));
   if(animClass) cls.push(animClass);
   if(extraClass) cls.push(extraClass);
   const style = animClass ? ' style="animation-delay:' + (delayMs || 0) + 'ms"' : '';
@@ -1397,6 +1478,8 @@ function buildShoe(numDecks){
   return shoe;
 }
 
+const BET_MIN = 5, BET_MAX = 1000, BET_STEP = 5;
+
 function defaultDealerState(){
   const numDecks = 6;
   return {
@@ -1598,7 +1681,6 @@ document.getElementById('betCoachingToggle').addEventListener('change', (e) => {
 });
 
 /* --- Betting --- */
-const BET_MIN = 5, BET_MAX = 1000, BET_STEP = 5;
 let betEstablishedThisSession = false;
 
 function handIsIdle(){
@@ -2664,17 +2746,48 @@ document.addEventListener('keydown', (e) => {
 /* ============================================================ */
 const STORE_KEY = 'cardCountingStoreState';
 
+/* ---- Card back skins: 20 designs, priced by how striking they are ---- */
+const CARD_BACKS = [
+  { id:'classic',       name:'Classic Wine',    tier:'Starter',   price:0 },
+  { id:'slate',         name:'Midnight Slate',  tier:'Common',    price:400 },
+  { id:'bone',          name:'Bone White',      tier:'Common',    price:600 },
+  { id:'coffin',        name:'Coffin Black',    tier:'Common',    price:600 },
+  { id:'bloodfade',     name:'Blood Fade',      tier:'Uncommon',  price:1200 },
+  { id:'silvermist',    name:'Silver Mist',     tier:'Uncommon',  price:1500 },
+  { id:'ivoryrose',     name:'Ivory Rose',      tier:'Uncommon',  price:1500 },
+  { id:'onyxgold',      name:'Onyx Gold',       tier:'Uncommon',  price:1800 },
+  { id:'garnet',        name:'Garnet Sheen',    tier:'Rare',      price:3500 },
+  { id:'moonstone',     name:'Moonstone',       tier:'Rare',      price:4000 },
+  { id:'velvetplum',    name:'Velvet Plum',     tier:'Rare',      price:4500 },
+  { id:'champagne',     name:'Champagne',       tier:'Rare',      price:5000 },
+  { id:'crimsonpulse',  name:'Crimson Pulse',   tier:'Epic',      price:9000,  fx:true },
+  { id:'silvershimmer', name:'Silver Shimmer',  tier:'Epic',      price:11000, fx:true },
+  { id:'batsigil',      name:'Bat Sigil',       tier:'Epic',      price:13000, fx:true },
+  { id:'frostbite',     name:'Frostbite',       tier:'Epic',      price:15000, fx:true },
+  { id:'draculaseal',   name:"Dracula's Seal",  tier:'Legendary', price:25000, fx:true },
+  { id:'eternalnight',  name:'Eternal Night',   tier:'Legendary', price:30000, fx:true },
+  { id:'fullmoon',      name:'Full Moon Curse', tier:'Legendary', price:40000, fx:true },
+  { id:'vampirehoard',  name:"Vampire's Hoard", tier:'Mythic',    price:60000, fx:true }
+];
+function findCardBack(id){ return CARD_BACKS.find(b => b.id === id) || CARD_BACKS[0]; }
+
 function defaultStoreState(){
   return {
     dailyBonus: { streak: 0, lastClaimDate: null },
     adWatch: { count: 0, date: null },
-    spinWheel: { lastSpinDate: null }
+    spinWheel: { lastSpinDate: null },
+    cardBacks: { owned: ['classic'], equipped: 'classic' }
   };
 }
 function loadStoreState(){
   try {
     const s = JSON.parse(localStorage.getItem(STORE_KEY));
-    if(s && s.dailyBonus && s.adWatch && s.spinWheel) return s;
+    if(s && s.dailyBonus && s.adWatch && s.spinWheel){
+      if(!s.cardBacks || !Array.isArray(s.cardBacks.owned)) s.cardBacks = { owned: ['classic'], equipped: 'classic' };
+      if(!s.cardBacks.owned.includes('classic')) s.cardBacks.owned.push('classic');
+      if(!s.cardBacks.equipped) s.cardBacks.equipped = 'classic';
+      return s;
+    }
   } catch(e) {}
   return defaultStoreState();
 }
@@ -2741,7 +2854,60 @@ function renderStore(){
     ? 'Come back tomorrow'
     : ('+150 🩸 (' + (AD_CAP - adCountToday) + ' left today)');
   document.getElementById('watchAdBtn').disabled = adCountToday >= AD_CAP;
+
+  renderCardBackShop();
 }
+
+function cardBackTileHTML(back){
+  const owned = storeState.cardBacks.owned.includes(back.id);
+  const equipped = storeState.cardBacks.equipped === back.id;
+  const priceLabel = equipped ? 'Equipped' : owned ? 'Owned' : ('🩸 ' + back.price.toLocaleString());
+  const priceCls = equipped ? 'equipped' : owned ? 'owned' : '';
+  return '<button class="cardback-tile' + (owned ? '' : ' locked') + (equipped ? ' equipped-tile' : '') + '" data-back-id="' + back.id + '">' +
+    '<div class="playing-card hidden-card cardback-' + back.id + '"></div>' +
+    '<div class="cardback-tile-tier tier-' + back.tier + '">' + back.tier + '</div>' +
+    '<div class="cardback-tile-name">' + back.name + '</div>' +
+    '<div class="cardback-tile-price ' + priceCls + '">' + priceLabel + '</div>' +
+    '</button>';
+}
+
+function renderCardBackShop(){
+  const grid = document.getElementById('cardBackGrid');
+  if(!grid) return;
+  grid.innerHTML = CARD_BACKS.map(cardBackTileHTML).join('');
+}
+
+function buyOrEquipCardBack(id){
+  const back = findCardBack(id);
+  const owned = storeState.cardBacks.owned.includes(id);
+  if(owned){
+    storeState.cardBacks.equipped = id;
+    saveStoreState();
+    showStorePurchaseMsg('Equipped ' + back.name + '.');
+    renderCardBackShop();
+    return;
+  }
+  if(dealerState.drops < back.price){
+    showStorePurchaseMsg('Too little blood for the ' + back.name + ' — the Store awaits.');
+    return;
+  }
+  dealerState.drops -= back.price;
+  saveDealerState();
+  updateHeaderDrops();
+  storeState.cardBacks.owned.push(id);
+  storeState.cardBacks.equipped = id;
+  saveStoreState();
+  pulseDebitBadge(document.getElementById('storeDropsBadge'));
+  document.getElementById('storeDropsBadge').textContent = '🩸 ' + dealerState.drops;
+  showStorePurchaseMsg('Unlocked and equipped ' + back.name + '!');
+  renderCardBackShop();
+}
+
+document.getElementById('cardBackGrid').addEventListener('click', (e) => {
+  const tile = e.target.closest('.cardback-tile');
+  if(!tile) return;
+  buyOrEquipCardBack(tile.dataset.backId);
+});
 
 function claimDailyBonus(){
   const today = todayStr();
