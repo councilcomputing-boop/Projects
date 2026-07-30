@@ -747,9 +747,22 @@ body{
   }
   function sizeBoard(){
     var rect = boardWrapEl.getBoundingClientRect();
-    var s = Math.floor(Math.min(rect.width, rect.height));
-    boardEl.style.width = s + "px";
-    boardEl.style.height = s + "px";
+    var w = rect.width, h = rect.height;
+    if (!w || !h){
+      // flex layout hasn't settled (or this webview reports a stale/zero rect) -
+      // fall back to computing the available space directly from the viewport
+      var wrapRect = document.querySelector(".wrap").getBoundingClientRect();
+      var topbarH = document.querySelector(".topbar").getBoundingClientRect().height;
+      var heartH = document.querySelector(".heart-score").getBoundingClientRect().height;
+      var trayH = trayEl.getBoundingClientRect().height;
+      w = wrapRect.width || window.innerWidth - 32;
+      h = (wrapRect.height || window.innerHeight) - topbarH - heartH - trayH - 40;
+    }
+    var s = Math.floor(Math.min(w, h));
+    if (s > 40){
+      boardEl.style.width = s + "px";
+      boardEl.style.height = s + "px";
+    }
   }
   function refit(){
     setAppHeight();
@@ -759,8 +772,13 @@ body{
   }
   window.addEventListener("resize", refit);
   window.addEventListener("orientationchange", refit);
+  window.addEventListener("load", refit);
   setAppHeight();
   requestAnimationFrame(sizeBoard);
+  // extra safety net: some embedded webviews settle their layout a little
+  // late (fonts, viewport chrome), so re-measure a couple more times
+  setTimeout(refit, 100);
+  setTimeout(refit, 400);
 
   // ---------- init ----------
   bestValEl.textContent = best;
