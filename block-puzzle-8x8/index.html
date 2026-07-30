@@ -6,109 +6,121 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Block Blast">
-<meta name="theme-color" content="#1b1030">
+<meta name="theme-color" content="#3a4d85">
 <title>8x8 Block Puzzle</title>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none}
 :root{
-  --bg1:#1b1030;--bg2:#2b1750;
-  --panel:#241640;--panel-border:rgba(255,255,255,.08);
-  --text:#f2eefb;--muted:#a89bc4;
-  --accent:#ffcb47;--accent2:#ff6f91;
-  --cell-empty:rgba(255,255,255,.05);
-  --cell-border:rgba(255,255,255,.06);
+  --page1:#4c5fa0;--page2:#33447c;
+  --board-bg:#0f1a33;--cell-border:rgba(255,255,255,.05);
+  --panel:#1c2748;--panel-border:rgba(255,255,255,.1);
+  --text:#f4f6ff;--muted:#aab3d6;
+  --gold:#ffd24d;--pink:#ff2e9a;--pink2:#ff8fd0;
   --good:#3ddc84;--bad:#ff5468;
-  --r:14px;
+  --r:20px;
 }
 html,body{height:100%}
 body{
   font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
-  background:radial-gradient(circle at 50% -10%,var(--bg2),var(--bg1) 60%);
+  background:linear-gradient(180deg,var(--page1),var(--page2) 70%);
   color:var(--text);min-height:100vh;overscroll-behavior:none;
   display:flex;flex-direction:column;align-items:center;
-  padding:env(safe-area-inset-top) 12px calc(env(safe-area-inset-bottom) + 12px);
+  padding:env(safe-area-inset-top) 16px calc(env(safe-area-inset-bottom) + 16px);
   touch-action:none;
 }
-.wrap{width:100%;max-width:460px;display:flex;flex-direction:column;align-items:center;gap:10px;padding-top:14px}
+.wrap{width:100%;max-width:460px;display:flex;flex-direction:column;align-items:center;gap:14px;padding-top:16px}
 
-.topbar{width:100%;display:flex;align-items:center;justify-content:space-between;gap:10px}
-.title{font-size:20px;font-weight:800;letter-spacing:.3px;display:flex;align-items:center;gap:8px}
-.title .dot{width:10px;height:10px;border-radius:3px;background:linear-gradient(135deg,var(--accent),var(--accent2));display:inline-block;transform:rotate(10deg)}
-.newgame-btn{
-  background:var(--panel);border:1px solid var(--panel-border);color:var(--text);
-  font-size:13px;font-weight:700;padding:8px 14px;border-radius:20px;cursor:pointer;
-}
-.newgame-btn:active{transform:scale(.96)}
+.topbar{width:100%;display:flex;align-items:center;justify-content:space-between}
+.crown-score{display:flex;align-items:center;gap:8px;font-size:26px;font-weight:800;color:var(--gold);text-shadow:0 2px 6px rgba(0,0,0,.3)}
+.crown-score .crown{font-size:26px;filter:drop-shadow(0 2px 3px rgba(0,0,0,.35))}
 
-.scores{width:100%;display:flex;gap:10px}
-.score-card{
-  flex:1;background:var(--panel);border:1px solid var(--panel-border);border-radius:var(--r);
-  padding:10px 14px;text-align:center;
+.gear-wrap{position:relative}
+.gear-btn{
+  background:none;border:none;color:#e8ecff;font-size:28px;line-height:1;cursor:pointer;
+  width:44px;height:44px;display:flex;align-items:center;justify-content:center;
+  filter:drop-shadow(0 2px 3px rgba(0,0,0,.3));
 }
-.score-card .label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;font-weight:700}
-.score-card .value{font-size:24px;font-weight:800;margin-top:2px;font-variant-numeric:tabular-nums}
-.score-card.best .value{color:var(--accent)}
+.gear-btn:active{transform:scale(.92)}
+.gear-menu{
+  position:absolute;top:110%;right:0;background:var(--panel);border:1px solid var(--panel-border);
+  border-radius:14px;padding:6px;display:none;box-shadow:0 14px 34px rgba(0,0,0,.45);min-width:140px;z-index:50;
+}
+.gear-menu.show{display:block}
+.gear-menu button{
+  width:100%;padding:11px 12px;border:none;background:transparent;color:var(--text);
+  font-weight:700;font-size:14px;border-radius:9px;cursor:pointer;text-align:left;
+}
+.gear-menu button:active{background:rgba(255,255,255,.1)}
+
+.heart-score{position:relative;width:150px;height:130px;margin:2px auto 0;display:flex;align-items:center;justify-content:center}
+.heart-shape{position:absolute;width:110px;height:100px;top:6px;left:20px;filter:drop-shadow(0 0 22px rgba(255,46,154,.85)) drop-shadow(0 0 44px rgba(255,46,154,.45))}
+.heart-shape::before,.heart-shape::after{
+  content:"";position:absolute;left:55px;top:0;width:55px;height:88px;
+  background:linear-gradient(160deg,var(--pink2),var(--pink));
+  border-radius:55px 55px 0 0;transform:rotate(-45deg);transform-origin:0 100%;
+}
+.heart-shape::after{left:0;transform:rotate(45deg);transform-origin:100% 100%}
+.heart-value{
+  position:relative;z-index:2;font-size:42px;font-weight:800;color:#fff;
+  text-shadow:0 2px 6px rgba(0,0,0,.35);letter-spacing:.3px;margin-top:2px;
+  font-variant-numeric:tabular-nums;
+}
 
 .board-wrap{position:relative;width:100%;aspect-ratio:1/1;max-width:420px}
 #board{
   position:relative;width:100%;height:100%;
-  background:var(--panel);border:1px solid var(--panel-border);border-radius:var(--r);
+  background:var(--board-bg);border-radius:var(--r);
   display:grid;grid-template-columns:repeat(8,1fr);grid-template-rows:repeat(8,1fr);
-  padding:6px;gap:3px;
+  padding:8px;gap:0;
+  box-shadow:0 14px 34px rgba(0,0,0,.3),inset 0 0 0 1px rgba(255,255,255,.04);
 }
 .cell{
-  border-radius:6px;background:var(--cell-empty);border:1px solid var(--cell-border);
-  position:relative;transition:background .12s,box-shadow .12s;
+  border:1px solid var(--cell-border);position:relative;
 }
-.cell[data-blockrow="3"], .cell[data-blockcol="3"]{ }
-.cell.filled{border:none}
-.cell.preview-ok{background:rgba(61,220,132,.35);box-shadow:inset 0 0 0 2px rgba(61,220,132,.6)}
-.cell.preview-bad{background:rgba(255,84,104,.28);box-shadow:inset 0 0 0 2px rgba(255,84,104,.55)}
-.cell.clearing{animation:pop .32s ease forwards}
+.cell.preview-ok{background:rgba(61,220,132,.32);box-shadow:inset 0 0 0 2px rgba(61,220,132,.6)}
+.cell.preview-bad{background:rgba(255,84,104,.26);box-shadow:inset 0 0 0 2px rgba(255,84,104,.55)}
+.cell.clearing .block{animation:pop .32s ease forwards}
 @keyframes pop{
   0%{transform:scale(1);filter:brightness(1)}
-  40%{transform:scale(1.12);filter:brightness(1.8)}
-  100%{transform:scale(.2);filter:brightness(2.4);opacity:0}
+  40%{transform:scale(1.14);filter:brightness(1.9)}
+  100%{transform:scale(.2);filter:brightness(2.6);opacity:0}
 }
 .block{
-  position:absolute;inset:0;border-radius:6px;
-  box-shadow:inset 0 -3px 0 rgba(0,0,0,.25), inset 0 2px 0 rgba(255,255,255,.35);
-}
-
-/* subtle 2x2 group guide lines every 4 cells to help visually parse the 8x8 */
-#board::before{
-  content:"";position:absolute;left:calc(50% - .5px);top:6px;bottom:6px;width:1px;background:rgba(255,255,255,.06);pointer-events:none;
-}
-#board::after{
-  content:"";position:absolute;top:calc(50% - .5px);left:6px;right:6px;height:1px;background:rgba(255,255,255,.06);pointer-events:none;
+  position:absolute;inset:3px;border-radius:8px;
+  box-shadow:inset 0 3px 4px rgba(255,255,255,.55), inset 0 -4px 5px rgba(0,0,0,.35), 0 1px 3px rgba(0,0,0,.35);
 }
 
 .tray{
-  width:100%;display:flex;gap:8px;justify-content:space-between;
-  background:var(--panel);border:1px solid var(--panel-border);border-radius:var(--r);
-  padding:10px;min-height:96px;
+  width:100%;display:flex;gap:8px;justify-content:space-around;align-items:center;
+  min-height:110px;padding:6px 4px;
 }
 .slot{
   flex:1;display:flex;align-items:center;justify-content:center;position:relative;
-  border-radius:10px;min-height:76px;
+  border-radius:12px;min-height:96px;
 }
-.slot.dragging-from{opacity:.25}
+.slot.dragging-from{opacity:.2}
 .piece{
   display:grid;pointer-events:none;
 }
-.piece .b{border-radius:5px;box-shadow:inset 0 -2px 0 rgba(0,0,0,.25), inset 0 2px 0 rgba(255,255,255,.35);}
+.piece .b{
+  border-radius:6px;
+  box-shadow:inset 0 2px 3px rgba(255,255,255,.55), inset 0 -3px 4px rgba(0,0,0,.35), 0 1px 2px rgba(0,0,0,.3);
+}
 .piece .b.empty{visibility:hidden}
 .slot-hit{position:absolute;inset:0;cursor:grab}
 
 .floating-piece{
   position:fixed;top:0;left:0;pointer-events:none;z-index:500;display:grid;
 }
-.floating-piece .b{border-radius:6px;box-shadow:inset 0 -3px 0 rgba(0,0,0,.25), inset 0 2px 0 rgba(255,255,255,.35);}
+.floating-piece .b{
+  border-radius:8px;
+  box-shadow:inset 0 3px 4px rgba(255,255,255,.55), inset 0 -4px 5px rgba(0,0,0,.35), 0 2px 5px rgba(0,0,0,.35);
+}
 .floating-piece .b.empty{visibility:hidden}
 
 .floaters{position:fixed;inset:0;pointer-events:none;z-index:600}
 .floater{
-  position:absolute;font-weight:800;font-size:22px;color:var(--accent);
+  position:absolute;font-weight:800;font-size:22px;color:var(--gold);
   text-shadow:0 2px 8px rgba(0,0,0,.5);
   animation:rise 900ms ease-out forwards;
 }
@@ -119,7 +131,7 @@ body{
 }
 
 .overlay{
-  position:fixed;inset:0;background:rgba(10,5,20,.72);backdrop-filter:blur(3px);
+  position:fixed;inset:0;background:rgba(8,10,25,.72);backdrop-filter:blur(3px);
   display:none;align-items:center;justify-content:center;z-index:900;padding:20px;
 }
 .overlay.show{display:flex}
@@ -130,35 +142,32 @@ body{
 }
 .modal h2{font-size:22px;margin-bottom:6px}
 .modal p{color:var(--muted);font-size:14px;margin-bottom:4px}
-.modal .final-score{font-size:40px;font-weight:800;color:var(--accent);margin:14px 0 4px}
+.modal .final-score{font-size:40px;font-weight:800;color:var(--gold);margin:14px 0 4px}
 .modal .new-best{color:var(--good);font-size:13px;font-weight:700;margin-bottom:10px;visibility:hidden}
 .modal .new-best.show{visibility:visible}
 .modal button{
   margin-top:16px;width:100%;padding:13px;border:none;border-radius:12px;
-  background:linear-gradient(135deg,var(--accent),var(--accent2));
+  background:linear-gradient(135deg,var(--gold),var(--pink));
   color:#1b1030;font-weight:800;font-size:15px;cursor:pointer;
 }
 .modal button:active{transform:scale(.98)}
-
-.howto{font-size:12px;color:var(--muted);text-align:center;line-height:1.5;padding:2px 8px}
 </style>
 </head>
 <body>
 <div class="wrap">
   <div class="topbar">
-    <div class="title"><span class="dot"></span>Block Blast</div>
-    <button class="newgame-btn" id="newGameBtn">New Game</button>
+    <div class="crown-score"><span class="crown">👑</span><span id="bestVal">0</span></div>
+    <div class="gear-wrap">
+      <button class="gear-btn" id="gearBtn" aria-label="Menu">⚙</button>
+      <div class="gear-menu" id="gearMenu">
+        <button id="newGameBtn">New Game</button>
+      </div>
+    </div>
   </div>
 
-  <div class="scores">
-    <div class="score-card">
-      <div class="label">Score</div>
-      <div class="value" id="scoreVal">0</div>
-    </div>
-    <div class="score-card best">
-      <div class="label">Best</div>
-      <div class="value" id="bestVal">0</div>
-    </div>
+  <div class="heart-score">
+    <div class="heart-shape"></div>
+    <div class="heart-value" id="scoreVal">0</div>
   </div>
 
   <div class="board-wrap">
@@ -166,8 +175,6 @@ body{
   </div>
 
   <div class="tray" id="tray"></div>
-
-  <div class="howto">Drag a piece onto the board. Fill a full row or column to clear it — clear several at once for a big bonus.</div>
 </div>
 
 <div class="floaters" id="floaters"></div>
@@ -188,16 +195,18 @@ body{
 
   var SIZE = 8;
   var STORAGE_KEY = "blockPuzzle8x8HighScore";
+  var BOARD_PADDING = 8;
+  var BOARD_GAP = 0;
 
   var COLORS = [
-    {main:"#ff6f91", d:"#c94868"},
-    {main:"#ffcb47", d:"#d69f1e"},
-    {main:"#4fd6c4", d:"#2aa596"},
-    {main:"#7d8bff", d:"#5661d6"},
-    {main:"#ff9f5a", d:"#d8722c"},
-    {main:"#8ce05a", d:"#5fae2c"},
-    {main:"#c589ff", d:"#9a54e0"},
-    {main:"#5ac8ff", d:"#2b96d6"}
+    {main:"#35d0f0", d:"#1a93ad"},
+    {main:"#4f7df5", d:"#2f4fc9"},
+    {main:"#ffab3d", d:"#d97e12"},
+    {main:"#b569f2", d:"#8635c9"},
+    {main:"#ffd84d", d:"#d9a71c"},
+    {main:"#4ed66a", d:"#26a844"},
+    {main:"#ff5c5c", d:"#d92f2f"},
+    {main:"#ff6fa8", d:"#d93f7e"}
   ];
 
   // Shape library: each shape is a list of [row, col] offsets (0-indexed, top-left origin)
@@ -270,6 +279,8 @@ body{
   var finalScoreEl = document.getElementById("finalScore");
   var newBestEl = document.getElementById("newBest");
   var floatersEl = document.getElementById("floaters");
+  var gearBtn = document.getElementById("gearBtn");
+  var gearMenu = document.getElementById("gearMenu");
 
   function normShape(cells){
     var minR = Math.min.apply(null, cells.map(function(c){return c[0];}));
@@ -351,7 +362,7 @@ body{
   function computeCellPx(){
     // scale tray cell size a bit for small screens
     var w = trayEl.clientWidth || 360;
-    CELL_PX = Math.max(16, Math.min(22, Math.floor(w/16)));
+    CELL_PX = Math.max(16, Math.min(24, Math.floor(w/16)));
   }
 
   function renderPieceGrid(container, shape, color, cellPx){
@@ -490,7 +501,7 @@ body{
     updateScore(basePoints);
 
     var label = count === 1 ? "+"+basePoints : (count+"x LINES! +"+basePoints);
-    var col = count >= 3 ? "#ff6f91" : (count === 2 ? "#ffcb47" : "#3ddc84");
+    var col = count >= 3 ? "#ff6fa8" : (count === 2 ? "#ffd24d" : "#3ddc84");
     spawnFloatText(label, originClientX, originClientY, col);
 
     setTimeout(function(){
@@ -542,7 +553,7 @@ body{
   }
 
   // ---------- drag & drop (pointer events, mouse + touch) ----------
-  var drag = null; // {idx, shape, color, floatEl, cellPx, offsetX, offsetY, isTouch}
+  var drag = null; // {idx, shape, color, floatEl, cellPx, isTouch}
 
   function boardRect(){ return boardEl.getBoundingClientRect(); }
 
@@ -566,17 +577,15 @@ body{
 
   function pointerToTarget(clientX, clientY, shape, cellPx, isTouch){
     var rect = boardRect();
-    var padding = 6; // matches #board padding
-    var gap = 3;
-    var innerCellSize = (rect.width - padding*2 - gap*(SIZE-1)) / SIZE;
+    var innerCellSize = (rect.width - BOARD_PADDING*2 - BOARD_GAP*(SIZE-1)) / SIZE;
 
     // lift the piece above the finger on touch so it's visible
     var liftY = isTouch ? cellPx * 1.6 : 0;
     var anchorX = clientX - rect.left - (cellPx * (shapeDims(shape).cols/2));
     var anchorY = clientY - rect.top - liftY - (cellPx * (shapeDims(shape).rows/2));
 
-    var c0 = Math.round(anchorX / (innerCellSize+gap));
-    var r0 = Math.round(anchorY / (innerCellSize+gap));
+    var c0 = Math.round(anchorX / (innerCellSize+BOARD_GAP));
+    var r0 = Math.round(anchorY / (innerCellSize+BOARD_GAP));
     return { r0: r0, c0: c0 };
   }
 
@@ -651,11 +660,10 @@ body{
 
       // origin point for the score floater = center of placed piece on board
       var rect = boardRect();
-      var padding = 6, gap = 3;
-      var innerCellSize = (rect.width - padding*2 - gap*(SIZE-1)) / SIZE;
+      var innerCellSize = (rect.width - BOARD_PADDING*2 - BOARD_GAP*(SIZE-1)) / SIZE;
       var dims = shapeDims(d.shape);
-      var cx = rect.left + padding + (d.lastTarget.c0 + dims.cols/2) * (innerCellSize+gap);
-      var cy = rect.top + padding + (d.lastTarget.r0 + dims.rows/2) * (innerCellSize+gap);
+      var cx = rect.left + BOARD_PADDING + (d.lastTarget.c0 + dims.cols/2) * (innerCellSize+BOARD_GAP);
+      var cy = rect.top + BOARD_PADDING + (d.lastTarget.r0 + dims.rows/2) * (innerCellSize+BOARD_GAP);
 
       updateScore(d.shape.length);
       afterMove(cx, cy);
@@ -672,7 +680,17 @@ body{
     window.addEventListener("pointercancel", onPointerUp, {passive:false});
   }, {passive:false});
 
-  document.getElementById("newGameBtn").addEventListener("click", newGame);
+  gearBtn.addEventListener("click", function(e){
+    e.stopPropagation();
+    gearMenu.classList.toggle("show");
+  });
+  document.addEventListener("click", function(){
+    gearMenu.classList.remove("show");
+  });
+  document.getElementById("newGameBtn").addEventListener("click", function(){
+    gearMenu.classList.remove("show");
+    newGame();
+  });
   document.getElementById("restartBtn").addEventListener("click", newGame);
 
   window.addEventListener("resize", function(){ renderTray(); });
