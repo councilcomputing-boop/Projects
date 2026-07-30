@@ -1,5 +1,8 @@
 .claude/
 
+# personal/local-only file with an embedded private photo - never publish this
+block-puzzle-8x8/lena-blast-LOCAL-ONLY.html
+
 # Local Netlify folder
 .netlify
 
