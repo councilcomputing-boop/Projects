@@ -418,12 +418,106 @@ body{
     });
   }
 
+  // ---------- guaranteed-solvable piece sets ----------
+  // A dealt set must be fully placeable: there has to exist some order and
+  // some set of positions that fits all three pieces on the board as it
+  // currently stands (counting rows/columns that clear along the way).
+  function gridSnapshot(){
+    var g = [];
+    for (var r=0;r<SIZE;r++){
+      var row = [];
+      for (var c=0;c<SIZE;c++) row.push(!!board[r][c]);
+      g.push(row);
+    }
+    return g;
+  }
+
+  function cloneGrid(g){
+    var out = [];
+    for (var r=0;r<SIZE;r++) out.push(g[r].slice());
+    return out;
+  }
+
+  function fitsOn(g, shape, r0, c0){
+    for (var i=0;i<shape.length;i++){
+      var r = r0+shape[i][0], c = c0+shape[i][1];
+      if (r<0 || r>=SIZE || c<0 || c>=SIZE) return false;
+      if (g[r][c]) return false;
+    }
+    return true;
+  }
+
+  // place a shape on a scratch grid, then clear completed lines just like the
+  // real board does - later pieces in the set get to use that freed space
+  function applyOn(g, shape, r0, c0){
+    for (var i=0;i<shape.length;i++) g[r0+shape[i][0]][c0+shape[i][1]] = true;
+    var rows = [], cols = [], r, c, k, full;
+    for (r=0;r<SIZE;r++){
+      full = true;
+      for (c=0;c<SIZE;c++){ if (!g[r][c]){ full=false; break; } }
+      if (full) rows.push(r);
+    }
+    for (c=0;c<SIZE;c++){
+      full = true;
+      for (r=0;r<SIZE;r++){ if (!g[r][c]){ full=false; break; } }
+      if (full) cols.push(c);
+    }
+    for (k=0;k<rows.length;k++){ for (c=0;c<SIZE;c++) g[rows[k]][c] = false; }
+    for (k=0;k<cols.length;k++){ for (r=0;r<SIZE;r++) g[r][cols[k]] = false; }
+  }
+
+  // greatest number of `shapes` placeable, trying every order and position
+  var searchBudget = 0;
+  function maxPlaceable(g, shapes){
+    if (shapes.length === 0) return 0;
+    var best = 0;
+    for (var i=0;i<shapes.length;i++){
+      var shape = shapes[i];
+      var rest = shapes.slice(0,i).concat(shapes.slice(i+1));
+      for (var r=0;r<SIZE;r++){
+        for (var c=0;c<SIZE;c++){
+          // safety valve: never let the search stall the UI
+          if (--searchBudget < 0) return shapes.length;
+          if (!fitsOn(g, shape, r, c)) continue;
+          var g2 = cloneGrid(g);
+          applyOn(g2, shape, r, c);
+          var got = 1 + maxPlaceable(g2, rest);
+          if (got > best) best = got;
+          if (best === shapes.length) return best;
+        }
+      }
+    }
+    return best;
+  }
+
+  function randomSet(){
+    return [
+      { shape: randomShape(), color: randomColor() },
+      { shape: randomShape(), color: randomColor() },
+      { shape: randomShape(), color: randomColor() }
+    ];
+  }
+
+  // keep rolling sets until one is fully placeable; if the board is so full
+  // that no set of three fits, hand over the one that gets the furthest
+  function dealSolvableSet(){
+    var start = gridSnapshot();
+    var best = null, bestScore = -1;
+    for (var attempt=0; attempt<80; attempt++){
+      var set = randomSet();
+      searchBudget = 40000;
+      var score = maxPlaceable(start, [set[0].shape, set[1].shape, set[2].shape]);
+      if (score === 3) return set;
+      if (score > bestScore){ bestScore = score; best = set; }
+    }
+    return best;
+  }
+
   function refillTrayIfEmpty(){
     var anyLeft = tray.some(function(p){ return p !== null; });
     if (!anyLeft){
-      for (var i=0;i<3;i++){
-        tray[i] = { shape: randomShape(), color: randomColor() };
-      }
+      var set = dealSolvableSet();
+      for (var i=0;i<3;i++) tray[i] = set[i];
     }
   }
 
@@ -531,10 +625,11 @@ body{
     if (count > 0){
       clearLines(lines, originX, originY);
     }
-    refillTrayIfEmpty();
-    renderTray();
-
+    // deal only once the clear animation has actually emptied those lines, so
+    // the next set's solvability is judged against the real resulting board
     setTimeout(function(){
+      refillTrayIfEmpty();
+      renderTray();
       if (checkGameOver()){
         endGame();
       }
