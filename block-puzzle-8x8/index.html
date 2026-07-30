@@ -9,7 +9,7 @@
 <meta name="theme-color" content="#3a4d85">
 <title>8x8 Block Puzzle</title>
 <style>
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
 :root{
   --page1:#4c5fa0;--page2:#33447c;
   --board-bg:#0f1a33;--cell-border:rgba(255,255,255,.05);
@@ -19,7 +19,7 @@
   --good:#3ddc84;--bad:#ff5468;
   --r:20px;
 }
-html,body{height:100%}
+html,body{height:100%;overscroll-behavior:none;touch-action:none}
 body{
   font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
   background:linear-gradient(180deg,var(--page1),var(--page2) 70%);
@@ -68,7 +68,7 @@ body{
 
 .board-wrap{position:relative;width:100%;aspect-ratio:1/1;max-width:420px}
 #board{
-  position:relative;width:100%;height:100%;
+  position:relative;width:100%;height:100%;touch-action:none;
   background:var(--board-bg);border-radius:var(--r);
   display:grid;grid-template-columns:repeat(8,1fr);grid-template-rows:repeat(8,1fr);
   padding:8px;gap:0;
@@ -92,11 +92,11 @@ body{
 
 .tray{
   width:100%;display:flex;gap:8px;justify-content:space-around;align-items:center;
-  min-height:110px;padding:6px 4px;
+  min-height:110px;padding:6px 4px;touch-action:none;
 }
 .slot{
   flex:1;display:flex;align-items:center;justify-content:center;position:relative;
-  border-radius:12px;min-height:96px;
+  border-radius:12px;min-height:96px;touch-action:none;
 }
 .slot.dragging-from{opacity:.2}
 .piece{
@@ -107,7 +107,7 @@ body{
   box-shadow:inset 0 2px 3px rgba(255,255,255,.55), inset 0 -3px 4px rgba(0,0,0,.35), 0 1px 2px rgba(0,0,0,.3);
 }
 .piece .b.empty{visibility:hidden}
-.slot-hit{position:absolute;inset:0;cursor:grab}
+.slot-hit{position:absolute;inset:0;cursor:grab;touch-action:none}
 
 .floating-piece{
   position:fixed;top:0;left:0;pointer-events:none;z-index:500;display:grid;
@@ -589,12 +589,11 @@ body{
     return { r0: r0, c0: c0 };
   }
 
-  function startDrag(idx, e){
+  function startDrag(idx, clientX, clientY, isTouch){
     if (gameOver) return;
     var piece = tray[idx];
     if (!piece) return;
 
-    var isTouch = e.pointerType === "touch";
     var floatCellPx = Math.max(30, CELL_PX * 1.7);
 
     var floatEl = document.createElement("div");
@@ -614,7 +613,8 @@ body{
     var slots = trayEl.querySelectorAll(".slot");
     if (slots[idx]) slots[idx].classList.add("dragging-from");
 
-    positionFloat(e.clientX, e.clientY);
+    positionFloat(clientX, clientY);
+    moveDrag(clientX, clientY);
   }
 
   function positionFloat(clientX, clientY){
@@ -626,23 +626,22 @@ body{
     drag.floatEl.style.transform = "translate(" + (clientX - w/2) + "px, " + (clientY - h/2 - liftY) + "px)";
   }
 
-  function onPointerMove(e){
+  function moveDrag(clientX, clientY){
     if (!drag) return;
-    e.preventDefault();
-    positionFloat(e.clientX, e.clientY);
+    positionFloat(clientX, clientY);
 
     var rect = boardRect();
-    if (e.clientX < rect.left-20 || e.clientX > rect.right+20 || e.clientY < rect.top-20 || e.clientY > rect.bottom+20){
+    if (clientX < rect.left-20 || clientX > rect.right+20 || clientY < rect.top-20 || clientY > rect.bottom+20){
       clearPreview();
       drag.lastValid = null;
       return;
     }
-    var t = pointerToTarget(e.clientX, e.clientY, drag.shape, drag.cellPx, drag.isTouch);
+    var t = pointerToTarget(clientX, clientY, drag.shape, drag.cellPx, drag.isTouch);
     drag.lastTarget = t;
     drag.lastValid = showPreview(drag.shape, t.r0, t.c0);
   }
 
-  function onPointerUp(e){
+  function endDrag(){
     if (!drag) return;
     var d = drag;
     drag = null;
@@ -670,15 +669,61 @@ body{
     }
   }
 
-  trayEl.addEventListener("pointerdown", function(e){
+  // ---- touch (primary path for phones/tablets) ----
+  trayEl.addEventListener("touchstart", function(e){
+    var touch = e.changedTouches[0];
+    var hit = document.elementFromPoint(touch.clientX, touch.clientY);
+    hit = hit && hit.closest(".slot-hit");
+    if (!hit) return;
+    e.preventDefault();
+    drag_touchId = touch.identifier;
+    startDrag(parseInt(hit.dataset.idx, 10), touch.clientX, touch.clientY, true);
+  }, {passive:false});
+
+  window.addEventListener("touchmove", function(e){
+    if (!drag) return;
+    var touch = findTouch(e.changedTouches, drag_touchId);
+    if (!touch) return;
+    e.preventDefault();
+    moveDrag(touch.clientX, touch.clientY);
+  }, {passive:false});
+
+  window.addEventListener("touchend", function(e){
+    if (!drag) return;
+    var touch = findTouch(e.changedTouches, drag_touchId);
+    if (!touch) return;
+    e.preventDefault();
+    endDrag();
+  }, {passive:false});
+
+  window.addEventListener("touchcancel", function(e){
+    if (!drag) return;
+    var touch = findTouch(e.changedTouches, drag_touchId);
+    if (!touch) return;
+    endDrag();
+  }, {passive:false});
+
+  function findTouch(list, id){
+    for (var i=0;i<list.length;i++){ if (list[i].identifier === id) return list[i]; }
+    return null;
+  }
+  var drag_touchId = null;
+
+  // ---- mouse (desktop path) ----
+  trayEl.addEventListener("mousedown", function(e){
     var hit = e.target.closest(".slot-hit");
     if (!hit) return;
     e.preventDefault();
-    startDrag(parseInt(hit.dataset.idx, 10), e);
-    window.addEventListener("pointermove", onPointerMove, {passive:false});
-    window.addEventListener("pointerup", onPointerUp, {passive:false});
-    window.addEventListener("pointercancel", onPointerUp, {passive:false});
-  }, {passive:false});
+    startDrag(parseInt(hit.dataset.idx, 10), e.clientX, e.clientY, false);
+  });
+  window.addEventListener("mousemove", function(e){
+    if (!drag || drag.isTouch) return;
+    moveDrag(e.clientX, e.clientY);
+  });
+  window.addEventListener("mouseup", function(e){
+    if (!drag || drag.isTouch) return;
+    endDrag();
+  });
 
   gearBtn.addEventListener("click", function(e){
     e.stopPropagation();
