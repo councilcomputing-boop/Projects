@@ -80,6 +80,15 @@ body{
 }
 .cell.preview-ok{background:rgba(61,220,132,.32);box-shadow:inset 0 0 0 2px rgba(61,220,132,.6)}
 .cell.preview-bad{background:rgba(255,84,104,.26);box-shadow:inset 0 0 0 2px rgba(255,84,104,.55)}
+.cell.preview-clear{
+  background:rgba(80,255,160,.55);
+  box-shadow:inset 0 0 0 2px rgba(150,255,200,.95), 0 0 12px rgba(80,255,160,.65);
+  animation:clearPulse .55s ease-in-out infinite alternate;
+}
+@keyframes clearPulse{
+  from{filter:brightness(1)}
+  to{filter:brightness(1.45)}
+}
 .cell.clearing .block{animation:pop .32s ease forwards}
 @keyframes pop{
   0%{transform:scale(1);filter:brightness(1)}
@@ -559,8 +568,19 @@ body{
   function boardRect(){ return boardEl.getBoundingClientRect(); }
 
   function clearPreview(){
-    var cells = boardEl.querySelectorAll(".preview-ok,.preview-bad");
-    cells.forEach(function(el){ el.classList.remove("preview-ok","preview-bad"); });
+    var cells = boardEl.querySelectorAll(".preview-ok,.preview-bad,.preview-clear");
+    cells.forEach(function(el){ el.classList.remove("preview-ok","preview-bad","preview-clear"); });
+  }
+
+  function wouldClearLines(shape, r0, c0){
+    var placed = [];
+    shape.forEach(function(off){
+      var r = r0+off[0], c = c0+off[1];
+      if (!board[r][c]){ board[r][c] = true; placed.push([r,c]); }
+    });
+    var lines = findFullLines();
+    placed.forEach(function(rc){ board[rc[0]][rc[1]] = null; });
+    return lines;
   }
 
   function showPreview(shape, r0, c0){
@@ -573,6 +593,15 @@ body{
         el.classList.add(valid ? "preview-ok" : "preview-bad");
       }
     });
+    if (valid){
+      var lines = wouldClearLines(shape, r0, c0);
+      lines.rows.forEach(function(r){
+        for (var c=0;c<SIZE;c++) cellEl(r,c).classList.add("preview-clear");
+      });
+      lines.cols.forEach(function(c){
+        for (var r=0;r<SIZE;r++) cellEl(r,c).classList.add("preview-clear");
+      });
+    }
     return valid;
   }
 
