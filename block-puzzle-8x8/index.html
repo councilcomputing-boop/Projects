@@ -19,18 +19,19 @@
   --good:#3ddc84;--bad:#ff5468;
   --r:20px;
 }
-html,body{height:100%;overscroll-behavior:none;touch-action:none}
+html,body{height:100%;overflow:hidden;overscroll-behavior:none;touch-action:none}
 body{
   font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
   background:linear-gradient(180deg,var(--page1),var(--page2) 70%);
-  color:var(--text);min-height:100vh;overscroll-behavior:none;
+  color:var(--text);overscroll-behavior:none;
+  height:100vh;height:100dvh;height:var(--app-height,100dvh);
   display:flex;flex-direction:column;align-items:center;
   padding:env(safe-area-inset-top) 16px calc(env(safe-area-inset-bottom) + 16px);
   touch-action:none;
 }
-.wrap{width:100%;max-width:460px;display:flex;flex-direction:column;align-items:center;gap:14px;padding-top:16px}
+.wrap{width:100%;max-width:460px;height:100%;min-height:0;display:flex;flex-direction:column;align-items:center;gap:10px;padding-top:12px}
 
-.topbar{width:100%;display:flex;align-items:center;justify-content:space-between}
+.topbar{width:100%;flex:0 0 auto;display:flex;align-items:center;justify-content:space-between}
 .crown-score{display:flex;align-items:center;gap:8px;font-size:26px;font-weight:800;color:var(--gold);text-shadow:0 2px 6px rgba(0,0,0,.3)}
 .crown-score .crown{font-size:26px;filter:drop-shadow(0 2px 3px rgba(0,0,0,.35))}
 
@@ -52,23 +53,23 @@ body{
 }
 .gear-menu button:active{background:rgba(255,255,255,.1)}
 
-.heart-score{position:relative;width:150px;height:130px;margin:2px auto 0;display:flex;align-items:center;justify-content:center}
-.heart-shape{position:absolute;width:110px;height:100px;top:6px;left:20px;filter:drop-shadow(0 0 22px rgba(255,46,154,.85)) drop-shadow(0 0 44px rgba(255,46,154,.45))}
+.heart-score{position:relative;flex:0 0 auto;width:120px;height:104px;margin:0 auto;display:flex;align-items:center;justify-content:center}
+.heart-shape{position:absolute;width:88px;height:80px;top:5px;left:16px;filter:drop-shadow(0 0 18px rgba(255,46,154,.85)) drop-shadow(0 0 36px rgba(255,46,154,.45))}
 .heart-shape::before,.heart-shape::after{
-  content:"";position:absolute;left:55px;top:0;width:55px;height:88px;
+  content:"";position:absolute;left:44px;top:0;width:44px;height:70px;
   background:linear-gradient(160deg,var(--pink2),var(--pink));
-  border-radius:55px 55px 0 0;transform:rotate(-45deg);transform-origin:0 100%;
+  border-radius:44px 44px 0 0;transform:rotate(-45deg);transform-origin:0 100%;
 }
 .heart-shape::after{left:0;transform:rotate(45deg);transform-origin:100% 100%}
 .heart-value{
-  position:relative;z-index:2;font-size:42px;font-weight:800;color:#fff;
+  position:relative;z-index:2;font-size:34px;font-weight:800;color:#fff;
   text-shadow:0 2px 6px rgba(0,0,0,.35);letter-spacing:.3px;margin-top:2px;
   font-variant-numeric:tabular-nums;
 }
 
-.board-wrap{position:relative;width:100%;aspect-ratio:1/1;max-width:420px}
+.board-wrap{position:relative;width:100%;flex:1 1 auto;min-height:0;display:flex;align-items:center;justify-content:center}
 #board{
-  position:relative;width:100%;height:100%;touch-action:none;
+  position:relative;touch-action:none;
   background:var(--board-bg);border-radius:var(--r);
   display:grid;grid-template-columns:repeat(8,1fr);grid-template-rows:repeat(8,1fr);
   padding:8px;gap:0;
@@ -91,12 +92,12 @@ body{
 }
 
 .tray{
-  width:100%;display:flex;gap:8px;justify-content:space-around;align-items:center;
-  min-height:110px;padding:6px 4px;touch-action:none;
+  width:100%;flex:0 0 auto;display:flex;gap:8px;justify-content:space-around;align-items:center;
+  height:clamp(78px,15vh,110px);padding:4px;touch-action:none;
 }
 .slot{
-  flex:1;display:flex;align-items:center;justify-content:center;position:relative;
-  border-radius:12px;min-height:96px;touch-action:none;
+  flex:1;height:100%;display:flex;align-items:center;justify-content:center;position:relative;
+  border-radius:12px;touch-action:none;
 }
 .slot.dragging-from{opacity:.2}
 .piece{
@@ -738,7 +739,28 @@ body{
   });
   document.getElementById("restartBtn").addEventListener("click", newGame);
 
-  window.addEventListener("resize", function(){ renderTray(); });
+  // pin layout to the true visible viewport height, since iOS Safari's
+  // collapsing address bar makes 100vh/100dvh unreliable in some contexts
+  var boardWrapEl = document.querySelector(".board-wrap");
+  function setAppHeight(){
+    document.documentElement.style.setProperty("--app-height", window.innerHeight + "px");
+  }
+  function sizeBoard(){
+    var rect = boardWrapEl.getBoundingClientRect();
+    var s = Math.floor(Math.min(rect.width, rect.height));
+    boardEl.style.width = s + "px";
+    boardEl.style.height = s + "px";
+  }
+  function refit(){
+    setAppHeight();
+    // wait a frame so the flex layout settles against the new --app-height before measuring
+    requestAnimationFrame(sizeBoard);
+    renderTray();
+  }
+  window.addEventListener("resize", refit);
+  window.addEventListener("orientationchange", refit);
+  setAppHeight();
+  requestAnimationFrame(sizeBoard);
 
   // ---------- init ----------
   bestValEl.textContent = best;
