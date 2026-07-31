@@ -164,6 +164,11 @@ body{
 }
 .modal h2{font-size:22px;margin-bottom:6px}
 .modal p{color:var(--muted);font-size:14px;margin-bottom:4px}
+.leftover{
+  display:flex;gap:16px;justify-content:center;align-items:center;
+  margin:12px 0 2px;min-height:40px;
+}
+.leftover .piece .b{border-radius:4px}
 .modal .final-score{font-size:40px;font-weight:800;color:var(--gold);margin:14px 0 4px}
 .modal .new-best{color:var(--good);font-size:13px;font-weight:700;margin-bottom:10px;visibility:hidden}
 .modal .new-best.show{visibility:visible}
@@ -213,7 +218,8 @@ body{
 <div class="overlay" id="overlay">
   <div class="modal">
     <h2>Game Over</h2>
-    <p>No more moves for the pieces left.</p>
+    <p id="gameOverReason">No moves left.</p>
+    <div class="leftover" id="leftoverPieces"></div>
     <div class="final-score" id="finalScore">0</div>
     <div class="new-best" id="newBest">New Best Score!</div>
     <button id="restartBtn">Play Again</button>
@@ -311,6 +317,8 @@ body{
   var newBestEl = document.getElementById("newBest");
   var floatersEl = document.getElementById("floaters");
   var comboBadgeEl = document.getElementById("comboBadge");
+  var leftoverEl = document.getElementById("leftoverPieces");
+  var reasonEl = document.getElementById("gameOverReason");
   var gearBtn = document.getElementById("gearBtn");
   var gearMenu = document.getElementById("gearMenu");
 
@@ -324,9 +332,20 @@ body{
     var maxC = Math.max.apply(null, cells.map(function(c){return c[1];}));
     return {rows: maxR+1, cols: maxC+1};
   }
+  // As the board tightens, stop dealing the biggest pieces. Being killed by a
+  // 9-cell block while the board is still half empty is what makes a loss feel
+  // arbitrary rather than earned.
   function randomShape(){
-    var s = SHAPES[Math.floor(Math.random()*SHAPES.length)];
-    return normShape(s);
+    var free = 0;
+    for (var r=0;r<SIZE;r++){
+      for (var c=0;c<SIZE;c++){ if (!board[r][c]) free++; }
+    }
+    var cap = free < 22 ? 4 : (free < 34 ? 5 : 9);
+    var pool = [];
+    for (var i=0;i<SHAPES.length;i++){
+      if (SHAPES[i].length <= cap) pool.push(SHAPES[i]);
+    }
+    return normShape(pool[Math.floor(Math.random()*pool.length)]);
   }
   function randomColor(){
     return COLORS[Math.floor(Math.random()*COLORS.length)];
@@ -748,6 +767,20 @@ body{
   function endGame(){
     gameOver = true;
     finalScoreEl.textContent = score;
+
+    // show exactly which pieces had nowhere to go, so the ending is verifiable
+    // rather than something you have to take on faith
+    var left = tray.filter(function(p){ return p; });
+    leftoverEl.innerHTML = "";
+    left.forEach(function(p){
+      var d = document.createElement("div");
+      d.className = "piece";
+      renderPieceGrid(d, p.shape, p.color, 15);
+      leftoverEl.appendChild(d);
+    });
+    reasonEl.textContent = left.length === 1
+      ? "This piece had nowhere left to fit:"
+      : "None of these pieces fit anywhere:";
     var isBest = score > 0 && score >= best;
     newBestEl.classList.toggle("show", isBest);
     overlayEl.classList.add("show");
