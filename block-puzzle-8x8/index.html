@@ -129,6 +129,8 @@ body{
 
 .floating-piece{
   position:fixed;top:0;left:0;pointer-events:none;z-index:500;display:grid;
+  /* translucent so the green/red landing preview stays readable underneath */
+  opacity:.62;
 }
 .floating-piece .b{
   border-radius:8px;
@@ -844,14 +846,22 @@ body{
     return valid;
   }
 
+  // the grid squares are inset from the board's edge by BOARD_PADDING
+  function boardCellSize(){
+    var rect = boardRect();
+    return (rect.width - BOARD_PADDING*2 - BOARD_GAP*(SIZE-1)) / SIZE;
+  }
+
   function pointerToTarget(clientX, clientY, shape, cellPx, isTouch){
     var rect = boardRect();
-    var innerCellSize = (rect.width - BOARD_PADDING*2 - BOARD_GAP*(SIZE-1)) / SIZE;
+    var innerCellSize = boardCellSize();
 
     // lift the piece above the finger on touch so it's visible
     var liftY = isTouch ? cellPx * 1.6 : 0;
-    var anchorX = clientX - rect.left - (cellPx * (shapeDims(shape).cols/2));
-    var anchorY = clientY - rect.top - liftY - (cellPx * (shapeDims(shape).rows/2));
+    // BOARD_PADDING has to come off here, otherwise the piece lands one
+    // padding-width away from where the dragged ghost is actually drawn
+    var anchorX = clientX - rect.left - BOARD_PADDING - (cellPx * (shapeDims(shape).cols/2));
+    var anchorY = clientY - rect.top - BOARD_PADDING - liftY - (cellPx * (shapeDims(shape).rows/2));
 
     var c0 = Math.round(anchorX / (innerCellSize+BOARD_GAP));
     var r0 = Math.round(anchorY / (innerCellSize+BOARD_GAP));
@@ -863,7 +873,9 @@ body{
     var piece = tray[idx];
     if (!piece) return;
 
-    var floatCellPx = Math.max(30, CELL_PX * 1.7);
+    // draw the dragged piece at exactly board-cell size so it sits 1:1 over
+    // the squares it will land in, instead of at some unrelated scale
+    var floatCellPx = boardCellSize();
 
     var floatEl = document.createElement("div");
     floatEl.className = "floating-piece";
