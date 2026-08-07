@@ -200,7 +200,7 @@ button{user-select:none;-webkit-user-select:none;touch-action:manipulation}
 .shoe-row{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:13px;color:var(--muted);margin-bottom:4px}
 .shoe-row select{padding:6px 8px;border:1.5px solid var(--border);border-radius:8px;font-size:14px;background:#fff}
 .table-label{font-size:11px;font-weight:700;text-transform:uppercase;color:var(--muted);letter-spacing:.5px;text-align:center;margin-bottom:4px}
-.card-row{display:flex;gap:6px;flex-wrap:nowrap;justify-content:flex-start;margin-bottom:4px;height:60px;overflow-x:auto;overflow-y:hidden}
+.card-row{display:flex;gap:6px;flex-wrap:nowrap;justify-content:center;margin-bottom:4px;height:60px;overflow-x:auto;overflow-y:hidden}
 .playing-card{width:42px;height:58px;border-radius:6px;background:#fff;border:1px solid #ccc;display:flex;flex-direction:column;align-items:center;justify-content:center;font-weight:800;font-size:13px;box-shadow:0 1px 3px rgba(0,0,0,.2)}
 .playing-card.red{color:var(--red)}
 .playing-card.black{color:#1a1a1a}
@@ -340,6 +340,14 @@ button{user-select:none;-webkit-user-select:none;touch-action:manipulation}
 .felt .hand-review-line{color:var(--gold-pale)}
 .felt-empty-hint{margin:auto;text-align:center;font-size:13px;color:#c9b896;font-style:italic}
 .felt-msg-zone{min-height:24px;margin-top:6px}
+/* Play view fills the screen height while playing (Peek/Quiz tabs only —
+   scoped under body.fill-mode so every other view is untouched). */
+body.fill-mode{height:100dvh;overflow:hidden;display:flex;flex-direction:column}
+body.fill-mode .hdr{flex:0 0 auto}
+body.fill-mode #C{flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column}
+body.fill-mode #dealerView.active{flex:1;min-height:0;display:flex;flex-direction:column}
+body.fill-mode #dealerView.active > .card:first-child{flex:1;min-height:0;display:flex;flex-direction:column}
+body.fill-mode .felt{flex:1 1 auto;min-height:150px;overflow-y:auto}
 
 /* Store */
 .store-drops-wrap{position:relative}
@@ -688,6 +696,11 @@ button{user-select:none;-webkit-user-select:none;touch-action:manipulation}
         </div>
       </div>
 
+      <div class="icon-btn-row" id="strategyTipRow" style="justify-content:center;margin:4px 0">
+        <button class="peek-icon-btn" id="strategyTipBtn" aria-label="Get a strategy tip" style="display:none">💡</button>
+      </div>
+      <div class="hint" id="strategyTipResult" style="display:none;text-align:center"></div>
+
       <div class="btn-row" id="playActions">
         <button class="btn btn-hit" id="hitBtn">Hit</button>
         <button class="btn btn-stand" id="standBtn">Stand</button>
@@ -764,6 +777,7 @@ button{user-select:none;-webkit-user-select:none;touch-action:manipulation}
         </select>
       </div>
       <button class="btn btn-outline" id="speedStartBtn" style="margin-top:6px">Start Drill</button>
+      <button class="btn btn-outline" id="speedStopBtn" style="margin-top:6px;display:none">Stop Drill</button>
     </div>
 
     <div class="card speed-stage-body" id="speedStage" style="display:none">
@@ -1338,6 +1352,62 @@ function basicStrategyAction(cards, dealerUpRank, canDouble, canSplit){
   return action === 'D' ? (canDouble ? 'D' : 'H') : action;
 }
 
+// True-count deviations from basic strategy (Illustrious 18 minus Insurance —
+// this app has no insurance mechanic). Distinct from the existing player-
+// mistake "deviation" concept (describeDeviation/hasDeviations) — named
+// countDeviation/COUNT_DEVIATIONS to avoid collisions. 10-10 vs 5/6 are
+// traditionally quoted assuming double-after-split; this engine is S17/
+// DAS-off, so real thresholds run a bit higher — kept the classic numbers
+// here since this is a trainer, not an EV tool.
+const COUNT_DEVIATIONS = [
+  { type:'hard', total:16, dealer:'10', dir:'gte', tc: 0, action:'S' }, // base H
+  { type:'hard', total:15, dealer:'10', dir:'gte', tc: 4, action:'S' }, // base H
+  { type:'hard', total:16, dealer:'9',  dir:'gte', tc: 5, action:'S' }, // base H
+  { type:'hard', total:12, dealer:'2',  dir:'gte', tc: 3, action:'S' }, // base H
+  { type:'hard', total:12, dealer:'3',  dir:'gte', tc: 2, action:'S' }, // base H
+  { type:'hard', total:10, dealer:'10', dir:'gte', tc: 4, action:'D' }, // base H
+  { type:'hard', total:10, dealer:'A',  dir:'gte', tc: 4, action:'D' }, // base H
+  { type:'hard', total:11, dealer:'A',  dir:'gte', tc: 1, action:'D' }, // base H
+  { type:'hard', total:9,  dealer:'2',  dir:'gte', tc: 1, action:'D' }, // base H
+  { type:'hard', total:9,  dealer:'7',  dir:'gte', tc: 3, action:'D' }, // base H
+  { type:'pair', rank:'10', dealer:'5', dir:'gte', tc: 5, action:'P' }, // base S
+  { type:'pair', rank:'10', dealer:'6', dir:'gte', tc: 4, action:'P' }, // base S
+  { type:'hard', total:13, dealer:'2', dir:'lte', tc:-1, action:'H' }, // base S
+  { type:'hard', total:13, dealer:'3', dir:'lte', tc:-2, action:'H' }, // base S
+  { type:'hard', total:12, dealer:'4', dir:'lte', tc: 0, action:'H' }, // base S
+  { type:'hard', total:12, dealer:'5', dir:'lte', tc:-2, action:'H' }, // base S
+  { type:'hard', total:12, dealer:'6', dir:'lte', tc:-1, action:'H' }, // base S
+];
+
+function findCountDeviation(cards, dealerUpRank, canSplit){
+  const dIdx = dealerIdx(dealerUpRank);
+  if(canSplit && cards.length === 2 && pairKey(cards[0].rank) === pairKey(cards[1].rank)){
+    const key = pairKey(cards[0].rank);
+    const hit = COUNT_DEVIATIONS.find(e => e.type === 'pair' && e.rank === key && dealerIdx(e.dealer) === dIdx);
+    if(hit) return hit;
+  }
+  const { total, soft } = softTotalInfo(cards);
+  if(soft) return null; // no soft-total entries in this subset
+  return COUNT_DEVIATIONS.find(e => e.type === 'hard' && e.total === total && dealerIdx(e.dealer) === dIdx) || null;
+}
+
+function deviationAction(cards, dealerUpRank, trueCount, canDouble, canSplit){
+  const base = basicStrategyAction(cards, dealerUpRank, canDouble, canSplit);
+  const entry = findCountDeviation(cards, dealerUpRank, canSplit);
+  if(!entry) return { action: base, base, active: false };
+  const met = entry.dir === 'gte' ? trueCount >= entry.tc : trueCount <= entry.tc;
+  if(!met) return { action: base, base, active: false };
+  let action = entry.action;
+  if(action === 'D' && !canDouble) action = 'H'; // same fallback basicStrategyAction applies
+  return { action, base, active: true };
+}
+
+function strategyTipMessage(result){
+  if(!result.active) return 'The book says: ' + ACTION_LABELS[result.base];
+  if(result.action === result.base) return 'The book and the count agree: ' + ACTION_LABELS[result.action];
+  return 'The count says: ' + ACTION_LABELS[result.action] + ' (the book alone would say ' + ACTION_LABELS[result.base] + ')';
+}
+
 /* ============================================================ */
 /* Tab switching                                                 */
 /* ============================================================ */
@@ -1347,6 +1417,10 @@ let activeTab = 'home';
 const TOP_LEVEL_TABS = ['home','store','account'];
 
 function setActiveTab(tab){
+  if(activeTab === 'speed' && speedRunning && tab !== 'speed'){
+    if(!confirm('A Speed Drill is in progress. Leaving now will end it. Continue?')) return;
+    stopSpeedDrill();
+  }
   activeTab = tab;
   localStorage.setItem(TAB_KEY, tab);
   document.querySelector('.hdr').classList.toggle('hdr-big', tab === 'home');
@@ -1360,6 +1434,7 @@ function setActiveTab(tab){
   document.getElementById('signinView').classList.toggle('active', tab === 'signin');
   document.getElementById('manualView').classList.toggle('active', tab === 'manual');
   document.getElementById('dealerView').classList.toggle('active', tab === 'peek' || tab === 'quiz');
+  document.body.classList.toggle('fill-mode', tab === 'peek' || tab === 'quiz');
   document.getElementById('deckMathView').classList.toggle('active', tab === 'math');
   document.getElementById('speedView').classList.toggle('active', tab === 'speed');
   document.getElementById('rulesView').classList.toggle('active', tab === 'rules');
@@ -1367,8 +1442,8 @@ function setActiveTab(tab){
     document.getElementById('peekBtn').style.display = (tab === 'peek') ? 'flex' : 'none';
     document.getElementById('quizScore').style.display = (tab === 'quiz') ? 'block' : 'none';
     document.getElementById('dealerModeHint').textContent = (tab === 'peek')
-      ? '👁 Peek the count — 10 🩸 · 💡 Betting Tip — 15 🩸'
-      : "Count stays hidden — you'll be quizzed on it at random moments.";
+      ? '👁 Peek the count — 10 🩸 · 💡 Betting Tip — 15 🩸 · 💡 Strategy Tip — 15 🩸'
+      : "Count stays hidden — you'll be quizzed on it at random moments. 💡 Strategy Tip is free here.";
     isPeeking = false;
     renderDealer();
     if(!betEstablishedThisSession && handIsIdle()) openBetSetupModal();
@@ -1785,6 +1860,34 @@ document.getElementById('betTipBtn').addEventListener('click', () => {
   renderDealer();
 });
 
+const STRATEGY_TIP_COST = 15;
+let strategyTipShownFor = null;
+let strategyTipUsedThisDecision = false;
+document.getElementById('strategyTipBtn').addEventListener('click', () => {
+  const h = dealerState.hand;
+  if(!h || h.stage !== 'player' || strategyTipUsedThisDecision) return;
+  const cur = h.hands[h.activeIndex];
+  const canDouble = canDoubleNow(h, cur);
+  const canSplit = canSplitNow(h, cur);
+  let message;
+  if(activeTab === 'quiz'){
+    const rec = basicStrategyAction(cur.cards, h.dealerUp.rank, canDouble, canSplit);
+    message = 'The book says: ' + ACTION_LABELS[rec]; // never count-aware in Quiz — no free count leak
+  } else {
+    if(dealerState.drops < STRATEGY_TIP_COST){
+      showBetFeedback('Too little blood for a strategy tip — the Store awaits.', false);
+      return;
+    }
+    dealerState.drops -= STRATEGY_TIP_COST;
+    saveDealerState();
+    const result = deviationAction(cur.cards, h.dealerUp.rank, currentTrueCount(), canDouble, canSplit);
+    message = strategyTipMessage(result);
+  }
+  strategyTipUsedThisDecision = true;
+  document.getElementById('strategyTipResult').textContent = message;
+  renderDealer();
+});
+
 /* --- Quiz trigger (Quiz Practice tab only) --- */
 let isPeeking = false;
 let quizPending = false;
@@ -1991,6 +2094,9 @@ function dealNewHand(){
   flashBetTaken(dealerState.currentBet);
   betTipUsedThisHand = false;
   document.getElementById('betTipResult').textContent = '';
+  strategyTipShownFor = null;
+  strategyTipUsedThisDecision = false;
+  document.getElementById('strategyTipResult').textContent = '';
 
   const hand = {
     id: ++handIdCounter,
@@ -2375,6 +2481,8 @@ function renderDealer(){
     const hasDeviations = dealerState.coachingEnabled && h.hands.some(hd => (hd.decisions || []).some(d => !d.correct));
     reviewLineEl.textContent = draculaSay(hasDeviations ? DRACULA_HAND_REVIEW_PROMPT : DRACULA_HAND_REVIEW_PROMPT_NEUTRAL);
     reviewLineEl.style.display = 'block';
+    document.getElementById('strategyTipBtn').style.display = 'none';
+    document.getElementById('strategyTipResult').style.display = 'none';
   } else if(h.stage === 'player'){
     document.getElementById('handReviewLine').style.display = 'none';
     bannerEl.innerHTML = '';
@@ -2386,13 +2494,20 @@ function renderDealer(){
     splitBtnEl.style.display = canSplit ? 'flex' : 'none';
     splitBtnEl.disabled = quizPending || dealerState.drops < cur.bet;
 
-    const hintEl = document.getElementById('dealerModeHint');
+    const stratBtn = document.getElementById('strategyTipBtn');
+    const stratResultEl = document.getElementById('strategyTipResult');
     if(dealerState.coachingEnabled){
-      const rec = basicStrategyAction(cur.cards, h.dealerUp.rank, canDouble, canSplit);
-      hintEl.textContent = 'The book says: ' + ACTION_LABELS[rec];
-      hintEl.style.display = 'block';
+      const decisionKey = h.id + ':' + h.activeIndex + ':' + cur.cards.length;
+      if(decisionKey !== strategyTipShownFor){
+        strategyTipShownFor = decisionKey;
+        strategyTipUsedThisDecision = false;
+        stratResultEl.textContent = '';
+      }
+      stratBtn.style.display = strategyTipUsedThisDecision ? 'none' : 'flex';
+      stratResultEl.style.display = strategyTipUsedThisDecision ? 'block' : 'none';
     } else {
-      hintEl.style.display = 'none';
+      stratBtn.style.display = 'none';
+      stratResultEl.style.display = 'none';
     }
   } else {
     // h.stage === 'dealer' — the dealer is playing out one card at a time;
@@ -2401,6 +2516,8 @@ function renderDealer(){
     bannerEl.innerHTML = '';
     playActionsEl.style.display = 'none';
     dealBtnEl.style.display = 'none';
+    document.getElementById('strategyTipBtn').style.display = 'none';
+    document.getElementById('strategyTipResult').style.display = 'none';
   }
 
   hitBtnEl.disabled = quizPending;
@@ -2522,10 +2639,41 @@ let speedCdInterval = null, speedAdvanceTimer = null;
 let speedCardsSinceAsk = 0;
 let speedResumeAfterAsk = null;
 
+function speedBeforeUnloadHandler(e){ e.preventDefault(); e.returnValue = ''; }
+
+// Shared cleanup for both an early Stop and a natural finish — the single
+// place that clears the drill's timers/listener so nothing keeps running
+// against a hidden view after the user navigates away.
+function teardownSpeedDrill(){
+  clearInterval(speedCdInterval);
+  clearTimeout(speedAdvanceTimer);
+  speedCdInterval = null;
+  speedAdvanceTimer = null;
+  speedRunning = false;
+  speedResumeAfterAsk = null;
+  document.getElementById('speedStartBtn').disabled = false;
+  document.getElementById('speedStopBtn').style.display = 'none';
+  document.getElementById('speedMidAskOverlay').style.display = 'none';
+  window.removeEventListener('beforeunload', speedBeforeUnloadHandler);
+}
+
+function stopSpeedDrill(){
+  if(!speedRunning) return;
+  teardownSpeedDrill();
+  document.getElementById('speedStage').style.display = 'none';
+  document.getElementById('speedAnswerCard').style.display = 'none';
+  document.getElementById('speedCardArea').innerHTML = '';
+  document.getElementById('speedCountdown').textContent = '';
+  document.getElementById('speedElapsed').textContent = '';
+  document.getElementById('speedTapBtn').style.display = 'none';
+}
+
 function startSpeedDrill(){
   if(speedRunning) return; // re-entrancy guard: a run is already in progress
   speedRunning = true;
   document.getElementById('speedStartBtn').disabled = true;
+  document.getElementById('speedStopBtn').style.display = 'block';
+  window.addEventListener('beforeunload', speedBeforeUnloadHandler);
   clearInterval(speedCdInterval);
   clearTimeout(speedAdvanceTimer);
 
@@ -2613,9 +2761,8 @@ function runSpeedSequence(pace){
 }
 
 function finishSpeedDrill(){
-  speedRunning = false;
-  document.getElementById('speedStartBtn').disabled = false;
   const elapsedMs = performance.now() - speedStartTime;
+  teardownSpeedDrill();
   document.getElementById('speedElapsed').textContent = 'Elapsed: ' + (elapsedMs / 1000).toFixed(2) + 's';
   document.getElementById('speedTapBtn').style.display = 'none';
   const answerCard = document.getElementById('speedAnswerCard');
@@ -2626,6 +2773,7 @@ function finishSpeedDrill(){
 }
 
 document.getElementById('speedStartBtn').addEventListener('click', startSpeedDrill);
+document.getElementById('speedStopBtn').addEventListener('click', stopSpeedDrill);
 
 document.getElementById('speedSubmitBtn').addEventListener('click', () => {
   const val = parseInt(document.getElementById('speedAnswerInput').value, 10);
