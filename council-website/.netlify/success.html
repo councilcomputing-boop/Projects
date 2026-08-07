@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Message Sent — Council Computing</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --win-face:#d4d0c8;--win-blue:#000080;--win-blue2:#1084d0;--win-teal:#008080;
+  --shadow-out:inset -1px -1px #404040,inset 1px 1px #fff,inset -2px -2px #808080,inset 2px 2px #dfdfdf;
+  --shadow-in:inset 1px 1px #404040,inset -1px -1px #fff,inset 2px 2px #808080,inset -2px -2px #dfdfdf;
+}
+body{
+  font-family:'Courier New',Courier,monospace;
+  background:var(--win-teal);
+  min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  padding:20px;
+}
+.dialog{
+  background:var(--win-face);box-shadow:var(--shadow-out);
+  width:100%;max-width:460px;
+  animation:pop .3s ease;
+}
+@keyframes pop{from{opacity:0;transform:scale(.92)}to{opacity:1;transform:scale(1)}}
+.titlebar{
+  background:linear-gradient(to right,var(--win-blue),var(--win-blue2));
+  color:#fff;padding:3px 6px;font-size:13px;font-weight:700;
+  display:flex;align-items:center;gap:6px;
+}
+.titlebar .tb-btns{margin-left:auto;display:flex;gap:2px}
+.titlebar .tb-btns span{
+  width:16px;height:14px;background:var(--win-face);
+  box-shadow:var(--shadow-out);font-size:9px;
+  display:flex;align-items:center;justify-content:center;color:#000;
+}
+.body{padding:24px 28px 28px;display:flex;gap:18px;align-items:flex-start}
+.icon{font-size:40px;flex-shrink:0;line-height:1}
+.content h2{font-size:16px;font-weight:700;margin-bottom:8px;color:#0a0a0a}
+.content p{font-size:13px;color:#333;line-height:1.7;margin-bottom:6px}
+.divider{height:1px;background:#999;margin:18px 0}
+.actions{display:flex;justify-content:flex-end;padding:0 28px 20px}
+.win-btn{
+  background:var(--win-face);border:none;box-shadow:var(--shadow-out);
+  padding:5px 20px;font-family:inherit;font-size:13px;cursor:pointer;
+}
+.win-btn:active{box-shadow:var(--shadow-in)}
+.win-btn.primary{background:var(--win-blue);color:#fff}
+.statusbar{
+  background:var(--win-face);border-top:1px solid #999;
+  padding:3px 10px;font-size:11px;color:#444;display:flex;gap:10px;
+}
+.statusbar-cell{box-shadow:var(--shadow-in);padding:1px 6px}
+</style>
+</head>
+<body>
+<div class="dialog">
+  <div class="titlebar">
+    <span>🖥️</span><span>CouncilComputing.exe</span>
+    <div class="tb-btns"><span>─</span><span>□</span><span>✕</span></div>
+  </div>
+  <div class="body">
+    <div class="icon">✅</div>
+    <div class="content">
+      <h2>Message sent successfully!</h2>
+      <p>Thanks for reaching out. We'll get back to you within 1 business day with a scoping question or a straight quote.</p>
+      <p style="color:#555;font-size:12px">— Hayes McNeill, Council Computing</p>
+    </div>
+  </div>
+  <div class="divider" style="margin:0 28px"></div>
+  <div class="actions">
+    <a href="/"><button class="win-btn primary">◀ Back to Home</button></a>
+  </div>
+  <div class="statusbar">
+    <span class="statusbar-cell">Done</span>
+    <span class="statusbar-cell">councilcomputing@gmail.com</span>
+  </div>
+</div>
+</body>
+</html>

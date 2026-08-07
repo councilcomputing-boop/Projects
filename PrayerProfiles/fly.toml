@@ -3,6 +3,9 @@ primary_region = "ord"
 
 [build]
 
+[env]
+  DATA_DIR = "/data"
+
 [http_service]
   internal_port = 3001
   force_https = true

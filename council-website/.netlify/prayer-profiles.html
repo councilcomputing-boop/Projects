@@ -1,0 +1,777 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Prayer Profiles — a calmer way to pray</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,440;0,9..144,560;0,9..144,650;1,9..144,500&family=Instrument+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --cream: #f5efe2;
+    --cream-deep: #ede4d1;
+    --paper: #faf6ec;
+    --ink: #262320;
+    --ink-soft: #746f63;
+    --gold: #b8863c;
+    --gold-deep: #8f6527;
+    --gold-wash: #f1e2c2;
+    --terracotta: #b5603c;
+    --sage: #6f8a5e;
+    --dusty-blue: #5c7a99;
+    --hairline: rgba(38,35,32,0.12);
+    --font-serif: 'Fraunces', serif;
+    --font-sans: 'Instrument Sans', sans-serif;
+  }
+  *{ box-sizing: border-box; }
+  html,body{ margin:0; }
+  body{
+    background: var(--cream);
+    font-family: var(--font-sans);
+    color: var(--ink);
+  }
+  a{ color:inherit; }
+
+  .wrap{ max-width: 1160px; margin: 0 auto; padding: 0 32px; }
+
+  .site-nav{
+    display:flex; align-items:center; justify-content:space-between;
+    padding: 26px 0;
+  }
+  .nav-brand{ display:flex; align-items:center; gap:10px; }
+  .nav-mark{
+    width:34px; height:34px; border-radius:50%;
+    border: 1px solid var(--hairline);
+    display:flex; align-items:center; justify-content:center;
+    font-family: var(--font-serif); font-weight:650; font-size:14px;
+  }
+  .nav-word{ font-weight:600; font-size:15px; }
+  .nav-links{ display:flex; align-items:center; gap:28px; }
+  .nav-links a{ font-size:14px; color: var(--ink-soft); text-decoration:none; }
+  .nav-cta{
+    background: var(--ink); color: var(--paper);
+    padding: 10px 20px; border-radius: 999px;
+    font-size:13.5px; font-weight:600; text-decoration:none;
+    white-space:nowrap;
+  }
+
+  .hero{
+    display:flex; align-items:center; gap:56px;
+    padding: 40px 0 90px;
+    flex-wrap: wrap;
+  }
+  .hero-copy{ flex:1 1 420px; min-width:320px; }
+  .eyebrow{
+    font-size:12px; font-weight:600; letter-spacing:0.12em; text-transform:uppercase;
+    color: var(--gold-deep); margin-bottom:16px;
+  }
+  .hero h1{
+    font-family: var(--font-serif);
+    font-weight:650; font-style:italic;
+    font-size: clamp(34px, 5vw, 52px);
+    line-height:1.08;
+    margin: 0 0 20px;
+    max-width: 480px;
+  }
+  .hero p{
+    font-size:16.5px; line-height:1.65; color: var(--ink-soft);
+    max-width:440px; margin: 0 0 32px;
+  }
+  .badges{ display:flex; gap:12px; flex-wrap:wrap; }
+  .badge{
+    display:flex; align-items:center; gap:10px;
+    background: var(--ink); color: var(--paper);
+    padding: 11px 18px; border-radius: 14px;
+    text-decoration:none;
+  }
+  .badge-text{ line-height:1.2; }
+  .badge-sub{ font-size:9.5px; color: rgba(250,246,236,0.65); }
+  .badge-main{ font-size:14px; font-weight:600; }
+
+  .hero-phone{ flex:0 0 auto; display:flex; justify-content:center; }
+
+  .features{ padding: 20px 0 90px; }
+  .section-eyebrow{
+    font-size:12px; font-weight:600; letter-spacing:0.12em; text-transform:uppercase;
+    color: var(--gold-deep); margin-bottom:12px; text-align:center;
+  }
+  .section-title{
+    font-family: var(--font-serif); font-weight:650; font-size: 30px;
+    text-align:center; margin: 0 0 48px;
+  }
+  .feature-grid{
+    display:grid; grid-template-columns: repeat(3, 1fr); gap:24px;
+  }
+  .feature-card{
+    background: var(--paper); border:1px solid var(--hairline); border-radius:20px;
+    padding: 28px 24px;
+  }
+  .feature-icon{
+    width:44px; height:44px; border-radius:12px;
+    background: var(--gold-wash); color: var(--gold-deep);
+    display:flex; align-items:center; justify-content:center;
+    margin-bottom:18px;
+  }
+  .feature-card h3{
+    font-family: var(--font-serif); font-weight:650; font-size:18px; margin: 0 0 8px;
+  }
+  .feature-card p{ font-size:14px; line-height:1.6; color: var(--ink-soft); margin:0; }
+
+  .quote-band{
+    background: var(--paper); border-top:1px solid var(--hairline); border-bottom:1px solid var(--hairline);
+    padding: 70px 0; text-align:center;
+  }
+  .quote-band .quote-mark{
+    font-family: var(--font-serif); font-size:56px; color: var(--gold); line-height:0.5; display:block; margin-bottom:14px;
+  }
+  .quote-band p{
+    font-family: var(--font-serif); font-style:italic; font-size: clamp(19px,2.6vw,26px);
+    line-height:1.5; max-width:640px; margin: 0 auto 16px; color: var(--ink);
+  }
+  .quote-band .ref{ font-size:12px; letter-spacing:0.1em; text-transform:uppercase; color: var(--gold-deep); font-weight:600; }
+
+  .site-footer{
+    padding: 40px 0 60px;
+    display:flex; align-items:center; justify-content:space-between;
+    flex-wrap:wrap; gap:16px;
+  }
+  .footer-links{ display:flex; gap:24px; }
+  .footer-links a{ font-size:13px; color: var(--ink-soft); text-decoration:none; }
+  .footer-copy{ font-size:13px; color: var(--ink-soft); }
+
+  @media (max-width: 860px){
+    .feature-grid{ grid-template-columns: 1fr; }
+    .hero{ justify-content:center; text-align:left; }
+    .install-grid{ grid-template-columns: 1fr !important; }
+  }
+
+  .install{ padding: 20px 0 90px; }
+  .install-grid{
+    display:grid; grid-template-columns: 1fr 1fr; gap:24px; margin-bottom:24px;
+  }
+  .install-card{
+    background: var(--paper); border:1px solid var(--hairline); border-radius:20px; padding: 24px 26px;
+  }
+  .install-card h3{ font-family: var(--font-serif); font-weight:650; font-size:18px; margin: 0 0 4px; }
+  .install-tag{ font-size:12.5px; color: var(--gold-deep); font-weight:600; margin-bottom:14px; }
+  .install-card ol{ margin:0; padding-left:20px; font-size:14px; line-height:1.7; color: var(--ink-soft); }
+  .install-card ol li strong{ color: var(--ink); font-weight:600; }
+  .install-link{
+    display:flex; align-items:center; justify-content:space-between; gap:12px;
+    background: var(--ink); color: var(--paper);
+    border-radius:16px; padding: 16px 20px;
+  }
+  .install-link code{
+    font-family: var(--font-sans); font-size:14px; color: var(--paper); background:none;
+  }
+  .install-link a{
+    background: var(--paper); color: var(--ink); text-decoration:none;
+    padding: 8px 16px; border-radius:999px; font-size:13px; font-weight:600; white-space:nowrap;
+  }
+  .install-note{ font-size:13px; color: var(--ink-soft); margin-top:12px; text-align:center; }
+
+  /* --- phone demo (unchanged from app mockup) --- */
+  .device{
+    position:relative;
+    width:390px;
+    height:844px;
+    border-radius:56px;
+    padding:14px;
+    background: linear-gradient(160deg, #2a2724, #17150f);
+    box-shadow: 0 40px 80px -20px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.04) inset;
+  }
+  .screen{
+    position:relative;
+    width:100%;
+    height:100%;
+    border-radius:44px;
+    overflow:hidden;
+    background: var(--cream);
+    display:flex;
+    flex-direction:column;
+  }
+  .screen::before{
+    content:"";
+    position:absolute;
+    inset:0;
+    pointer-events:none;
+    opacity:0.45;
+    z-index:1;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix type='matrix' values='0 0 0 0 0.14  0 0 0 0 0.13  0 0 0 0 0.11  0 0 0 0.045 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+    mix-blend-mode:multiply;
+  }
+  .notch{
+    position:absolute; top:14px; left:50%; transform:translateX(-50%);
+    width:120px; height:32px; background:#0c0b09; border-radius:20px; z-index:20;
+  }
+  .status-bar{
+    position:relative; z-index:2; display:flex; justify-content:space-between; align-items:center;
+    padding: 18px 30px 0; font-weight:600; font-size:15px; color: var(--ink);
+  }
+  .status-icons{ display:flex; gap:5px; align-items:center; }
+  .content{
+    position:relative; z-index:2; flex:1; display:flex; flex-direction:column;
+    padding: 14px 22px 34px; overflow-y:auto;
+  }
+  .topbar{ display:flex; align-items:center; justify-content:space-between; padding: 6px 0 18px; }
+  .brand{ display:flex; align-items:center; gap:10px; }
+  .icon-btn{
+    width:38px; height:38px; border-radius:50%;
+    display:flex; align-items:center; justify-content:center;
+    background: var(--paper); border: 1px solid var(--hairline); color: var(--ink-soft);
+  }
+  .icon-btn:active{ transform: scale(0.94); }
+  .wordmark{ font-family: var(--font-serif); font-style: italic; font-weight: 560; font-size: 22px; color: var(--ink); }
+
+  .streak{
+    position:relative; display:flex; align-items:center; justify-content:space-between; gap:12px;
+    background: linear-gradient(155deg, var(--gold-wash), var(--paper) 65%);
+    border: 1px solid var(--hairline); border-radius: 20px; padding: 16px 18px; margin-bottom: 16px; overflow:hidden;
+  }
+  .streak-left{ display:flex; align-items:center; gap:12px; }
+  .streak-flame{
+    width:42px; height:42px; border-radius:50%; background: var(--gold);
+    display:flex; align-items:center; justify-content:center;
+    box-shadow: 0 4px 10px rgba(184,134,60,0.35); flex-shrink:0;
+  }
+  .streak-num{ font-family: var(--font-serif); font-weight:650; font-size: 26px; color: var(--ink); line-height:1; }
+  .streak-label{ font-size: 11px; color: var(--ink-soft); letter-spacing:0.03em; margin-top:2px; }
+  .week{ display:flex; gap:6px; }
+  .day{ display:flex; flex-direction:column; align-items:center; gap:5px; }
+  .day-letter{ font-size:9.5px; color: var(--ink-soft); font-weight:600; }
+  .day-dot{
+    width:22px; height:22px; border-radius:50%; border:1.5px solid var(--hairline);
+    display:flex; align-items:center; justify-content:center; background: var(--paper); cursor:pointer;
+    transition: background .15s, border-color .15s, transform .1s;
+  }
+  .day-dot:active{ transform: scale(0.9); }
+  .day-dot.done{ background: var(--gold); border-color: var(--gold); }
+  .day-dot.today{ box-shadow: 0 0 0 2px var(--gold-deep); }
+  .day-dot svg{ opacity:0; }
+  .day-dot.done svg{ opacity:1; }
+
+  .stats{ display:grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 18px; }
+  .stat{
+    background: linear-gradient(160deg, var(--paper), var(--cream-deep));
+    border: 1px solid var(--hairline); border-radius: 20px; padding: 16px 16px 14px;
+  }
+  .dot{ width:8px; height:8px; border-radius:50%; margin-bottom:10px; }
+  .stat-num{ font-family: var(--font-serif); font-weight:560; font-size: 28px; color: var(--ink); line-height:1; margin-bottom:6px; }
+  .stat-label{ font-size: 10.5px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft); font-weight:600; }
+
+  .quote{
+    position:relative; background: var(--paper); border-left: 3px solid var(--gold);
+    border-radius: 0 16px 16px 0; padding: 16px 18px 18px 20px;
+  }
+  .quote-mark{ font-family: var(--font-serif); font-size: 38px; color: var(--gold); line-height: 0.5; display:block; margin-bottom: 6px; }
+  .quote-text{ font-family: var(--font-serif); font-style: italic; font-size: 15px; line-height:1.5; color: var(--ink); margin: 0 0 8px; }
+  .quote-ref{ font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--gold-deep); font-weight:600; }
+
+  .home-indicator{
+    position:absolute; bottom:8px; left:50%; transform:translateX(-50%);
+    width:130px; height:5px; border-radius:3px; background: var(--ink); opacity:0.25; z-index:20;
+  }
+
+  .backdrop{
+    position:absolute; inset:0; background: rgba(20,18,15,0.4);
+    opacity:0; pointer-events:none; transition: opacity .25s ease; z-index:29;
+  }
+  .backdrop.open{ opacity:1; pointer-events:auto; }
+
+  .sidebar{
+    position:absolute; top:0; left:0; bottom:0; width:82%; background: var(--cream); z-index:30;
+    transform: translateX(-100%); transition: transform .28s cubic-bezier(.32,.72,.35,1);
+    display:flex; flex-direction:column; box-shadow: 12px 0 30px rgba(0,0,0,0.18);
+  }
+  .sidebar.open{ transform: translateX(0); }
+  .sidebar.right{ left:auto; right:0; transform: translateX(100%); box-shadow: -12px 0 30px rgba(0,0,0,0.18); }
+  .sidebar.right.open{ transform: translateX(0); }
+  .sidebar-inner{ flex:1; display:flex; flex-direction:column; padding: 60px 18px 24px; overflow-y:auto; }
+  .sidebar-header{ display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; }
+  .sidebar-title{ font-family: var(--font-serif); font-weight:650; font-size:20px; color: var(--ink); }
+  .search{
+    display:flex; align-items:center; gap:9px; background: var(--paper); border-radius: 14px; padding: 11px 14px;
+    box-shadow: inset 0 1px 3px rgba(38,35,32,0.08), inset 0 0 0 1px var(--hairline); margin-bottom: 14px;
+  }
+  .search input{ border:none; background:none; outline:none; font-family: var(--font-sans); font-size:14px; color: var(--ink); width:100%; }
+  .search input::placeholder{ color: var(--ink-soft); }
+  .select-wrap{ position:relative; margin-bottom: 18px; }
+  .select-wrap select{
+    width:100%; appearance:none; -webkit-appearance:none; -moz-appearance:none;
+    background: var(--paper); border: 1px solid var(--hairline); border-radius: 14px;
+    padding: 12px 38px 12px 14px; font-family: var(--font-sans); font-size: 13.5px; font-weight:600; color: var(--ink); cursor:pointer;
+  }
+  .select-wrap select:focus{ outline:none; border-color: var(--gold); box-shadow: 0 0 0 3px var(--gold-wash); }
+  .select-wrap .chevron{ position:absolute; right:14px; top:50%; transform:translateY(-50%); pointer-events:none; color: var(--ink-soft); }
+  .add-btn{
+    display:flex; align-items:center; justify-content:center; gap:8px; width:100%; padding: 11px 14px; margin-bottom: 14px;
+    border-radius: 14px; border: 1.5px dashed var(--hairline); background:none; color: var(--gold-deep);
+    font-family: var(--font-sans); font-weight:600; font-size:13.5px; cursor:pointer;
+  }
+  .add-btn:active{ transform: scale(0.98); }
+  .add-form{
+    display:none; flex-direction:column; gap:10px; background: var(--paper); border: 1px solid var(--hairline);
+    border-radius: 16px; padding: 14px; margin-bottom: 14px;
+  }
+  .add-form.open{ display:flex; }
+  .add-form input, .add-form select{
+    border: 1px solid var(--hairline); border-radius: 12px; padding: 10px 12px;
+    font-family: var(--font-sans); font-size:13.5px; color: var(--ink); background: var(--cream); outline:none;
+  }
+  .add-form input:focus, .add-form select:focus{ border-color: var(--gold); }
+  .add-form-actions{ display:flex; gap:8px; }
+  .btn-primary{
+    flex:1; background: var(--ink); color: var(--paper); border:none; border-radius:12px; padding:10px;
+    font-family: var(--font-sans); font-weight:600; font-size:13px; cursor:pointer;
+  }
+  .btn-ghost{
+    flex:1; background:none; border: 1px solid var(--hairline); color: var(--ink-soft); border-radius:12px; padding:10px;
+    font-family: var(--font-sans); font-weight:600; font-size:13px; cursor:pointer;
+  }
+  .group-label{
+    font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft); font-weight:600; margin: 4px 0 10px;
+  }
+  .settings-row{
+    display:flex; align-items:center; justify-content:space-between; padding: 13px 2px; border-bottom: 1px solid var(--hairline);
+    color: var(--ink); font-size:14px; font-weight:500; cursor:pointer;
+  }
+  .settings-row:last-of-type{ border-bottom:none; }
+  .settings-row .chev{ color: var(--hairline); }
+  .signout-btn{
+    width:100%; margin-top: 22px; padding: 12px; border-radius: 14px; border: 1px solid var(--hairline);
+    background: none; color: var(--terracotta); font-family: var(--font-sans); font-weight:600; font-size:13.5px; cursor:pointer;
+  }
+  .app-version{ text-align:center; color: var(--ink-soft); font-size:11px; margin-top:16px; }
+  .people{ display:flex; flex-direction:column; }
+  .person{ display:flex; align-items:center; gap:12px; padding: 12px 2px; border-bottom: 1px solid var(--hairline); }
+  .person.hidden{ display:none; }
+  .person:last-child{ border-bottom:none; }
+  .avatar{
+    width:42px; height:42px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+    font-family: var(--font-serif); font-weight:650; font-size:14px; flex-shrink:0;
+  }
+  .person-name{ font-family: var(--font-serif); font-weight:650; font-size:15.5px; color: var(--ink); }
+  .person-sub{ font-size:12px; color: var(--ink-soft); margin-top:1px; }
+  .pills{ margin-left:auto; display:flex; gap:6px; }
+  .pill{ font-size:10px; font-weight:600; padding: 4px 8px; border-radius: 20px; white-space:nowrap; }
+  .empty-state{ text-align:center; color: var(--ink-soft); font-size:13px; padding: 30px 0; display:none; }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <nav class="site-nav">
+    <div class="nav-brand">
+      <div class="nav-mark">P</div>
+      <span class="nav-word">Prayer Profiles</span>
+    </div>
+    <div class="nav-links">
+      <a href="#features">Features</a>
+      <a href="#install">Install</a>
+      <a href="#footer">Privacy</a>
+    </div>
+    <a class="nav-cta" href="https://prayer-profiles.fly.dev/">Open the app</a>
+  </nav>
+
+  <section class="hero">
+    <div class="hero-copy">
+      <div class="eyebrow">A calmer way to pray</div>
+      <h1>Keep every prayer, every person, every day.</h1>
+      <p>Prayer Profiles helps you keep a profile for everyone you pray for, with notes on what to pray for and how to reach them, plus a daily streak so it never slips your mind.</p>
+      <div class="badges">
+        <a class="badge" href="https://prayer-profiles.fly.dev/">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M12 4v11m0-11 4 4m-4-4-4 4M5 15v3a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-3" stroke="#faf6ec" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <span class="badge-text"><span class="badge-sub">No app store — it's a web app</span><br><span class="badge-main">Open prayer-profiles.fly.dev</span></span>
+        </a>
+      </div>
+    </div>
+
+    <div class="hero-phone">
+      <div class="device">
+        <div class="screen" id="screen">
+          <div class="notch"></div>
+          <div class="status-bar">
+            <span>9:50</span>
+            <div class="status-icons">
+              <svg width="18" height="11" viewBox="0 0 18 11" fill="none"><rect x="0" y="7" width="3" height="4" rx="0.5" fill="currentColor"/><rect x="5" y="5" width="3" height="6" rx="0.5" fill="currentColor"/><rect x="10" y="2" width="3" height="9" rx="0.5" fill="currentColor"/><rect x="15" y="0" width="3" height="11" rx="0.5" fill="currentColor" opacity="0.35"/></svg>
+              <svg width="16" height="12" viewBox="0 0 16 12" fill="none"><path d="M8 10.5C6.9 10.5 6 9.6 6 8.5C6 7.4 6.9 6.5 8 6.5C9.1 6.5 10 7.4 10 8.5C10 9.6 9.1 10.5 8 10.5Z" fill="currentColor"/><path d="M8 0C10.9 0 13.6 1.1 15.6 3.1L14.2 4.5C12.6 2.9 10.4 2 8 2C5.6 2 3.4 2.9 1.8 4.5L0.4 3.1C2.4 1.1 5.1 0 8 0Z" fill="currentColor" opacity="0.4"/><path d="M8 4.5C9.7 4.5 11.3 5.2 12.5 6.4L11.1 7.8C10.2 6.9 9.1 6.4 8 6.4C6.9 6.4 5.8 6.9 4.9 7.8L3.5 6.4C4.7 5.2 6.3 4.5 8 4.5Z" fill="currentColor" opacity="0.7"/></svg>
+              <svg width="24" height="12" viewBox="0 0 24 12" fill="none"><rect x="0.5" y="0.5" width="21" height="11" rx="2.5" stroke="currentColor" opacity="0.4"/><rect x="2" y="2" width="15" height="8" rx="1.5" fill="currentColor"/><rect x="22.5" y="4" width="1.5" height="4" rx="0.7" fill="currentColor" opacity="0.4"/></svg>
+            </div>
+          </div>
+
+          <div class="content">
+            <div class="topbar">
+              <div class="brand">
+                <div class="icon-btn" id="menuBtn" aria-label="Open profiles list">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M4 6h16M4 12h16M4 18h16" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+                </div>
+                <span class="wordmark">Prayer</span>
+              </div>
+              <div style="display:flex; gap:8px;">
+                <div class="icon-btn" aria-label="Notifications">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M6 8a6 6 0 1 1 12 0c0 5 2 6 2 6H4s2-1 2-6Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M10 20a2 2 0 0 0 4 0" stroke="currentColor" stroke-width="1.6"/></svg>
+                </div>
+                <div class="icon-btn" id="settingsBtn" aria-label="Open settings">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.6"/><path d="M19.4 13a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1 1.55V19a2 2 0 0 1-4 0v-.09A1.7 1.7 0 0 0 9 17.36a1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.7 1.7 0 0 0 .34-1.87 1.7 1.7 0 0 0-1.55-1H3a2 2 0 0 1 0-4h.09A1.7 1.7 0 0 0 4.64 9a1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.7 1.7 0 0 0 1.87.34H9a1.7 1.7 0 0 0 1-1.55V3a2 2 0 0 1 4 0v.09a1.7 1.7 0 0 0 1 1.55 1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.7 1.7 0 0 0-.34 1.87V9a1.7 1.7 0 0 0 1.55 1H21a2 2 0 0 1 0 4h-.09a1.7 1.7 0 0 0-1.55 1Z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>
+                </div>
+              </div>
+            </div>
+
+            <div class="streak">
+              <div class="streak-left">
+                <div class="streak-flame">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M12 2c1 3-2 4-2 7a3 3 0 0 0 6 0c1.5 1.5 2 3.3 2 5a6 6 0 1 1-12 0c0-3 2-4 2-7 0-1.5.5-3 2-4 0 1.5.5 2.5 2 3-0.5-1.5 0-3 0-4Z" fill="#faf6ec"/></svg>
+                </div>
+                <div>
+                  <div class="streak-num" id="streakNum">3</div>
+                  <div class="streak-label">day streak</div>
+                </div>
+              </div>
+              <div class="week" id="week">
+                <div class="day"><span class="day-letter">M</span><div class="day-dot done" data-day="0"><svg width="10" height="10" viewBox="0 0 24 24" fill="none"><path d="M5 12.5 10 17l9-10" stroke="#faf6ec" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></div></div>
+                <div class="day"><span class="day-letter">T</span><div class="day-dot done" data-day="1"><svg width="10" height="10" viewBox="0 0 24 24" fill="none"><path d="M5 12.5 10 17l9-10" stroke="#faf6ec" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></div></div>
+                <div class="day"><span class="day-letter">W</span><div class="day-dot done" data-day="2"><svg width="10" height="10" viewBox="0 0 24 24" fill="none"><path d="M5 12.5 10 17l9-10" stroke="#faf6ec" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></div></div>
+                <div class="day"><span class="day-letter">T</span><div class="day-dot today" data-day="3"><svg width="10" height="10" viewBox="0 0 24 24" fill="none"><path d="M5 12.5 10 17l9-10" stroke="#faf6ec" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></div></div>
+                <div class="day"><span class="day-letter">F</span><div class="day-dot" data-day="4"><svg width="10" height="10" viewBox="0 0 24 24" fill="none"><path d="M5 12.5 10 17l9-10" stroke="#faf6ec" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></div></div>
+                <div class="day"><span class="day-letter">S</span><div class="day-dot" data-day="5"><svg width="10" height="10" viewBox="0 0 24 24" fill="none"><path d="M5 12.5 10 17l9-10" stroke="#faf6ec" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></div></div>
+                <div class="day"><span class="day-letter">S</span><div class="day-dot" data-day="6"><svg width="10" height="10" viewBox="0 0 24 24" fill="none"><path d="M5 12.5 10 17l9-10" stroke="#faf6ec" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></div></div>
+              </div>
+            </div>
+
+            <div class="stats">
+              <div class="stat">
+                <div class="dot" style="background:var(--gold)"></div>
+                <div class="stat-num">0</div>
+                <div class="stat-label">Prayed today</div>
+              </div>
+              <div class="stat">
+                <div class="dot" style="background:var(--terracotta)"></div>
+                <div class="stat-num">0</div>
+                <div class="stat-label">Active requests</div>
+              </div>
+              <div class="stat">
+                <div class="dot" style="background:var(--sage)"></div>
+                <div class="stat-num">1</div>
+                <div class="stat-label">Answered</div>
+              </div>
+              <div class="stat">
+                <div class="dot" style="background:var(--dusty-blue)"></div>
+                <div class="stat-num">1</div>
+                <div class="stat-label">Verses saved</div>
+              </div>
+            </div>
+
+            <div class="quote">
+              <span class="quote-mark">&ldquo;</span>
+              <p class="quote-text">I urge, then, first of all, that petitions, prayers, intercession and thanksgiving be made for all people.</p>
+              <div class="quote-ref">1 Timothy 2:1</div>
+            </div>
+          </div>
+
+          <div class="home-indicator"></div>
+
+          <div class="backdrop" id="backdrop"></div>
+          <div class="sidebar" id="sidebar">
+            <div class="sidebar-inner">
+              <div class="sidebar-header">
+                <span class="sidebar-title">Profiles</span>
+                <div class="icon-btn" id="closeBtn" aria-label="Close">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+                </div>
+              </div>
+
+              <div class="search">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" style="color:var(--ink-soft); flex-shrink:0;"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.8"/><path d="M21 21l-4.3-4.3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+                <input id="searchInput" type="text" placeholder="Search profiles">
+              </div>
+
+              <div class="select-wrap">
+                <select id="categorySelect">
+                  <option value="all">All profiles</option>
+                  <option value="family">Family</option>
+                  <option value="friend">Friend</option>
+                  <option value="colleague">Colleague</option>
+                  <option value="church-member">Church member</option>
+                  <option value="neighbor">Neighbor</option>
+                  <option value="mentor-mentee">Mentor/Mentee</option>
+                  <option value="acquaintance">Acquaintance</option>
+                  <option value="other">Other</option>
+                </select>
+                <svg class="chevron" width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="m6 9 6 6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </div>
+
+              <button class="add-btn" id="addProfileBtn" type="button">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+                Add profile
+              </button>
+
+              <div class="add-form" id="addForm">
+                <input id="addName" type="text" placeholder="Name">
+                <select id="addCategory">
+                  <option value="family">Family</option>
+                  <option value="friend">Friend</option>
+                  <option value="colleague">Colleague</option>
+                  <option value="church-member">Church member</option>
+                  <option value="neighbor">Neighbor</option>
+                  <option value="mentor-mentee">Mentor/Mentee</option>
+                  <option value="acquaintance">Acquaintance</option>
+                  <option value="other">Other</option>
+                </select>
+                <div class="add-form-actions">
+                  <button class="btn-ghost" id="cancelAdd" type="button">Cancel</button>
+                  <button class="btn-primary" id="submitAdd" type="button">Add profile</button>
+                </div>
+              </div>
+
+              <div class="people" id="people">
+                <div class="person" data-name="grandma ruth" data-category="family">
+                  <div class="avatar" style="background:#dce6ef; color:var(--dusty-blue)">GR</div>
+                  <div>
+                    <div class="person-name">Grandma Ruth</div>
+                    <div class="person-sub">Family</div>
+                  </div>
+                  <div class="pills">
+                    <span class="pill" style="background:#e3ecdd; color:var(--sage)">1 answered</span>
+                    <span class="pill" style="background:#f3e6cf; color:var(--gold-deep)">1 verse</span>
+                  </div>
+                </div>
+                <div class="person" data-name="pastor daniel" data-category="church-member">
+                  <div class="avatar" style="background:#f7e6c2; color:var(--gold-deep)">PD</div>
+                  <div>
+                    <div class="person-name">Pastor Daniel</div>
+                    <div class="person-sub">Church member</div>
+                  </div>
+                  <div class="pills">
+                    <span class="pill" style="background:#f5e0da; color:var(--terracotta)">1 active</span>
+                  </div>
+                </div>
+              </div>
+              <div class="empty-state" id="emptyState">No profiles match that search or filter.</div>
+            </div>
+          </div>
+
+          <div class="sidebar right" id="settingsSidebar">
+            <div class="sidebar-inner">
+              <div class="sidebar-header">
+                <span class="sidebar-title">Settings</span>
+                <div class="icon-btn" id="closeSettingsBtn" aria-label="Close">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+                </div>
+              </div>
+
+              <div class="group-label">Account</div>
+              <div class="settings-row" style="cursor:default;">
+                <div style="display:flex; align-items:center; gap:12px;">
+                  <div class="avatar" style="width:36px;height:36px;font-size:13px;background:var(--gold-wash); color:var(--gold-deep)">CO</div>
+                  <div>
+                    <div class="person-name" style="font-size:14.5px;">Cooper</div>
+                    <div class="person-sub">Account owner</div>
+                  </div>
+                </div>
+                <span class="chev"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="m9 6 6 6-6 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+              </div>
+
+              <div class="group-label" style="margin-top:20px;">Legal</div>
+              <a class="settings-row" href="https://prayer-profiles.fly.dev/privacy.html" style="text-decoration:none;">
+                <span>Privacy Policy</span>
+                <span class="chev"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="m9 6 6 6-6 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+              </a>
+              <a class="settings-row" href="https://prayer-profiles.fly.dev/terms.html" style="text-decoration:none;">
+                <span>Terms of Service</span>
+                <span class="chev"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="m9 6 6 6-6 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+              </a>
+
+              <button class="signout-btn" type="button">Sign out</button>
+              <div class="app-version">Prayer Profiles · Council Computing</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="features" id="features">
+    <div class="section-eyebrow">What's inside</div>
+    <div class="section-title">Everything a prayer list needs</div>
+    <div class="feature-grid">
+      <div class="feature-card">
+        <div class="feature-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M12 2c1 3-2 4-2 7a3 3 0 0 0 6 0c1.5 1.5 2 3.3 2 5a6 6 0 1 1-12 0c0-3 2-4 2-7 0-1.5.5-3 2-4 0 1.5.5 2.5 2 3-0.5-1.5 0-3 0-4Z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg>
+        </div>
+        <h3>Daily streaks</h3>
+        <p>Watch your praying streak build day by day, with a simple week view so a missed day never gets lost.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M4 6h16M4 12h10M4 18h13" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+        </div>
+        <h3>Profiles for every person</h3>
+        <p>Add a profile for anyone you pray for, with notes on what to pray for and their contact info, all in one place.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.5"/><path d="M19.4 13a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1 1.55V19a2 2 0 0 1-4 0v-.09A1.7 1.7 0 0 0 9 17.36a1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.7 1.7 0 0 0 .34-1.87 1.7 1.7 0 0 0-1.55-1H3a2 2 0 0 1 0-4h.09A1.7 1.7 0 0 0 4.64 9a1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.7 1.7 0 0 0 1.87.34H9a1.7 1.7 0 0 0 1-1.55V3a2 2 0 0 1 4 0v.09a1.7 1.7 0 0 0 1 1.55 1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.7 1.7 0 0 0-.34 1.87V9a1.7 1.7 0 0 0 1.55 1H21a2 2 0 0 1 0 4h-.09a1.7 1.7 0 0 0-1.55 1Z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>
+        </div>
+        <h3>One account, all yours</h3>
+        <p>A single account holds every profile you create, plus a settings space for your account details and legal info.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="install" id="install">
+    <div class="section-eyebrow">Get it on your phone</div>
+    <div class="section-title">No app store. Just add it to your home screen.</div>
+    <div class="install-grid">
+      <div class="install-card">
+        <h3>iPhone</h3>
+        <div class="install-tag">Must use Safari</div>
+        <ol>
+          <li>Open <a href="https://prayer-profiles.fly.dev/">prayer-profiles.fly.dev</a> in <strong>Safari</strong> (not Chrome)</li>
+          <li>Tap the <strong>Share</strong> button at the bottom of the screen</li>
+          <li>Scroll down and tap <strong>Add to Home Screen</strong></li>
+          <li>Tap <strong>Add</strong> in the top right</li>
+        </ol>
+      </div>
+      <div class="install-card">
+        <h3>Android</h3>
+        <div class="install-tag">Works in Chrome</div>
+        <ol>
+          <li>Open <a href="https://prayer-profiles.fly.dev/">prayer-profiles.fly.dev</a> in <strong>Chrome</strong></li>
+          <li>Tap the <strong>⋮</strong> menu in the top right corner</li>
+          <li>Tap <strong>Add to Home Screen</strong></li>
+          <li>Tap <strong>Add</strong> to confirm</li>
+        </ol>
+      </div>
+    </div>
+    <div class="install-link">
+      <code>prayer-profiles.fly.dev</code>
+      <a href="https://prayer-profiles.fly.dev/">Open link ↗</a>
+    </div>
+    <div class="install-note">Share this link with anyone — it works from any network, any device.</div>
+  </section>
+
+  <section class="quote-band" id="story">
+    <span class="quote-mark">&ldquo;</span>
+    <p>I urge, then, first of all, that petitions, prayers, intercession and thanksgiving be made for all people.</p>
+    <div class="ref">1 Timothy 2:1</div>
+  </section>
+
+  <footer class="site-footer" id="footer">
+    <div class="footer-copy">© 2026 Council Computing. All rights reserved.</div>
+    <div class="footer-links">
+      <a href="https://prayer-profiles.fly.dev/privacy.html">Privacy Policy</a>
+      <a href="https://prayer-profiles.fly.dev/terms.html">Terms of Service</a>
+    </div>
+  </footer>
+</div>
+
+<script>
+  var sidebar = document.getElementById('sidebar');
+  var settingsSidebar = document.getElementById('settingsSidebar');
+  var backdrop = document.getElementById('backdrop');
+  var openPanel = null;
+
+  function openSidebar(){
+    if(openPanel === settingsSidebar) closeSettingsSidebar();
+    sidebar.classList.add('open'); backdrop.classList.add('open');
+    openPanel = sidebar;
+  }
+  function closeSidebar(){ sidebar.classList.remove('open'); backdrop.classList.remove('open'); if(openPanel === sidebar) openPanel = null; }
+  function openSettingsSidebar(){
+    if(openPanel === sidebar) closeSidebar();
+    settingsSidebar.classList.add('open'); backdrop.classList.add('open');
+    openPanel = settingsSidebar;
+  }
+  function closeSettingsSidebar(){ settingsSidebar.classList.remove('open'); backdrop.classList.remove('open'); if(openPanel === settingsSidebar) openPanel = null; }
+
+  document.getElementById('menuBtn').addEventListener('click', openSidebar);
+  document.getElementById('closeBtn').addEventListener('click', closeSidebar);
+  document.getElementById('settingsBtn').addEventListener('click', openSettingsSidebar);
+  document.getElementById('closeSettingsBtn').addEventListener('click', closeSettingsSidebar);
+  backdrop.addEventListener('click', function(){
+    if(openPanel === sidebar) closeSidebar();
+    if(openPanel === settingsSidebar) closeSettingsSidebar();
+  });
+
+  var activeFilter = 'all';
+  var searchTerm = '';
+  var peopleList = document.getElementById('people');
+  var people = Array.prototype.slice.call(document.querySelectorAll('.person'));
+  var emptyState = document.getElementById('emptyState');
+  var categoryLabels = {
+    'family':'Family', 'friend':'Friend', 'colleague':'Colleague',
+    'church-member':'Church member', 'neighbor':'Neighbor',
+    'mentor-mentee':'Mentor/Mentee', 'acquaintance':'Acquaintance', 'other':'Other'
+  };
+
+  var addBtn = document.getElementById('addProfileBtn');
+  var addForm = document.getElementById('addForm');
+  addBtn.addEventListener('click', function(){ addForm.classList.toggle('open'); });
+  document.getElementById('cancelAdd').addEventListener('click', function(){
+    addForm.classList.remove('open');
+    document.getElementById('addName').value = '';
+  });
+  document.getElementById('submitAdd').addEventListener('click', function(){
+    var nameInput = document.getElementById('addName');
+    var name = nameInput.value.trim();
+    if(!name) { nameInput.focus(); return; }
+    var category = document.getElementById('addCategory').value;
+    var initials = name.trim().split(/\s+/).map(function(w){ return w[0]; }).slice(0,2).join('').toUpperCase();
+    var row = document.createElement('div');
+    row.className = 'person';
+    row.setAttribute('data-name', name.toLowerCase());
+    row.setAttribute('data-category', category);
+    row.innerHTML =
+      '<div class="avatar" style="background:var(--gold-wash); color:var(--gold-deep)">' + initials + '</div>' +
+      '<div><div class="person-name">' + name + '</div>' +
+      '<div class="person-sub">' + categoryLabels[category] + '</div></div>';
+    peopleList.insertBefore(row, null);
+    people.push(row);
+    nameInput.value = '';
+    addForm.classList.remove('open');
+    applyFilters();
+  });
+
+  function applyFilters(){
+    var visibleCount = 0;
+    people.forEach(function(p){
+      var category = p.getAttribute('data-category');
+      var name = p.getAttribute('data-name');
+      var matchesFilter = activeFilter === 'all' || category === activeFilter;
+      var matchesSearch = name.indexOf(searchTerm) !== -1;
+      var visible = matchesFilter && matchesSearch;
+      p.classList.toggle('hidden', !visible);
+      if(visible) visibleCount++;
+    });
+    emptyState.style.display = visibleCount === 0 ? 'block' : 'none';
+  }
+
+  document.getElementById('categorySelect').addEventListener('change', function(e){
+    activeFilter = e.target.value;
+    applyFilters();
+  });
+
+  document.getElementById('searchInput').addEventListener('input', function(e){
+    searchTerm = e.target.value.trim().toLowerCase();
+    applyFilters();
+  });
+
+  var streakState = [true, true, true, false, false, false, false];
+  var streakNum = document.getElementById('streakNum');
+  document.querySelectorAll('.day-dot').forEach(function(dot){
+    dot.addEventListener('click', function(){
+      var i = parseInt(dot.getAttribute('data-day'), 10);
+      streakState[i] = !streakState[i];
+      dot.classList.toggle('done', streakState[i]);
+      var run = 0, best = 0;
+      for(var j = 0; j < 7; j++){
+        if(streakState[j]){ run++; best = Math.max(best, run); } else { run = 0; }
+      }
+      streakNum.textContent = best;
+    });
+  });
+</script>
+
+</body>
+</html>

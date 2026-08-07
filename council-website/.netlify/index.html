@@ -1,0 +1,974 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Council Computing — Custom Software, Built Your Way</title>
+<link rel="icon" type="image/svg+xml" href="/logo.svg">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+
+:root{
+  --win-gray:#d4d0c8;
+  --win-dark:#808080;
+  --win-darker:#2a2a2a;
+  --win-white:#ffffff;
+  --win-blue:#000080;
+  --win-blue2:#1084d0;
+  --win-teal:#008080;
+  --win-black:#111111;
+  --win-face:#d4d0c8;
+  --shadow-out:inset -1px -1px #404040,inset 1px 1px #fff,inset -2px -2px #808080,inset 2px 2px #dfdfdf;
+  --shadow-in:inset 1px 1px #404040,inset -1px -1px #fff,inset 2px 2px #808080,inset -2px -2px #dfdfdf;
+  --body-font:system-ui,-apple-system,'Segoe UI',Arial,sans-serif;
+  --mono-font:'Courier New',Courier,monospace;
+}
+
+html{scroll-behavior:smooth}
+body{
+  font-family:var(--body-font);
+  background:var(--win-teal);
+  color:var(--win-black);
+  font-size:18px;
+  line-height:1.8;
+  overflow-x:hidden;
+}
+
+/* ── SCROLL REVEAL ── */
+.reveal{opacity:0;transform:translateY(22px);transition:opacity .5s ease,transform .5s ease}
+.reveal.revealed{opacity:1;transform:none}
+.reveal-delay-1{transition-delay:.1s}
+.reveal-delay-2{transition-delay:.2s}
+.reveal-delay-3{transition-delay:.3s}
+
+/* ── WIN CHROME (monospace stays retro) ── */
+.win-titlebar,.win-btn,.nav,.nav-logo,.statusbar,.hero-prompt,
+.section-title-bar,.step-num,.stat-label,.biz-tagline,
+.form-label,.form-input,.form-textarea,#boot,#boot *{
+  font-family:var(--mono-font);
+}
+
+.win-btn{
+  background:var(--win-face);border:none;box-shadow:var(--shadow-out);
+  padding:5px 18px;font-size:13px;cursor:pointer;min-width:80px;white-space:nowrap;
+  transition:transform .1s;
+}
+.win-btn:hover{filter:brightness(.96)}
+.win-btn:active{box-shadow:var(--shadow-in);transform:translateY(1px)}
+.win-btn.primary{background:var(--win-blue);color:#fff}
+
+.win-titlebar{
+  background:linear-gradient(to right,var(--win-blue),var(--win-blue2));
+  color:#fff;padding:3px 6px;font-size:13px;font-weight:700;
+  display:flex;align-items:center;gap:6px;user-select:none;
+}
+.win-titlebar .tb-btns{margin-left:auto;display:flex;gap:2px}
+.win-titlebar .tb-btns span{
+  width:16px;height:14px;background:var(--win-face);box-shadow:var(--shadow-out);
+  font-size:9px;display:flex;align-items:center;justify-content:center;color:#000;
+}
+
+/* ── NAV ── */
+.nav{
+  position:sticky;top:0;z-index:100;background:var(--win-face);
+  box-shadow:inset -1px -1px #404040,inset 1px 1px #fff,0 2px 6px rgba(0,0,0,.22);
+  padding:6px 20px;display:flex;align-items:center;gap:8px;
+}
+.nav-logo{display:flex;align-items:center;gap:10px;line-height:1;font-size:15px;font-weight:700}
+.nav-logo svg{display:block;flex-shrink:0}
+.nav-links{margin-left:auto;display:flex;gap:4px;flex-wrap:wrap}
+.nav-links a{
+  font-family:var(--mono-font);font-size:12px;padding:3px 10px;
+  background:var(--win-face);box-shadow:var(--shadow-out);
+  color:var(--win-black);text-decoration:none;display:inline-block;transition:filter .15s;
+}
+.nav-links a:hover{filter:brightness(.9)}
+.nav-links a.active-section{box-shadow:var(--shadow-in)}
+.nav-links a.cta{background:var(--win-blue);color:#fff}
+.nav-links a.cta:hover{filter:brightness(1.15)}
+
+/* ── HERO ── */
+.hero{
+  /* Pure sky gradient — hills SVG handles all the green */
+  background:linear-gradient(180deg,
+    #0d4a8c 0%,#2070be 18%,#4ea0da 42%,#7dc0ee 65%,#a8d8f5 85%,#c5e8fc 100%
+  );
+  min-height:92vh;display:flex;align-items:center;justify-content:center;
+  padding:60px 20px 80px;position:relative;overflow:hidden;
+}
+.hero-hills{
+  position:absolute;bottom:0;left:0;right:0;
+  height:52%;        /* taller — covers the lower gradient */
+  pointer-events:none;
+}
+.hero-hills svg{width:100%;height:100%;display:block}
+
+/* clouds */
+.cloud{position:absolute;pointer-events:none;animation:drift linear infinite}
+@keyframes drift{from{transform:translateX(-20vw)}to{transform:translateX(120vw)}}
+.cloud-body{background:#fff;border-radius:50px;position:relative}
+.cloud-puff{position:absolute;background:#fff;border-radius:50%;top:0;transform:translateY(-50%)}
+
+.hero-window{
+  background:var(--win-face);box-shadow:var(--shadow-out);
+  width:100%;max-width:700px;position:relative;z-index:1;
+  animation:windowOpen .35s ease 3.6s both;
+}
+@keyframes windowOpen{from{opacity:0;transform:scale(.95)}to{opacity:1;transform:scale(1)}}
+
+.hero-body{padding:28px 34px 32px}
+.hero-prompt{
+  color:var(--win-teal);font-size:13px;margin-bottom:12px;font-weight:700;min-height:20px;
+}
+.cursor{animation:blink .7s step-end infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
+.hero-heading{
+  font-family:var(--body-font);
+  font-size:clamp(26px,4.5vw,48px);font-weight:800;
+  line-height:1.12;margin-bottom:20px;color:#0a0a0a;
+}
+.hero-sub{
+  font-size:18px;color:#222;margin-bottom:32px;max-width:520px;line-height:1.85;
+}
+.hero-btns{display:flex;gap:10px;flex-wrap:wrap}
+.hero-btns .win-btn{padding:7px 22px;font-size:14px}
+.statusbar{
+  background:var(--win-face);border-top:1px solid #999;
+  padding:3px 10px;font-size:11px;color:#444;display:flex;gap:10px;
+}
+.statusbar-cell{box-shadow:var(--shadow-in);padding:1px 6px}
+
+/* ── SECTIONS ── */
+section{padding:72px 20px}
+.section-inner{max-width:980px;margin:0 auto}
+.section-title-bar{
+  background:linear-gradient(to right,var(--win-blue),var(--win-blue2));
+  color:#fff;padding:5px 12px;font-size:14px;font-weight:700;
+  display:flex;align-items:center;gap:6px;margin-bottom:28px;
+}
+
+/* ── STATS ── */
+#stats{background:var(--win-face);padding:28px 20px}
+.stats-row{max-width:980px;margin:0 auto;display:flex;flex-wrap:wrap;justify-content:center;gap:2px}
+.stat-cell{flex:1;min-width:150px;text-align:center;padding:16px 24px;box-shadow:var(--shadow-out);background:var(--win-face)}
+.stat-num{font-family:var(--mono-font);font-size:34px;font-weight:700;color:var(--win-blue);line-height:1}
+.stat-label{font-size:11px;color:#555;margin-top:5px;text-transform:uppercase;letter-spacing:1px}
+
+/* ── PROCESS ── */
+#process{background:var(--win-gray)}
+.process-steps{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:20px}
+.process-step{background:var(--win-face);box-shadow:var(--shadow-out);padding:2px}
+.process-step-inner{padding:20px 18px}
+.step-num{
+  display:inline-block;
+  background:linear-gradient(to right,var(--win-blue),var(--win-blue2));
+  color:#fff;font-size:11px;font-weight:700;padding:2px 8px;
+  margin-bottom:12px;letter-spacing:1px;
+}
+.step-icon{font-size:28px;margin-bottom:8px}
+.step-title{font-size:18px;font-weight:700;margin-bottom:8px;color:#0a0a0a}
+.step-desc{font-size:17px;color:#222;line-height:1.85}
+
+/* ── WORK ── */
+#work{background:var(--win-face)}
+.projects-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(290px,1fr));gap:18px}
+.project-card{
+  background:var(--win-face);box-shadow:var(--shadow-out);
+  transition:transform .2s,box-shadow .2s;cursor:default;
+}
+.project-card:hover{
+  transform:translateY(-3px);
+  box-shadow:inset -1px -1px #404040,inset 1px 1px #fff,inset -2px -2px #808080,inset 2px 2px #dfdfdf,0 8px 20px rgba(0,0,0,.15);
+}
+.project-card-img{
+  width:100%;aspect-ratio:16/9;background:#b8b4aa;box-shadow:var(--shadow-in);
+  display:flex;align-items:center;justify-content:center;
+  font-size:13px;color:#555;overflow:hidden;
+}
+.project-card-img img{width:100%;height:100%;object-fit:cover;display:block}
+.project-card-body{padding:14px 16px 18px}
+.project-card-title{font-size:18px;font-weight:700;margin-bottom:8px;color:#0a0a0a}
+.project-card-desc{font-size:16px;color:#222;line-height:1.8;margin-bottom:14px}
+.project-card-tag{display:inline-block;padding:2px 8px;background:var(--win-teal);color:#fff;font-size:12px;font-family:var(--mono-font)}
+
+/* ── SERVICES ── */
+#services{background:var(--win-teal)}
+.services-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px}
+.service-card{background:var(--win-face);box-shadow:var(--shadow-out);padding:2px;transition:transform .2s}
+.service-card:hover{transform:translateY(-2px)}
+.service-card-inner{padding:18px 16px}
+.service-icon{font-size:30px;margin-bottom:10px}
+.service-name{font-size:18px;font-weight:700;margin-bottom:8px;color:#0a0a0a}
+.service-desc{font-size:16px;color:#222;line-height:1.85}
+
+/* ── TESTIMONIALS ── */
+#testimonials{background:var(--win-gray)}
+.testimonials-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(270px,1fr));gap:18px}
+.testimonial-card{background:var(--win-face);box-shadow:var(--shadow-out);padding:2px}
+.testimonial-card-inner{padding:18px 16px}
+.testimonial-stars{color:#c9a227;font-size:15px;margin-bottom:12px;letter-spacing:2px}
+.testimonial-quote{
+  font-size:17px;line-height:1.85;color:#222;margin-bottom:18px;
+  border-left:4px solid var(--win-teal);padding-left:14px;font-style:italic;
+}
+.testimonial-name{font-size:16px;font-weight:700;color:#0a0a0a}
+.testimonial-role{font-size:14px;color:#555;margin-top:3px}
+
+/* ── CTA BAND ── */
+#cta-band{background:linear-gradient(to right,var(--win-blue),var(--win-blue2));padding:44px 20px;text-align:center}
+.cta-band-inner{max-width:620px;margin:0 auto}
+.cta-band-heading{font-size:clamp(22px,3vw,34px);font-weight:800;color:#fff;margin-bottom:14px}
+.cta-band-sub{font-size:18px;color:rgba(255,255,255,.85);margin-bottom:28px;line-height:1.8}
+.cta-band-btn{
+  background:var(--win-face);border:none;box-shadow:var(--shadow-out);
+  padding:9px 32px;font-family:var(--mono-font);font-size:14px;font-weight:700;cursor:pointer;
+}
+.cta-band-btn:hover{filter:brightness(.95)}
+.cta-band-btn:active{box-shadow:var(--shadow-in)}
+
+/* ── CONTACT LAYOUT ── */
+#contact{background:var(--win-teal)}
+.contact-layout{
+  display:grid;grid-template-columns:1fr 1fr 1.3fr;gap:20px;align-items:start;
+  max-width:980px;margin:0 auto;
+}
+
+/* ── BUSINESS CARD ── */
+.biz-card{background:var(--win-face);box-shadow:var(--shadow-out)}
+.biz-card-body{padding:16px 18px 20px}
+.biz-card-header{display:flex;gap:14px;align-items:flex-start;margin-bottom:14px}
+.biz-monitor{
+  flex-shrink:0;width:64px;height:56px;
+  background:#c8c4bc;box-shadow:var(--shadow-in);
+  display:flex;align-items:center;justify-content:center;
+  font-size:30px;
+}
+.biz-name{font-family:var(--mono-font);font-size:20px;font-weight:700;color:#0a0a0a;margin-bottom:2px}
+.biz-title{font-family:var(--mono-font);font-size:13px;color:var(--win-teal);font-weight:700;margin-bottom:6px}
+.biz-company{font-family:var(--mono-font);font-size:13px;font-weight:700;letter-spacing:1px;color:#0a0a0a}
+.biz-tagline{font-size:12px;color:#555;margin-top:2px}
+.biz-checks{
+  display:flex;gap:18px;margin-bottom:14px;
+  font-family:var(--mono-font);font-size:13px;color:#0a0a0a;
+  padding:8px 10px;background:#bab6ae;box-shadow:var(--shadow-in);
+}
+.biz-actions{display:flex;flex-direction:column;gap:6px}
+.biz-action-btn{
+  display:flex;align-items:center;gap:8px;
+  padding:7px 12px;background:var(--win-face);
+  box-shadow:var(--shadow-out);cursor:pointer;
+  font-family:var(--mono-font);font-size:13px;color:#0a0a0a;
+  text-decoration:none;border:none;width:100%;text-align:left;
+  transition:filter .15s;
+}
+.biz-action-btn:hover{filter:brightness(.93)}
+.biz-action-btn:active{box-shadow:var(--shadow-in)}
+.biz-action-icon{font-size:15px}
+
+/* ── CONTACT FORM ── */
+.contact-window{background:var(--win-face);box-shadow:var(--shadow-out)}
+.contact-body{padding:16px 18px 20px}
+.contact-intro{font-size:13px;color:#444;margin-bottom:16px;font-family:var(--mono-font)}
+.form-group{margin-bottom:13px}
+.form-label{display:block;font-size:13px;font-weight:700;margin-bottom:4px;color:#0a0a0a}
+.form-input,.form-textarea{
+  width:100%;font-size:17px;background:#fff;border:none;
+  box-shadow:var(--shadow-in);padding:10px 12px;color:#0a0a0a;
+}
+.form-input:focus,.form-textarea:focus{outline:2px solid var(--win-blue);outline-offset:-1px}
+.form-textarea{height:90px;resize:vertical}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.form-submit{display:flex;justify-content:flex-end;margin-top:8px}
+
+/* ── FOOTER ── */
+.footer{
+  background:var(--win-face);
+  box-shadow:inset -1px -1px #404040,inset 1px 1px #fff,inset -2px -2px #808080,inset 2px 2px #dfdfdf;
+  padding:14px 20px;font-family:var(--mono-font);font-size:12px;color:#555;
+  display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:center;
+}
+.footer a{color:var(--win-blue);text-decoration:underline}
+
+/* ── SCROLLBAR ── */
+::-webkit-scrollbar{width:16px}
+::-webkit-scrollbar-track{background:var(--win-face);box-shadow:var(--shadow-in)}
+::-webkit-scrollbar-thumb{background:var(--win-face);box-shadow:var(--shadow-out)}
+::-webkit-scrollbar-button{background:var(--win-face);box-shadow:var(--shadow-out);height:16px}
+
+/* ── MOBILE ── */
+@media(max-width:680px){
+  .nav-links a:not(.cta){display:none}
+  .hero-body{padding:20px 18px 24px}
+  .form-row{grid-template-columns:1fr}
+  .hero-btns .win-btn{width:100%;text-align:center}
+  .stat-cell{min-width:130px}
+  .contact-layout{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+
+<!-- ── BOOT SCREEN ── -->
+<div id="boot" style="position:fixed;inset:0;z-index:9999;background:linear-gradient(160deg,#0a2a6e 0%,#0d3a8f 50%,#0a2a6e 100%);display:flex;align-items:center;justify-content:center;transition:opacity .6s ease">
+  <div id="boot-bios" style="color:#9ab8e8;font-family:'Courier New',monospace;font-size:13px;line-height:1.9;width:580px;max-width:90vw;padding:0 20px"></div>
+  <div id="boot-win" style="display:none;flex-direction:column;align-items:center;gap:22px;color:#fff;text-align:center;font-family:'Courier New',monospace">
+    <div style="font-size:clamp(20px,4vw,32px);font-weight:700;text-shadow:0 0 30px rgba(100,160,255,.5)">🖥️ Council Computing</div>
+    <div style="font-size:12px;color:#8aaadd;letter-spacing:3px;text-transform:uppercase">Custom Software · Built Your Way</div>
+    <div style="width:260px;height:16px;border:1px solid #4a6aaa;background:rgba(0,0,0,.3);overflow:hidden;border-radius:2px">
+      <div id="boot-bar-fill" style="height:100%;width:0%;background:linear-gradient(to right,#4488dd,#66aaff);transition:width .05s linear"></div>
+    </div>
+    <div id="boot-status" style="font-size:11px;color:#6a8abf;letter-spacing:2px">Loading...</div>
+  </div>
+  <div id="boot-skip" style="position:fixed;bottom:20px;right:20px;font-family:'Courier New',monospace;font-size:11px;color:#4a6aaa;cursor:pointer" onmouseover="this.style.color='#88aadd'" onmouseout="this.style.color='#4a6aaa'">[ click or press any key to skip ]</div>
+</div>
+
+<!-- ── NAV ── -->
+<nav class="nav">
+  <div class="nav-logo">
+    <!-- Blue square icon with Windows monitor -->
+    <svg width="36" height="36" viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg">
+      <rect width="128" height="128" rx="16" fill="#000080"/>
+      <!-- Monitor body -->
+      <rect x="14" y="12" width="100" height="76" rx="6" fill="#c8c4bc"/>
+      <rect x="14" y="12" width="100" height="3" fill="#fff"/>
+      <rect x="14" y="12" width="3" height="76" fill="#fff"/>
+      <rect x="108" y="15" width="6" height="73" fill="#808080"/>
+      <rect x="17" y="85" width="97" height="3" fill="#808080"/>
+      <!-- Screen -->
+      <rect x="22" y="20" width="84" height="60" rx="3" fill="#001800"/>
+      <!-- Terminal text -->
+      <text x="28" y="42" font-family="Courier New" font-size="14" fill="#00ee66" font-weight="bold">COUNCIL</text>
+      <text x="28" y="58" font-family="Courier New" font-size="12" fill="#00cc55">COMPUTING</text>
+      <text x="28" y="72" font-family="Courier New" font-size="11" fill="#008833">&gt; run_</text>
+      <!-- Screen shine -->
+      <rect x="24" y="22" width="28" height="10" rx="2" fill="rgba(255,255,255,0.05)"/>
+      <!-- Stand neck -->
+      <rect x="52" y="88" width="24" height="12" fill="#b8b4ac"/>
+      <!-- Base -->
+      <rect x="32" y="100" width="64" height="12" rx="4" fill="#c8c4bc"/>
+      <rect x="32" y="100" width="64" height="3" fill="#fff"/>
+      <rect x="32" y="100" width="2" height="12" fill="#fff"/>
+    </svg>
+    <span>Council Computing</span>
+  </div>
+  <div class="nav-links">
+    <a href="#work" data-section="work">Work</a>
+    <a href="#services" data-section="services">Services</a>
+    <a href="#process" data-section="process">Process</a>
+    <a href="#contact" class="cta" data-section="contact">Get a Quote</a>
+  </div>
+</nav>
+
+<!-- ── HERO ── -->
+<section class="hero" id="hero">
+  <!-- clouds -->
+  <div class="cloud" style="top:10%;animation-duration:95s;animation-delay:0s;opacity:.85">
+    <div class="cloud-body" style="width:110px;height:32px">
+      <div class="cloud-puff" style="width:55px;height:55px;left:20px"></div>
+      <div class="cloud-puff" style="width:40px;height:40px;left:55px"></div>
+    </div>
+  </div>
+  <div class="cloud" style="top:22%;animation-duration:140s;animation-delay:38s;opacity:.65">
+    <div class="cloud-body" style="width:80px;height:26px">
+      <div class="cloud-puff" style="width:42px;height:42px;left:15px"></div>
+    </div>
+  </div>
+  <div class="cloud" style="top:6%;animation-duration:115s;animation-delay:62s;opacity:.75">
+    <div class="cloud-body" style="width:130px;height:38px">
+      <div class="cloud-puff" style="width:65px;height:65px;left:25px"></div>
+      <div class="cloud-puff" style="width:45px;height:45px;left:75px"></div>
+    </div>
+  </div>
+
+  <!-- rolling hills — SVG fills all the green, no hard-stop in CSS -->
+  <div class="hero-hills" aria-hidden="true">
+    <svg viewBox="0 0 1440 320" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+      <!-- solid ground floor so no sky bleeds through -->
+      <rect x="0" y="220" width="1440" height="100" fill="#336e10"/>
+      <!-- back hill (darkest) -->
+      <path d="M0,320 L0,160 C100,120 220,95 380,125 C540,155 640,185 800,145 C960,105 1060,70 1200,105 C1280,122 1360,138 1440,130 L1440,320 Z" fill="#3a7e15"/>
+      <!-- mid hill -->
+      <path d="M0,320 L0,210 C120,178 250,162 410,185 C570,208 660,222 820,196 C980,170 1080,146 1220,172 C1320,190 1380,200 1440,194 L1440,320 Z" fill="#4e9a1e"/>
+      <!-- front hill (brightest) -->
+      <path d="M0,320 L0,262 C140,244 280,238 440,252 C600,266 700,274 860,260 C1020,246 1120,234 1280,252 C1360,261 1400,267 1440,264 L1440,320 Z" fill="#65bc2e"/>
+    </svg>
+  </div>
+
+  <div class="hero-window">
+    <div class="win-titlebar">
+      <span>🖥️</span><span>CouncilComputing.exe</span>
+      <div class="tb-btns"><span>─</span><span>□</span><span>✕</span></div>
+    </div>
+    <div class="hero-body">
+      <div class="hero-prompt" id="hero-prompt"><span class="cursor">_</span></div>
+      <h1 class="hero-heading">Your business has<br>problems software<br>can solve. We build it.</h1>
+      <p class="hero-sub">Council Computing builds custom tools for businesses who've outgrown spreadsheets and off-the-shelf apps. No generic solutions — software shaped exactly around how your team works.</p>
+      <div class="hero-btns">
+        <a href="#work"><button class="win-btn">▶ View Work</button></a>
+        <a href="#contact"><button class="win-btn primary">✉ Get a Quote — Free</button></a>
+      </div>
+    </div>
+    <div class="statusbar">
+      <span class="statusbar-cell">Ready</span>
+      <span class="statusbar-cell">councilcomputing@gmail.com</span>
+      <span class="statusbar-cell" id="sb-clock"></span>
+    </div>
+  </div>
+</section>
+
+<!-- ── STATS ── -->
+<div id="stats">
+  <div class="stats-row">
+    <div class="stat-cell reveal"><div class="stat-num" data-count="5">0</div><div class="stat-label">Projects Delivered</div></div>
+    <div class="stat-cell reveal reveal-delay-1"><div class="stat-num" data-count="4">0</div><div class="stat-label">Happy Clients</div></div>
+    <div class="stat-cell reveal reveal-delay-2"><div class="stat-num" data-count="100">0</div><div class="stat-label">% Custom-Built</div></div>
+    <div class="stat-cell reveal reveal-delay-3"><div class="stat-num">1</div><div class="stat-label">Business Day Response</div></div>
+  </div>
+</div>
+
+<!-- ── HOW IT WORKS ── -->
+<section id="process">
+  <div class="section-inner">
+    <div class="section-title-bar reveal"><span>📋</span><span>How It Works</span></div>
+    <div class="process-steps">
+      <div class="process-step reveal">
+        <div class="process-step-inner">
+          <div class="step-num">STEP 01</div>
+          <div class="step-icon">💬</div>
+          <div class="step-title">Tell us what you need</div>
+          <div class="step-desc">Fill out the quote form with your problem — not a spec doc, just a plain description of what's not working and what you wish you had instead.</div>
+        </div>
+      </div>
+      <div class="process-step reveal reveal-delay-1">
+        <div class="process-step-inner">
+          <div class="step-num">STEP 02</div>
+          <div class="step-icon">🔨</div>
+          <div class="step-title">We scope &amp; build it</div>
+          <div class="step-desc">We scope the project, agree on a price, and get to work. You stay in the loop — no surprises, no scope creep, no disappearing for months.</div>
+        </div>
+      </div>
+      <div class="process-step reveal reveal-delay-2">
+        <div class="process-step-inner">
+          <div class="step-num">STEP 03</div>
+          <div class="step-icon">✅</div>
+          <div class="step-title">You own it, forever</div>
+          <div class="step-desc">When we deliver, you own the code outright. No monthly license, no vendor lock-in. It runs your way, on your timeline, with no strings attached.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── WORK ── -->
+<section id="work">
+  <div class="section-inner">
+    <div class="section-title-bar reveal"><span>💼</span><span>Selected Work</span></div>
+    <div class="projects-grid">
+      <div class="project-card reveal">
+        <div class="project-card-img">[ screenshot coming soon ]</div>
+        <div class="project-card-body">
+          <div class="project-card-title">Surety Bond Manager</div>
+          <div class="project-card-desc">Bond-tracking web app for the Insurance Agency of Mid America — replacing a tangle of spreadsheets with a single source of truth for managing and monitoring surety bonds.</div>
+          <span class="project-card-tag">Web App</span>
+        </div>
+      </div>
+      <div class="project-card reveal reveal-delay-1" style="cursor:pointer;" onclick="location.href='prayer-profiles.html'">
+        <div class="project-card-img">
+          <svg viewBox="0 0 1460 800" preserveAspectRatio="xMidYMid slice" width="100%" height="100%" style="display:block" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <radialGradient id="ppBg" cx="78%" cy="16%" r="90%">
+                <stop offset="0%" stop-color="#fdf6e6"/>
+                <stop offset="55%" stop-color="#f8efdb"/>
+                <stop offset="100%" stop-color="#efe3c6"/>
+              </radialGradient>
+              <linearGradient id="ppFlame" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#e8a33d"/>
+                <stop offset="100%" stop-color="#c9722e"/>
+              </linearGradient>
+              <linearGradient id="ppArch" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#e9c983"/>
+                <stop offset="55%" stop-color="#d9ae5f"/>
+                <stop offset="100%" stop-color="#c2924a"/>
+              </linearGradient>
+              <filter id="ppShadow" x="-30%" y="-20%" width="160%" height="140%">
+                <feDropShadow dx="0" dy="12" stdDeviation="16" flood-color="#3d2f14" flood-opacity="0.25"/>
+              </filter>
+            </defs>
+
+            <!-- background -->
+            <rect x="0" y="0" width="1460" height="800" fill="url(#ppBg)"/>
+
+            <!-- double keyline border -->
+            <rect x="26" y="26" width="1408" height="748" fill="none" stroke="#b99b56" stroke-width="2"/>
+            <rect x="36" y="36" width="1388" height="728" fill="none" stroke="#b99b56" stroke-width="1" opacity="0.55"/>
+
+            <!-- gold rays behind arch top -->
+            <g stroke="#d9b96f" stroke-width="2" opacity="0.5">
+              <line x1="1080" y1="160" x2="1010.7" y2="120"/>
+              <line x1="1080" y1="160" x2="1009.3" y2="75.7"/>
+              <line x1="1080" y1="160" x2="1056.1" y2="94.2"/>
+              <line x1="1080" y1="160" x2="1080" y2="40"/>
+              <line x1="1080" y1="160" x2="1103.9" y2="94.2"/>
+              <line x1="1080" y1="160" x2="1150.7" y2="75.7"/>
+              <line x1="1080" y1="160" x2="1149.3" y2="120"/>
+            </g>
+            <g fill="#d9b96f" opacity="0.7">
+              <circle cx="1010.7" cy="120" r="3.5"/>
+              <circle cx="1009.3" cy="75.7" r="3.5"/>
+              <circle cx="1056.1" cy="94.2" r="3.5"/>
+              <circle cx="1080" cy="40" r="3.5"/>
+              <circle cx="1103.9" cy="94.2" r="3.5"/>
+              <circle cx="1150.7" cy="75.7" r="3.5"/>
+              <circle cx="1149.3" cy="120" r="3.5"/>
+            </g>
+
+            <!-- gold arch window -->
+            <path d="M860,800 L860,380 A220,220 0 0 1 1300,380 L1300,800 Z" fill="url(#ppArch)" filter="url(#ppShadow)"/>
+            <path d="M874,800 L874,380 A206,206 0 0 1 1286,380 L1286,800" fill="none" stroke="#fdf6e6" stroke-width="2" opacity="0.7"/>
+
+            <!-- phone mockup -->
+            <rect x="980" y="260" width="200" height="500" rx="26" fill="#3d2f14"/>
+            <rect x="990" y="270" width="180" height="480" rx="18" fill="#f7ecd2"/>
+
+            <text x="1006" y="304" font-family="'Lora',Georgia,serif" font-style="italic" font-size="20" fill="#4a3a1d">Today</text>
+            <rect x="1120" y="286" width="40" height="24" rx="12" fill="#f3e2bb"/>
+            <path d="M1130,292 C1127,296 1125,299 1125,301 C1125,304 1127,306 1130,306 C1133,306 1135,304 1135,301 C1135,299 1133,296 1130,292 Z" fill="url(#ppFlame)"/>
+            <text x="1152" y="303" font-family="'Courier New',monospace" font-size="13" font-weight="700" fill="#4a3a1d" text-anchor="end">12</text>
+
+            <g>
+              <rect x="1000" y="330" width="160" height="72" rx="10" fill="#ffffff" stroke="#e6d7ae" stroke-width="1"/>
+              <circle cx="1024" cy="366" r="18" fill="#d9ae5f"/>
+              <text x="1024" y="372" font-family="'Lora',Georgia,serif" font-size="16" font-weight="700" fill="#ffffff" text-anchor="middle">M</text>
+              <rect x="1054" y="352" width="88" height="8" rx="4" fill="#e9dcb8"/>
+              <rect x="1054" y="372" width="64" height="6" rx="3" fill="#f0e6cb"/>
+              <path d="M1133,366 L1138,372 L1148,358" fill="none" stroke="#7a9a56" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+            </g>
+            <g>
+              <rect x="1000" y="412" width="160" height="72" rx="10" fill="#ffffff" stroke="#e6d7ae" stroke-width="1"/>
+              <circle cx="1024" cy="448" r="18" fill="#7a6335"/>
+              <text x="1024" y="454" font-family="'Lora',Georgia,serif" font-size="16" font-weight="700" fill="#ffffff" text-anchor="middle">D</text>
+              <rect x="1054" y="434" width="88" height="8" rx="4" fill="#e9dcb8"/>
+              <rect x="1054" y="454" width="64" height="6" rx="3" fill="#f0e6cb"/>
+              <path d="M1133,448 L1138,454 L1148,440" fill="none" stroke="#7a9a56" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+            </g>
+            <g opacity="0.92">
+              <rect x="1000" y="494" width="160" height="72" rx="10" fill="#ffffff" stroke="#e6d7ae" stroke-width="1"/>
+              <circle cx="1024" cy="530" r="18" fill="#b5623c"/>
+              <text x="1024" y="536" font-family="'Lora',Georgia,serif" font-size="16" font-weight="700" fill="#ffffff" text-anchor="middle">S</text>
+              <rect x="1054" y="516" width="88" height="8" rx="4" fill="#e9dcb8"/>
+              <rect x="1054" y="536" width="64" height="6" rx="3" fill="#f0e6cb"/>
+              <circle cx="1140" cy="530" r="9" fill="none" stroke="#cbb98a" stroke-width="2"/>
+            </g>
+            <g opacity="0.6">
+              <rect x="1000" y="576" width="160" height="72" rx="10" fill="#ffffff" stroke="#e6d7ae" stroke-width="1"/>
+              <circle cx="1024" cy="612" r="18" fill="#7a9a56"/>
+              <text x="1024" y="618" font-family="'Lora',Georgia,serif" font-size="16" font-weight="700" fill="#ffffff" text-anchor="middle">J</text>
+              <rect x="1054" y="598" width="88" height="8" rx="4" fill="#e9dcb8"/>
+              <rect x="1054" y="618" width="64" height="6" rx="3" fill="#f0e6cb"/>
+              <circle cx="1140" cy="612" r="9" fill="none" stroke="#cbb98a" stroke-width="2"/>
+            </g>
+
+            <rect x="1000" y="700" width="160" height="38" rx="19" fill="#4a3a1d"/>
+            <text x="1080" y="725" font-family="'Courier New',monospace" font-size="13" letter-spacing="1" fill="#f3e6c9" text-anchor="middle">+ ADD PRAYER</text>
+
+            <!-- left logo mark -->
+            <path d="M96,158 L96,104 A32,32 0 0 1 160,104 L160,158" fill="none" stroke="#8a6a2f" stroke-width="3" stroke-linecap="round"/>
+            <path d="M128,100 C120,113 111,127 111,139 C111,150 118,157 128,157 C138,157 145,150 145,139 C145,127 136,113 128,100 Z" fill="url(#ppFlame)"/>
+            <line x1="88" y1="166" x2="168" y2="166" stroke="#8a6a2f" stroke-width="2"/>
+
+            <!-- wordmark -->
+            <text x="96" y="290" font-family="'Lora',Georgia,serif" font-style="italic" font-size="108" fill="#4a3a1d">Prayer</text>
+            <text x="96" y="405" font-family="'Lora',Georgia,serif" font-style="italic" font-size="108" fill="#4a3a1d">Profiles</text>
+
+            <line x1="96" y1="430" x2="340" y2="430" stroke="#c2924a" stroke-width="3"/>
+            <text x="96" y="470" font-family="'Courier New',monospace" font-size="27" letter-spacing="7" fill="#7a6335">A CALMER WAY TO PRAY</text>
+
+            <!-- chips -->
+            <g font-family="'Courier New',monospace" font-size="15" letter-spacing="2" fill="#5d4a24">
+              <rect x="96" y="505" width="170" height="44" rx="22" fill="none" stroke="#b99b56" stroke-width="2"/>
+              <text x="181" y="533" text-anchor="middle">REQUESTS</text>
+              <rect x="280" y="505" width="140" height="44" rx="22" fill="none" stroke="#b99b56" stroke-width="2"/>
+              <text x="350" y="533" text-anchor="middle">STREAKS</text>
+              <rect x="434" y="505" width="158" height="44" rx="22" fill="none" stroke="#b99b56" stroke-width="2"/>
+              <text x="513" y="533" text-anchor="middle">PROFILES</text>
+            </g>
+
+            <!-- PWA corner tag -->
+            <rect x="1346" y="738" width="84" height="36" fill="#2e6e6a"/>
+            <text x="1388" y="761" font-family="'Courier New',monospace" font-size="14" letter-spacing="1" fill="#fdf6e6" text-anchor="middle">PWA</text>
+          </svg>
+        </div>
+        <div class="project-card-body">
+          <div class="project-card-title">Prayer Profiles</div>
+          <div class="project-card-desc">A calmer way to pray — track prayer requests, daily streaks, and profiles for everyone you're praying for. A lightweight PWA that works on any phone without an app store.</div>
+          <span class="project-card-tag">PWA</span>
+          <span style="display:inline-block;margin-left:8px;font-family:var(--mono-font);font-size:12px;color:var(--win-blue);text-decoration:underline;">View project →</span>
+        </div>
+      </div>
+      <div class="project-card reveal reveal-delay-2">
+        <div class="project-card-img">[ screenshot ]</div>
+        <div class="project-card-body">
+          <div class="project-card-title">[ Project Title ]</div>
+          <div class="project-card-desc">[ One or two sentences on what you built and what it replaced or improved for the client. ]</div>
+          <span class="project-card-tag">[ Type ]</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── SERVICES ── -->
+<section id="services">
+  <div class="section-inner">
+    <div class="section-title-bar reveal"><span>⚙️</span><span>What We Build</span></div>
+    <div class="services-grid">
+      <div class="service-card reveal">
+        <div class="service-card-inner">
+          <div class="service-icon">🌐</div>
+          <div class="service-name">Web Applications</div>
+          <div class="service-desc">Custom web apps that replace spreadsheets, manual processes, and off-the-shelf tools that almost — but don't quite — fit your operation.</div>
+        </div>
+      </div>
+      <div class="service-card reveal reveal-delay-1">
+        <div class="service-card-inner">
+          <div class="service-icon">📊</div>
+          <div class="service-name">Internal Tools &amp; Dashboards</div>
+          <div class="service-desc">Reporting tools and internal systems built for the way your team actually works — not the way some vendor assumes you work.</div>
+        </div>
+      </div>
+      <div class="service-card reveal reveal-delay-2">
+        <div class="service-card-inner">
+          <div class="service-icon">🔗</div>
+          <div class="service-name">Integrations &amp; Automation</div>
+          <div class="service-desc">Connect your existing tools, automate repetitive tasks, and stop copying data between systems by hand.</div>
+        </div>
+      </div>
+      <div class="service-card reveal reveal-delay-3">
+        <div class="service-card-inner">
+          <div class="service-icon">📱</div>
+          <div class="service-name">Mobile &amp; PWA</div>
+          <div class="service-desc">Lightweight mobile apps for teams in the field — built for real-world conditions, works on any device without an app store install.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── TESTIMONIALS ── -->
+<section id="testimonials">
+  <div class="section-inner">
+    <div class="section-title-bar reveal"><span>★</span><span>What Clients Say</span></div>
+    <div class="testimonials-grid">
+      <div class="testimonial-card reveal">
+        <div class="testimonial-card-inner">
+          <div class="testimonial-stars">★★★★★</div>
+          <div class="testimonial-quote">"[ A sentence or two from a client about what Council Computing built and how it helped their business. ]"</div>
+          <div class="testimonial-name">[ Client Name ]</div>
+          <div class="testimonial-role">[ Role · Company ]</div>
+        </div>
+      </div>
+      <div class="testimonial-card reveal reveal-delay-1">
+        <div class="testimonial-card-inner">
+          <div class="testimonial-stars">★★★★★</div>
+          <div class="testimonial-quote">"[ A sentence or two from a client about what Council Computing built and how it helped their business. ]"</div>
+          <div class="testimonial-name">[ Client Name ]</div>
+          <div class="testimonial-role">[ Role · Company ]</div>
+        </div>
+      </div>
+      <div class="testimonial-card reveal reveal-delay-2">
+        <div class="testimonial-card-inner">
+          <div class="testimonial-stars">★★★★★</div>
+          <div class="testimonial-quote">"[ A sentence or two from a client about what Council Computing built and how it helped their business. ]"</div>
+          <div class="testimonial-name">[ Client Name ]</div>
+          <div class="testimonial-role">[ Role · Company ]</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── CTA BAND ── -->
+<div id="cta-band">
+  <div class="cta-band-inner reveal">
+    <div class="cta-band-heading">Ready to stop fighting your software?</div>
+    <div class="cta-band-sub">Tell us what you need built. We'll scope it, price it, and get to work — no endless discovery calls, no vague timelines.</div>
+    <a href="#contact"><button class="cta-band-btn">✉ Get a Free Quote</button></a>
+  </div>
+</div>
+
+<!-- ── CONTACT ── -->
+<section id="contact">
+  <div class="contact-layout">
+
+    <!-- Business Card -->
+    <div class="biz-card reveal">
+      <div class="win-titlebar">
+        <span>🖥️</span><span>CouncilComputing.exe</span>
+        <div class="tb-btns"><span>─</span><span>□</span><span>✕</span></div>
+      </div>
+      <div class="biz-card-body">
+        <div class="biz-card-header">
+          <div class="biz-monitor">🖥️</div>
+          <div>
+            <div class="biz-name">Hayes McNeill</div>
+            <div class="biz-title">CEO &amp; Founder</div>
+            <div class="biz-company">COUNCIL COMPUTING</div>
+            <div class="biz-tagline">&gt; software design for companies_</div>
+          </div>
+        </div>
+        <div class="biz-checks">
+          <span>☑ Custom built</span>
+          <span>☑ Built your way</span>
+        </div>
+        <div class="biz-actions">
+          <a class="biz-action-btn" href="mailto:councilcomputing@gmail.com">
+            <span class="biz-action-icon">✉</span>
+            <span>councilcomputing@gmail.com</span>
+          </a>
+          <a class="biz-action-btn" href="tel:4056969330">
+            <span class="biz-action-icon">📞</span>
+            <span>(405) 696-9330</span>
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Business Card -->
+    <div class="biz-card reveal">
+      <div class="win-titlebar">
+        <span>🖥️</span><span>CouncilComputing.exe</span>
+        <div class="tb-btns"><span>─</span><span>□</span><span>✕</span></div>
+      </div>
+      <div class="biz-card-body">
+        <div class="biz-card-header">
+          <div class="biz-monitor">🖥️</div>
+          <div>
+            <div class="biz-name">Cooper Stephens</div>
+            <div class="biz-title">CEO &amp; Founder</div>
+            <div class="biz-company">COUNCIL COMPUTING</div>
+            <div class="biz-tagline">&gt; software design for companies_</div>
+          </div>
+        </div>
+        <div class="biz-checks">
+          <span>☑ Custom built</span>
+          <span>☑ Built your way</span>
+        </div>
+        <div class="biz-actions">
+          <a class="biz-action-btn" href="mailto:councilcomputing@gmail.com">
+            <span class="biz-action-icon">✉</span>
+            <span>councilcomputing@gmail.com</span>
+          </a>
+          <a class="biz-action-btn" href="tel:4058687726">
+            <span class="biz-action-icon">📞</span>
+            <span>(405) 868-7726</span>
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Quote Form -->
+    <div class="contact-window reveal reveal-delay-1">
+      <div class="win-titlebar">
+        <span>✉</span><span>RequestQuote.exe</span>
+        <div class="tb-btns"><span>─</span><span>□</span><span>✕</span></div>
+      </div>
+      <div class="contact-body">
+        <p class="contact-intro">&gt; Describe what you need built. We reply within 1 business day.</p>
+        <form name="contact" netlify data-netlify="true" action="/success">
+          <input type="hidden" name="form-name" value="contact">
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="fname">Name</label>
+              <input class="form-input" id="fname" name="name" type="text" placeholder="Your name" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="femail">Email</label>
+              <input class="form-input" id="femail" name="email" type="email" placeholder="you@company.com" required>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="fcompany">Company</label>
+            <input class="form-input" id="fcompany" name="company" type="text" placeholder="Company name (optional)">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="fmsg">What do you need built?</label>
+            <textarea class="form-textarea" id="fmsg" name="message" placeholder="Describe the problem you're trying to solve — plain English is fine." required></textarea>
+          </div>
+          <div class="form-submit">
+            <button class="win-btn primary" type="submit">Send ✉</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ── FOOTER ── -->
+<footer class="footer">
+  <span>© 2026 Council Computing</span>
+  <span>·</span>
+  <a href="mailto:councilcomputing@gmail.com">councilcomputing@gmail.com</a>
+  <span>·</span>
+  <span>Custom software, built your way.</span>
+</footer>
+
+<script>
+/* ── BOOT ── */
+(function(){
+  const boot=document.getElementById('boot');
+  const biosEl=document.getElementById('boot-bios');
+  const winEl=document.getElementById('boot-win');
+  const barFill=document.getElementById('boot-bar-fill');
+  const statusEl=document.getElementById('boot-status');
+  const LINES=[
+    '<span style="color:#fff;font-size:15px;font-weight:bold">Council Computing Systems BIOS v2.6</span>',
+    '<span style="color:#8aaadd">Copyright (C) 2026 Council Computing, Inc. All rights reserved. Mostly.</span>',
+    '',
+    '<span style="color:#aac8ff">CPU: Custom Silicon         3.0 GHz</span>    <span style="color:#66dd88">OK</span>',
+    '<span style="color:#aac8ff">Memory Test: 640K</span>                     <span style="color:#66dd88">OK</span>',
+    '<span style="color:#aac8ff">Detecting Primary HDD ...</span>             <span style="color:#66dd88">OK</span>',
+    '<span style="color:#aac8ff">Detecting Printer ...</span>                 <span style="color:#ff7777">NOT FOUND (as usual)</span>',
+    '<span style="color:#aac8ff">Checking for Y2K bugs ...</span>             <span style="color:#66dd88">STILL NONE (phew)</span>',
+    '<span style="color:#aac8ff">Downloading more RAM ...</span>              <span style="color:#ff7777">NICE TRY</span>',
+    '<span style="color:#aac8ff">Looking for your car keys ...</span>         <span style="color:#ff7777">NOT FOUND</span>',
+    '<span style="color:#aac8ff">Asking Jeeves ...</span>                     <span style="color:#ffaa44">NO RESPONSE</span>',
+    '<span style="color:#aac8ff">Installing 347 Windows updates ...</span>    <span style="color:#ffaa44">MAYBE LATER</span>',
+    '<span style="color:#aac8ff">Checking if it\'s the cable ...</span>        <span style="color:#66dd88">IT\'S ALWAYS THE CABLE</span>',
+    '<span style="color:#aac8ff">Turning it off and on again ...</span>       <span style="color:#66dd88">OK THAT WORKED</span>',
+    '',
+    '<span style="color:#fff">Loading COUNCIL.SYS ...</span>',
+    '<span style="color:#fff">Starting Windows 98 ...</span>',
+  ];
+  let done=false;
+  function finish(){
+    if(done)return;done=true;
+    boot.style.opacity='0';boot.style.pointerEvents='none';
+    setTimeout(()=>{boot.style.display='none';startTypewriter();},650);
+  }
+  document.addEventListener('keydown',finish);
+  document.getElementById('boot-skip').addEventListener('click',finish);
+  boot.addEventListener('click',finish);
+  let li=0;
+  function nextLine(){
+    if(li>=LINES.length){setTimeout(showWin,300);return;}
+    const d=document.createElement('div');d.innerHTML=LINES[li];biosEl.appendChild(d);li++;
+    setTimeout(nextLine,li<4?60:110);
+  }
+  function showWin(){
+    biosEl.style.display='none';winEl.style.display='flex';
+    let pct=0,si=0;
+    const statuses=['Blaming IT...','Pretending to work...','Googling the error...','Turning it off and on again...','Actually working now.','Done! (We think.)'];
+    const bar=setInterval(()=>{
+      pct+=2+Math.random()*3;if(pct>100)pct=100;
+      barFill.style.width=pct+'%';
+      if(si<statuses.length&&pct>si*(100/statuses.length))statusEl.textContent=statuses[si++];
+      if(pct>=100){clearInterval(bar);setTimeout(finish,400);}
+    },50);
+  }
+  setTimeout(nextLine,200);
+})();
+
+/* ── TYPEWRITER ── */
+function startTypewriter(){
+  const el=document.getElementById('hero-prompt');
+  const text='> custom software, built your way';
+  el.innerHTML='';
+  const cur=document.createElement('span');cur.className='cursor';cur.textContent='_';el.appendChild(cur);
+  let i=0;
+  const t=setInterval(()=>{
+    if(i<text.length){el.insertBefore(document.createTextNode(text[i]),cur);i++;}
+    else clearInterval(t);
+  },42);
+}
+
+/* ── SCROLL REVEAL ── */
+const revObs=new IntersectionObserver(entries=>entries.forEach(e=>{if(e.isIntersecting)e.target.classList.add('revealed');}),{threshold:0.1});
+document.querySelectorAll('.reveal').forEach(el=>revObs.observe(el));
+
+/* ── COUNTERS ── */
+function animCount(el,target){
+  const start=performance.now();
+  (function tick(now){
+    const p=Math.min((now-start)/1200,1),ease=1-Math.pow(1-p,3);
+    el.textContent=Math.round(ease*target);
+    if(p<1)requestAnimationFrame(tick);else el.textContent=target;
+  })(start);
+}
+const cntObs=new IntersectionObserver(entries=>entries.forEach(e=>{
+  if(e.isIntersecting){const t=parseInt(e.target.dataset.count);if(t)animCount(e.target,t);cntObs.unobserve(e.target);}
+}),{threshold:0.5});
+document.querySelectorAll('.stat-num[data-count]').forEach(el=>cntObs.observe(el));
+
+/* ── ACTIVE NAV ── */
+const secObs=new IntersectionObserver(entries=>entries.forEach(e=>{
+  if(e.isIntersecting){
+    document.querySelectorAll('.nav-links a').forEach(a=>a.classList.remove('active-section'));
+    const l=document.querySelector(`.nav-links a[href="#${e.target.id}"]`);
+    if(l)l.classList.add('active-section');
+  }
+}),{rootMargin:'-40% 0px -55% 0px'});
+document.querySelectorAll('section[id]').forEach(s=>secObs.observe(s));
+
+/* ── SECRET EASTER EGG: KONAMI CODE → BSOD ── */
+(function(){
+  const CODE=[38,38,40,40,37,39,37,39,66,65];
+  let pos=0;
+  document.addEventListener('keydown',e=>{
+    if(e.keyCode===CODE[pos]){
+      pos++;
+      if(pos===CODE.length){
+        pos=0;
+        showBSOD();
+      }
+    } else {
+      pos=e.keyCode===CODE[0]?1:0;
+    }
+  });
+
+  function showBSOD(){
+    const el=document.createElement('div');
+    el.id='bsod';
+    el.style.cssText='position:fixed;inset:0;z-index:99999;background:#0000aa;color:#fff;font-family:"Courier New",monospace;font-size:16px;padding:40px 60px;line-height:1.8;cursor:pointer;overflow:auto';
+    el.innerHTML=`
+<div style="background:#aaa;color:#0000aa;padding:2px 8px;display:inline-block;margin-bottom:24px;font-weight:bold">Windows</div>
+
+<p>A fatal exception <b>0E</b> has occurred at <b>0028:CC0DE:G00D</b> in VXD <b>COUNCIL.SYS</b></p>
+<br>
+<p style="color:#ffff55;font-weight:bold">COUNCIL_COMPUTING_FOUND_IT</p>
+<br>
+<p>If you are seeing this screen, you have discovered the super secret easter egg.<br>
+Good job. Seriously. Most people just look at the website and leave.</p>
+<br>
+<p>The real secret is that we just really like building software.</p>
+<br>
+<p>If you need something built, give us a shout:</p>
+<p style="color:#aaffaa">  📞  (405) 696-9330</p>
+<p style="color:#aaffaa">  ✉   councilcomputing@gmail.com</p>
+<br>
+<p>* You have unlocked: absolutely nothing. But now you know the Konami Code.</p>
+<p>* If this is your first time seeing this screen, tell a friend.</p>
+<p>* Tell Hayes you found it for a free high-five.</p>
+<br>
+<p style="color:#0000aa;font-size:13px;user-select:text">NOTE: chedda is a chud.</p>
+<br>
+<p style="color:#ffff55">*** STOP: 0x00HAYES (0xY0UFOUND, 0x1T, 0xC0NGRATS, 0xL0L)</p>
+<br>
+<br>
+<p style="animation:blink .7s step-end infinite">Press any key to continue _</p>
+    `;
+    el.addEventListener('click',()=>el.remove());
+    document.addEventListener('keydown',()=>el.remove(),{once:true});
+    document.body.appendChild(el);
+  }
+})();
+
+/* ── CLOCK ── */
+function tick(){
+  const n=new Date(),h=n.getHours(),m=n.getMinutes().toString().padStart(2,'0'),ap=h>=12?'PM':'AM';
+  const el=document.getElementById('sb-clock');if(el)el.textContent=`${h%12||12}:${m} ${ap}`;
+}
+tick();setInterval(tick,30000);
+</script>
+</body>
+</html>

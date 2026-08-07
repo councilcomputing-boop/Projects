@@ -6,11 +6,11 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="CountDracula">
-<meta name="theme-color" content="#2a0a12">
+<meta name="theme-color" content="#2b0d15">
 <title>CountDracula — Hi-Lo Card Counting Trainer</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=EB+Garamond:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="manifest" href="manifest.json">
 <link rel="icon" type="image/png" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-512.png">
@@ -20,24 +20,25 @@
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
-  --green:#16301f;--green2:#3f8a5c;--green-pale:#1c2a20;
-  --gold:#c9a227;--gold-pale:#f3e6bf;
-  --red:#8a0517;--red-pale:#f3d9da;
-  --gray:#584f63;--gray-pale:#e9e6ea;
-  --blue:#6b3a52;--blue-pale:#ecdfe6;
-  --text:#241614;--muted:#6b5a4a;--border:#ded0b0;
-  --bg:#0d0508;--card:#f7f0dd;
-  --wine:#2a0a12;--wine-dark:#150408;
-  --felt:#122b1c;--felt-light:#1c3f2a;
+  --green:#1c3b2b;--green2:#1c3b2b;--green-pale:#e3f0e8;
+  --gold:#c8a94b;--gold-pale:#eee0b0;--gold-deep:#9c7c22;--gold-soft:#eee0b0;
+  --red:#a01020;--red-pale:#f8dde1;--blood:#e0184f;--blood-deep:#a01020;
+  --gray:#5c4b3f;--gray-pale:#e6e3ea;
+  --blue:#3b1219;--blue-pale:#e6e3ea;
+  --text:#241a15;--muted:#5c4b3f;--border:#ddd2b4;
+  --bg:#120709;--card:#f7efd9;--card-light:#fbf7ea;--card-mute:#e6e3ea;
+  --wine:#2b0d15;--wine-dark:#1e0a0f;--wine-light:#3b1219;--wine-border:#4d1a22;
+  --felt:#1c3b2b;--felt-light:#274a37;
   --cardback1:#7a0c1e;--cardback2:#170509;
   --r:12px;--shadow:0 2px 10px rgba(0,0,0,.35);
-  --display-font:'Cinzel',Georgia,serif;--body-font:'EB Garamond',Georgia,'Times New Roman',serif;
+  --shadow-panel:0 18px 40px -22px rgba(0,0,0,.9);--shadow-card:0 10px 24px -12px rgba(0,0,0,.45);--shadow-gold:0 0 0 1px rgba(200,169,75,.35);
+  --display-font:'Cormorant Garamond',Georgia,serif;--body-font:'Inter',system-ui,sans-serif;
 }
 html{background:var(--bg)}
 body{
   font-family:var(--body-font);color:var(--text);min-height:100vh;max-width:600px;margin:0 auto;overscroll-behavior:none;-webkit-tap-highlight-color:transparent;
   background-color:var(--bg);
-  background-image: radial-gradient(circle at 50% -10%, #4a1420 0%, transparent 55%);
+  background-image: radial-gradient(circle at 50% -10%, #4d1a22 0%, transparent 55%);
   position:relative;
 }
 #bgDecor{position:fixed;inset:0;overflow:hidden;pointer-events:none;z-index:0}
@@ -48,47 +49,48 @@ body{
   pointer-events:none;
 }
 button{user-select:none;-webkit-user-select:none;touch-action:manipulation}
-.hdr{background:linear-gradient(180deg,var(--wine),var(--wine-dark));color:#f3e6bf;padding:10px 14px;text-align:center;position:sticky;top:0;z-index:200;box-shadow:0 2px 12px rgba(0,0,0,.55);border-bottom:1px solid #4a1420;transition:padding .25s ease}
+.hdr{background:linear-gradient(180deg,var(--wine),var(--wine-dark));color:#eee0b0;padding:10px 14px;text-align:center;position:sticky;top:0;z-index:200;box-shadow:0 2px 12px rgba(0,0,0,.55);border-bottom:1px solid #4d1a22;transition:padding .25s ease}
 .hdr-row{display:flex;align-items:center;gap:10px;transition:gap .25s ease}
 .hdr-text{flex:1;min-width:0;text-align:left;transition:text-align .25s ease}
-.dracula-mark{width:50px;height:auto;flex-shrink:0;margin:0;display:block;transition:width .25s ease}
+.dracula-mark{width:44px;height:44px;flex-shrink:0;margin:0;display:block;border-radius:50%;object-fit:cover;box-shadow:0 0 0 1px rgba(200,169,75,.6);transition:width .25s ease,height .25s ease}
 .hdr.hdr-big{padding:10px 16px 8px}
 .hdr.hdr-big .hdr-row{flex-direction:column;gap:0}
 .hdr.hdr-big .hdr-text{text-align:center}
-.hdr.hdr-big .dracula-mark{width:84px;margin:0 auto 4px}
+.hdr.hdr-big .dracula-mark{width:72px;height:72px;margin:0 auto 4px}
 .hdr.hdr-big .hdr-title{font-size:20px;letter-spacing:1.5px;white-space:normal}
 .hdr.hdr-big .hdr-sub{font-size:11px;white-space:normal}
 .hdr.hdr-big .menu-link{display:none}
-.hdr-drops{background:rgba(255,255,255,.15);color:#f3e6bf;font-family:var(--display-font);font-weight:700;font-size:12.5px;padding:7px 10px;border-radius:10px;flex-shrink:0;white-space:nowrap;transition:transform .2s ease,box-shadow .2s ease}
+.hdr-drops{background:rgba(255,255,255,.15);color:#eee0b0;font-family:var(--display-font);font-weight:700;font-size:12.5px;padding:7px 10px;border-radius:10px;flex-shrink:0;white-space:nowrap;transition:transform .2s ease,box-shadow .2s ease}
 .hdr.hdr-big .hdr-drops{position:absolute;top:10px;right:14px}
 .hdr-drops.credit-pulse{animation:creditPulse .6s ease}
 .dealer-portrait{display:block;width:56px;height:56px;margin:0 auto 6px;border-radius:50%;object-fit:cover;object-position:top center;box-shadow:0 0 0 2px var(--gold),0 3px 8px rgba(0,0,0,.4)}
-.hdr-title{font-family:var(--display-font);font-size:19px;font-weight:700;letter-spacing:1px;color:#f3e6bf;text-shadow:0 0 12px rgba(201,162,39,.35);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hdr-title{font-family:var(--display-font);font-size:19px;font-weight:700;letter-spacing:1px;color:#eee0b0;text-shadow:0 0 12px rgba(201,162,39,.35);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hdr-title-accent{color:var(--gold)}
 .hdr-sub{font-size:11px;color:#c9a9a9;margin-top:1px;font-style:italic;letter-spacing:.3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .menu-link{background:rgba(255,255,255,.15);color:#fff;border:none;border-radius:10px;padding:8px 12px;font-weight:700;font-size:12.5px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;flex-shrink:0}
 .menu-link:active{background:rgba(255,255,255,.28)}
 .home-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
-.menu-card{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;background:var(--card);border-radius:var(--r);box-shadow:var(--shadow);padding:26px 6px;cursor:pointer;border:none;text-align:center;min-width:0;overflow:hidden}
-.menu-card:active{opacity:.75;transform:scale(.99)}
-.menu-icon{font-size:36px}
+.menu-card{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;background:var(--card);border-radius:16px;box-shadow:var(--shadow-panel);padding:20px 6px;cursor:pointer;border:none;text-align:center;min-width:0;overflow:hidden;transition:background-color .15s ease}
+.menu-card:active{background-color:var(--card-light);transform:scale(.99)}
+.menu-icon{font-size:19px;width:40px;height:40px;border-radius:12px;background:var(--card-mute);display:flex;align-items:center;justify-content:center;color:var(--wine)}
 .menu-title{font-size:12.5px;font-weight:700;color:var(--text)}
 .menu-subtitle{font-size:10px;color:var(--muted);line-height:1.25;margin-top:1px}
 #C{padding:14px 14px 20px;position:relative}
 #C.with-nav{padding-bottom:90px}
-.bottom-nav{position:fixed;left:0;right:0;bottom:0;max-width:600px;margin:0 auto;display:none;justify-content:space-around;align-items:center;background:linear-gradient(0deg,var(--wine-dark),var(--wine));border-top:1px solid #4a1420;box-shadow:0 -2px 12px rgba(0,0,0,.5);z-index:200;padding:8px 0 calc(8px + env(safe-area-inset-bottom))}
+.bottom-nav{position:fixed;left:0;right:0;bottom:0;max-width:600px;margin:0 auto;display:none;justify-content:space-around;align-items:center;background:linear-gradient(0deg,var(--wine-dark),var(--wine));border-top:1px solid #4d1a22;box-shadow:0 -2px 12px rgba(0,0,0,.5);z-index:200;padding:8px 0 calc(8px + env(safe-area-inset-bottom))}
 .bottom-nav.show{display:flex}
 .nav-btn{background:none;border:none;color:#c9a9a9;display:flex;flex-direction:column;align-items:center;gap:2px;font-size:10.5px;font-weight:700;padding:4px 18px;cursor:pointer}
 .nav-btn .nav-icon{font-size:22px}
 .nav-btn.active{color:var(--gold)}
 .view{display:none}
 .view.active{display:block}
-.card{background:var(--card);border-radius:var(--r);box-shadow:var(--shadow);padding:16px;margin-bottom:12px}
-.card-title{font-family:var(--display-font);font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.9px;margin-bottom:12px}
+.card{background:var(--card);border-radius:18px;box-shadow:var(--shadow-panel);padding:18px;margin-bottom:14px}
+.card-title{font-family:var(--display-font);font-size:13px;font-weight:700;color:var(--gold-deep);text-transform:uppercase;letter-spacing:1.6px;margin-bottom:14px}
 
 /* Rules / legend */
 .legend-row{display:flex;align-items:center;gap:12px;padding:9px 0;border-bottom:1px solid var(--border)}
 .legend-row:last-of-type{border-bottom:none}
-.legend-badge{flex-shrink:0;width:42px;height:42px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:16px;color:#fff}
+.legend-badge{flex-shrink:0;width:42px;height:42px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-family:var(--display-font);font-weight:700;font-size:17px;color:#fff}
 .legend-badge.plus{background:var(--green2)}
 .legend-badge.zero{background:var(--gray)}
 .legend-badge.minus{background:var(--red)}
@@ -99,12 +101,12 @@ button{user-select:none;-webkit-user-select:none;touch-action:manipulation}
 .rules-list li{margin-bottom:8px}
 
 /* Running count display */
-.count-display{background:var(--card);border-radius:var(--r);box-shadow:var(--shadow);padding:20px 16px;margin-bottom:12px;text-align:center}
-.count-label{font-family:var(--display-font);font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.9px}
-.count-value{font-family:var(--display-font);font-size:64px;font-weight:700;line-height:1.15;transition:color .15s}
-.count-value.pos{color:var(--green2)}
-.count-value.neg{color:var(--red)}
-.count-value.zero{color:var(--gray)}
+.count-display{background:rgba(200,169,75,.25);border-radius:18px;box-shadow:var(--shadow-panel);padding:20px 16px;margin-bottom:12px;text-align:center}
+.count-label{font-family:var(--display-font);font-size:12px;font-weight:700;color:var(--gold-deep);text-transform:uppercase;letter-spacing:1.4px}
+.count-value{font-family:var(--display-font);font-size:64px;font-weight:700;line-height:1.15;transition:color .15s;font-variant-numeric:tabular-nums}
+.count-value.pos{color:var(--felt)}
+.count-value.neg{color:var(--blood-deep)}
+.count-value.zero{color:var(--text)}
 .count-value.hidden-val{color:var(--muted)}
 .cards-seen{font-size:13px;color:var(--muted);margin-top:2px}
 
@@ -112,31 +114,40 @@ button{user-select:none;-webkit-user-select:none;touch-action:manipulation}
 .deck-row{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}
 .deck-row label{font-size:14px;font-weight:600}
 .deck-row select{padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:15px;background:#fff}
-.true-count-value{font-family:var(--display-font);font-size:34px;font-weight:700;text-align:center;color:#7a5f00;background:var(--gold-pale);border-radius:10px;padding:10px 0;margin-bottom:10px}
+.true-count-value{font-family:var(--display-font);font-size:34px;font-weight:700;text-align:center;color:var(--gold-deep);background:rgba(200,169,75,.25);border-radius:14px;padding:12px 0;margin-bottom:10px;font-variant-numeric:tabular-nums}
 
 /* Buttons */
 .btn-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:12px}
-.count-btn{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;height:90px;border:none;border-radius:var(--r);font-size:26px;font-weight:800;color:#fff;cursor:pointer;box-shadow:var(--shadow)}
-.count-btn span{font-size:12px;font-weight:600;opacity:.9}
-.count-btn:active{transform:scale(.96);opacity:.85}
-.count-btn.plus{background:var(--green2)}
-.count-btn.zero{background:var(--gray)}
-.count-btn.minus{background:var(--red)}
+.count-btn{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;height:90px;border:none;border-radius:16px;font-family:var(--display-font);font-size:26px;font-weight:700;cursor:pointer;box-shadow:var(--shadow-card);transition:background-color .15s ease}
+.count-btn span{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;opacity:.7}
+.count-btn:active{transform:scale(.97)}
+.count-btn.plus{background:#fff;color:var(--text)}
+.count-btn.plus:active{background:rgba(200,169,75,.3)}
+.count-btn.zero{background:var(--card-mute);color:var(--text)}
+.count-btn.zero:active{background:#fff}
+.count-btn.minus{background:var(--wine);color:var(--gold-soft)}
+.count-btn.minus:active{background:var(--wine-light)}
 
-.btn{display:flex;align-items:center;justify-content:center;gap:8px;padding:13px 20px;border-radius:10px;border:none;font-size:16px;font-weight:600;cursor:pointer;width:100%}
-.btn:active{opacity:.75}
+.btn{display:flex;align-items:center;justify-content:center;gap:8px;padding:14px 20px;border-radius:14px;border:none;font-size:16px;font-weight:700;cursor:pointer;width:100%;box-shadow:var(--shadow-card);transition:background-color .15s ease}
+.btn:active{background-color:var(--card-light)}
 .btn:disabled{opacity:.4;cursor:default}
-.btn-outline{background:#fff;color:var(--text);border:1px solid var(--border)}
+.btn-outline{background:#fff;color:var(--text)}
 .btn-row{display:flex;gap:8px;margin-bottom:8px}
 .btn-row .btn{width:auto;flex:1;padding:11px 4px;font-size:13.5px}
-.btn-hit{background:var(--green2);color:#fff}
-.btn-stand{background:var(--gray);color:#fff}
-.btn-double{background:var(--gold);color:#3a2e00}
-.btn-split{background:var(--blue);color:#fff}
+.btn-hit,.btn-stand,.btn-double,.btn-split{background:#fff;color:var(--text)}
+.btn-secondary{background:var(--card-mute);color:var(--text);box-shadow:none}
+.btn-secondary:active{background-color:#fff}
+
+/* Generic stat tile — reused on Manual, Deck Math, Profile */
+.stat-tile{background:var(--card-mute);border-radius:14px;padding:14px;text-align:center}
+.stat-tile.accent{background:rgba(200,169,75,.25)}
+.stat-tile-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1.2px;color:var(--muted)}
+.stat-tile.accent .stat-tile-label{color:var(--gold-deep)}
+.stat-tile-value{font-family:var(--display-font);font-size:34px;font-weight:700;line-height:1;margin-top:6px;color:var(--text);font-variant-numeric:tabular-nums}
 .icon-btn-row{display:flex;gap:14px;justify-content:center;margin:8px 0}
 .peek-icon-btn{
   width:46px;height:46px;border-radius:50%;
-  background:linear-gradient(135deg,var(--gold),#8a6d1a);
+  background:linear-gradient(135deg,var(--gold),#9c7c22);
   color:#241a00;font-size:19px;border:2px solid #e8cf7a;
   display:flex;align-items:center;justify-content:center;cursor:pointer;
   animation:peekPulse 2.2s ease-in-out infinite;
@@ -151,7 +162,7 @@ button{user-select:none;-webkit-user-select:none;touch-action:manipulation}
   50%{box-shadow:0 0 0 9px rgba(212,175,55,0),0 4px 14px rgba(0,0,0,.35)}
 }
 .peek-count-badge{
-  background:var(--wine);color:#f3e6bf;border-radius:10px;
+  background:var(--wine);color:#eee0b0;border-radius:10px;
   padding:6px 10px;box-shadow:var(--shadow);text-align:center;line-height:1.2;
   width:fit-content;margin:0 auto 10px;
 }
@@ -200,10 +211,10 @@ button{user-select:none;-webkit-user-select:none;touch-action:manipulation}
 .shoe-row{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:13px;color:var(--muted);margin-bottom:4px}
 .shoe-row select{padding:6px 8px;border:1.5px solid var(--border);border-radius:8px;font-size:14px;background:#fff}
 .table-label{font-size:11px;font-weight:700;text-transform:uppercase;color:var(--muted);letter-spacing:.5px;text-align:center;margin-bottom:4px}
-.card-row{display:flex;gap:6px;flex-wrap:nowrap;justify-content:flex-start;margin-bottom:4px;height:60px;overflow-x:auto;overflow-y:hidden}
-.playing-card{width:42px;height:58px;border-radius:6px;background:#fff;border:1px solid #ccc;display:flex;flex-direction:column;align-items:center;justify-content:center;font-weight:800;font-size:13px;box-shadow:0 1px 3px rgba(0,0,0,.2)}
-.playing-card.red{color:var(--red)}
-.playing-card.black{color:#1a1a1a}
+.card-row{display:flex;gap:6px;flex-wrap:nowrap;justify-content:center;margin-bottom:4px;height:60px;overflow-x:auto;overflow-y:hidden}
+.playing-card{width:42px;height:58px;border-radius:8px;background:#fff;border:none;display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:var(--display-font);font-weight:700;font-size:14px;box-shadow:var(--shadow-card)}
+.playing-card.red{color:var(--blood-deep)}
+.playing-card.black{color:var(--text)}
 .playing-card.hidden-card{position:relative;overflow:hidden;color:transparent;font-size:20px;border-color:transparent;background:var(--cardback1)}
 .playing-card.hidden-card::before,.playing-card.hidden-card::after{content:'';position:absolute}
 
@@ -268,25 +279,25 @@ button{user-select:none;-webkit-user-select:none;touch-action:manipulation}
 .playing-card.sideways{transform:rotate(90deg);margin:0 8px;flex-shrink:0}
 .hand-total{font-size:14px;font-weight:700;text-align:center;color:var(--text);margin-bottom:6px}
 .hand-total .muted{color:var(--muted);font-weight:600}
-.hand-block{flex:1;min-width:0;margin-bottom:6px;padding:6px;border-radius:10px;background:var(--gold-pale);transition:min-height .25s ease}
+.hand-block{flex:1;min-width:0;margin-bottom:6px;padding:8px 6px;border-radius:12px;background:rgba(247,239,217,.95);transition:min-height .25s ease}
 /* Split hands sit side by side, right to left: hand 1 (played first) on the
    right, hand 2 on the left — row-reverse achieves this with no JS reordering. */
 #playerHandsArea{display:flex;flex-direction:row-reverse;gap:8px;transition:min-height .25s ease}
-.hand-block.active-hand{background:var(--gold-pale);box-shadow:0 0 0 2px var(--gold)}
-.dealer-card-box{background:var(--gold-pale);border-radius:10px;padding:6px;margin-bottom:4px}
+.hand-block.active-hand{background:rgba(247,239,217,.95);box-shadow:0 0 0 2px var(--gold)}
+.dealer-card-box{background:rgba(247,239,217,.95);border-radius:12px;padding:8px 6px;margin-bottom:4px}
 .hand-badge{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);text-align:center;margin-bottom:4px}
 .result-banner{text-align:center;font-size:18px;font-weight:800;border-radius:10px;padding:12px;margin-bottom:12px}
 .result-banner.win{background:var(--green-pale);color:var(--green2)}
 .result-banner.lose{background:var(--red-pale);color:var(--red)}
 .result-banner.push{background:var(--gray-pale);color:var(--gray)}
-.result-banner.blackjack{background:var(--gold-pale);color:#8a6d00}
+.result-banner.blackjack{background:var(--gold-pale);color:#9c7c22}
 .hh-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 0;border-bottom:1px solid var(--border)}
 .hh-row:last-child{border-bottom:none}
 .hh-badge{flex-shrink:0;font-family:var(--display-font);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;padding:4px 10px;border-radius:20px}
 .hh-badge.win{background:var(--green-pale);color:var(--green2)}
 .hh-badge.lose{background:var(--red-pale);color:var(--red)}
 .hh-badge.push{background:var(--gray-pale);color:var(--gray)}
-.hh-badge.blackjack{background:var(--gold-pale);color:#8a6d00}
+.hh-badge.blackjack{background:var(--gold-pale);color:#9c7c22}
 .hh-moves{font-size:12.5px;color:var(--muted)}
 .hh-empty{font-size:13px;color:var(--muted);text-align:center;padding:8px 0}
 .lesson-card{border-top:2px solid var(--gold)}
@@ -304,7 +315,7 @@ button{user-select:none;-webkit-user-select:none;touch-action:manipulation}
 .signature-text{font-size:13.5px;color:var(--muted);line-height:1.5}
 .signature-text em{font-family:var(--display-font);font-style:normal;font-size:15px;color:var(--text)}
 .quiz-score{text-align:center;font-size:13px;color:var(--muted);margin-bottom:10px}
-.drops-badge{position:absolute;top:12px;right:12px;font-family:var(--display-font);font-size:12.5px;font-weight:700;background:var(--gold-pale);color:#7a5f00;padding:5px 11px;border-radius:20px;white-space:nowrap}
+.drops-badge{position:absolute;top:12px;right:12px;font-family:var(--display-font);font-size:12.5px;font-weight:700;background:rgba(200,169,75,.25);color:var(--gold-deep);padding:5px 11px;border-radius:20px;white-space:nowrap}
 .drops-badge.credit-pulse{animation:creditPulse .6s ease}
 .drops-badge.debit-pulse,.hdr-drops.debit-pulse{animation:debitPulse .5s ease}
 @keyframes debitPulse{
@@ -314,13 +325,13 @@ button{user-select:none;-webkit-user-select:none;touch-action:manipulation}
 }
 .bet-stepper-badge{
   position:absolute;top:12px;left:12px;z-index:6;
-  background:var(--wine);color:#f3e6bf;border-radius:20px;
+  background:var(--wine);color:#eee0b0;border-radius:20px;
   padding:6px 8px 6px 10px;display:flex;align-items:center;gap:6px;
   font-family:var(--display-font);font-size:12.5px;font-weight:700;box-shadow:var(--shadow);white-space:nowrap;
 }
 .bet-step-btn{
   width:20px;height:20px;border-radius:50%;border:none;
-  background:rgba(255,255,255,.2);color:#f3e6bf;font-size:14px;font-weight:800;line-height:1;
+  background:rgba(255,255,255,.2);color:#eee0b0;font-size:14px;font-weight:800;line-height:1;
   cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;flex-shrink:0;
 }
 .bet-step-btn:disabled{opacity:.35;cursor:default}
@@ -332,18 +343,26 @@ button{user-select:none;-webkit-user-select:none;touch-action:manipulation}
 .frame-hdr .bet-stepper-badge,.frame-hdr .drops-badge{position:static}
 .felt{
   background:radial-gradient(circle at 50% 0%,var(--felt-light),var(--felt));
-  border-radius:10px;border:3px solid #3a2410;padding:12px;margin:8px 0;
+  border-radius:16px;border:3px solid var(--wine-border);padding:12px;margin:8px 0;
   position:relative;min-height:150px;display:flex;flex-direction:column;
   transition:min-height .25s ease;
 }
-.felt .table-label{color:#c9b896}
-.felt .hand-review-line{color:var(--gold-pale)}
-.felt-empty-hint{margin:auto;text-align:center;font-size:13px;color:#c9b896;font-style:italic}
+.felt .table-label{color:var(--gold-soft)}
+.felt .hand-review-line{color:var(--gold-soft)}
+.felt-empty-hint{margin:auto;text-align:center;font-size:13px;color:var(--gold-soft);font-style:italic}
 .felt-msg-zone{min-height:24px;margin-top:6px}
+/* Play view fills the screen height while playing (Peek/Quiz tabs only —
+   scoped under body.fill-mode so every other view is untouched). */
+body.fill-mode{height:100dvh;overflow:hidden;display:flex;flex-direction:column}
+body.fill-mode .hdr{flex:0 0 auto}
+body.fill-mode #C{flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column}
+body.fill-mode #dealerView.active{flex:1;min-height:0;display:flex;flex-direction:column}
+body.fill-mode #dealerView.active > .card:first-child{flex:1;min-height:0;display:flex;flex-direction:column}
+body.fill-mode .felt{flex:1 1 auto;min-height:150px;overflow-y:auto}
 
 /* Store */
 .store-drops-wrap{position:relative}
-.store-drops-badge{font-family:var(--display-font);font-size:18px;font-weight:700;color:#7a5f00;background:var(--gold-pale);border-radius:10px;padding:10px 14px;text-align:center;margin-bottom:12px}
+.store-drops-badge{font-family:var(--display-font);font-size:28px;font-weight:700;color:var(--gold-deep);background:rgba(200,169,75,.25);border-radius:14px;padding:14px;text-align:center;margin-bottom:12px;font-variant-numeric:tabular-nums}
 .store-drops-badge.credit-pulse{animation:creditPulse .6s ease}
 @keyframes creditPulse{
   0%{transform:scale(1)}
@@ -352,7 +371,7 @@ button{user-select:none;-webkit-user-select:none;touch-action:manipulation}
 }
 .credit-fly{
   position:fixed;left:0;top:0;
-  font-family:var(--display-font);font-weight:700;font-size:14px;color:#f3e6bf;
+  font-family:var(--display-font);font-weight:700;font-size:14px;color:#eee0b0;
   background:var(--wine);padding:5px 11px;border-radius:8px;white-space:nowrap;
   pointer-events:none;box-shadow:var(--shadow);z-index:600;
 }
@@ -379,13 +398,13 @@ button{user-select:none;-webkit-user-select:none;touch-action:manipulation}
 .vial-tile:active{opacity:.75}
 .vial-tile svg{display:block}
 .vial-name{font-size:11.5px;font-weight:700;color:var(--text)}
-.vial-amount{font-family:var(--display-font);font-size:12px;font-weight:700;color:#7a5f00}
+.vial-amount{font-family:var(--display-font);font-size:12px;font-weight:700;color:#9c7c22}
 .vial-price{font-size:10.5px;font-weight:600;color:var(--muted)}
-.vial-bonus{font-size:9.5px;font-weight:700;color:#7a5f00;background:var(--gold-pale);border-radius:6px;padding:1px 7px;margin-top:2px}
-.store-buy-amount{font-family:var(--display-font);font-weight:700;color:#7a5f00}
-.cardback-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
-.cardback-tile{display:flex;flex-direction:column;align-items:center;gap:5px;background:var(--gray-pale);border:none;border-radius:var(--r);padding:9px 4px 8px;cursor:pointer;text-align:center}
-.cardback-tile:active{opacity:.75}
+.vial-bonus{font-size:9.5px;font-weight:700;color:#9c7c22;background:var(--gold-pale);border-radius:6px;padding:1px 7px;margin-top:2px}
+.store-buy-amount{font-family:var(--display-font);font-weight:700;color:#9c7c22}
+.cardback-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.cardback-tile{display:flex;flex-direction:column;align-items:center;gap:5px;background:var(--card-mute);border:none;border-radius:14px;padding:10px 4px 9px;cursor:pointer;text-align:center;transition:background-color .15s ease}
+.cardback-tile:active{background-color:#fff}
 .cardback-tile .playing-card{width:38px;height:52px;box-shadow:0 1px 4px rgba(0,0,0,.35)}
 .cardback-tile-tier{font-size:8.5px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--muted)}
 .cardback-tile-tier.tier-Starter{color:#7a8a6b}
@@ -396,7 +415,7 @@ button{user-select:none;-webkit-user-select:none;touch-action:manipulation}
 .cardback-tile-tier.tier-Legendary{color:#c98a1a}
 .cardback-tile-tier.tier-Mythic{color:#c9314a}
 .cardback-tile-name{font-size:10.5px;font-weight:700;color:var(--text);line-height:1.15}
-.cardback-tile-price{font-size:10px;font-weight:700;color:#7a5f00}
+.cardback-tile-price{font-size:10px;font-weight:700;color:#9c7c22}
 .cardback-tile-price.owned{color:var(--green2)}
 .cardback-tile-price.equipped{color:var(--muted)}
 .cardback-tile.locked{opacity:.65}
@@ -412,7 +431,7 @@ button{user-select:none;-webkit-user-select:none;touch-action:manipulation}
 .quiz-overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;z-index:500;padding:20px}
 .quiz-overlay.blurred{backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)}
 .bet-preset-row{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin:12px 0}
-.bet-preset-btn{background:var(--gold-pale);color:#7a5f00;border:none;border-radius:8px;padding:8px 14px;font-weight:700;font-size:14px;cursor:pointer}
+.bet-preset-btn{background:var(--gold-pale);color:#9c7c22;border:none;border-radius:8px;padding:8px 14px;font-weight:700;font-size:14px;cursor:pointer}
 .quiz-box{background:#fff;border-radius:var(--r);padding:22px;width:min(320px,100%);text-align:center;box-shadow:0 8px 30px rgba(0,0,0,.3)}
 .quiz-title{font-family:var(--display-font);font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px}
 .quiz-question{font-size:16px;font-weight:700;margin-bottom:14px}
@@ -427,12 +446,12 @@ button{user-select:none;-webkit-user-select:none;touch-action:manipulation}
 .example-table th,.example-table td{padding:7px 4px;text-align:center;border-bottom:1px solid var(--border)}
 .example-table th{color:var(--muted);font-weight:700;font-size:11.5px;text-transform:uppercase}
 .example-table td:first-child{text-align:left;font-weight:600}
-.example-table td:last-child{font-family:var(--display-font);font-weight:700}
+.example-table td:last-child{font-family:var(--display-font);font-weight:700;color:var(--gold-deep);font-variant-numeric:tabular-nums}
 .calc-row{display:flex;gap:10px;margin-bottom:8px}
 .calc-field{flex:1}
 .calc-field label{display:block;font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px}
 .calc-field select,.calc-field input{width:100%;padding:10px;border:1.5px solid var(--border);border-radius:8px;font-size:16px;background:#fff;text-align:center}
-.calc-output{font-family:var(--display-font);font-size:17px;font-weight:700;text-align:center;color:#7a5f00;background:var(--gold-pale);border-radius:10px;padding:14px 10px;line-height:1.5}
+.calc-output{font-family:var(--display-font);font-size:18px;font-weight:700;text-align:center;color:var(--gold-deep);background:rgba(200,169,75,.25);border-radius:14px;padding:16px 10px;line-height:1.5}
 .problem-display{display:flex;gap:10px;margin-bottom:8px}
 .problem-box{flex:1;background:var(--gray-pale);border-radius:10px;padding:10px 10px;text-align:center}
 .problem-box .problem-label{font-family:var(--display-font);font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px}
@@ -451,9 +470,9 @@ button{user-select:none;-webkit-user-select:none;touch-action:manipulation}
 
 <div class="hdr">
   <div class="hdr-row">
-    <img src="header-mark.png" class="dracula-mark" id="draculaMark" alt="" aria-hidden="true">
+    <img src="badge-logo.jpg" class="dracula-mark" id="draculaMark" alt="" aria-hidden="true">
     <div class="hdr-text">
-      <div class="hdr-title">CountDracula</div>
+      <div class="hdr-title">Count<span class="hdr-title-accent">Dracula</span></div>
       <div class="hdr-sub">He never loses count · Hi-Lo System</div>
     </div>
     <div class="hdr-drops" id="hdrDropsBadge">🩸 1000</div>
@@ -601,7 +620,7 @@ button{user-select:none;-webkit-user-select:none;touch-action:manipulation}
       <button class="count-btn minus" data-val="-1" aria-label="Minus one, cards 10 through Ace">-1<span>10–A</span></button>
     </div>
 
-    <button class="btn btn-outline" id="resetBtn">Reset Count</button>
+    <button class="btn btn-secondary" id="resetBtn">Reset Count</button>
 
   </div>
 
@@ -663,7 +682,7 @@ button{user-select:none;-webkit-user-select:none;touch-action:manipulation}
 
       <div class="felt">
         <div class="dealer-portrait-wrap">
-          <img src="dealer-dracula.png" alt="Count Dracula, your dealer" class="dealer-portrait" id="dealerPortrait">
+          <img src="dealer-portrait.jpg" alt="Count Dracula, your dealer" class="dealer-portrait" id="dealerPortrait">
         </div>
         <div style="min-height:26px;transition:min-height .2s ease">
           <div class="dealer-speech" id="dealerSpeech"></div>
@@ -688,6 +707,11 @@ button{user-select:none;-webkit-user-select:none;touch-action:manipulation}
         </div>
       </div>
 
+      <div class="icon-btn-row" id="strategyTipRow" style="justify-content:center;margin:4px 0">
+        <button class="peek-icon-btn" id="strategyTipBtn" aria-label="Get a strategy tip" style="display:none">💡</button>
+      </div>
+      <div class="hint" id="strategyTipResult" style="display:none;text-align:center"></div>
+
       <div class="btn-row" id="playActions">
         <button class="btn btn-hit" id="hitBtn">Hit</button>
         <button class="btn btn-stand" id="standBtn">Stand</button>
@@ -695,7 +719,7 @@ button{user-select:none;-webkit-user-select:none;touch-action:manipulation}
         <button class="btn btn-split" id="splitBtn" style="display:none">Split</button>
       </div>
       <button class="btn btn-outline" id="dealBtn">Deal Hand</button>
-      <button class="btn btn-outline" id="newShoeBtn" style="margin-top:8px">Shuffle New Shoe</button>
+      <button class="btn btn-secondary" id="newShoeBtn" style="margin-top:8px">Shuffle New Shoe</button>
     </div>
 
   </div>
@@ -740,7 +764,7 @@ button{user-select:none;-webkit-user-select:none;touch-action:manipulation}
       <div class="quiz-feedback" id="mathFeedback"></div>
       <div class="btn-row">
         <button class="btn btn-outline" id="mathCheckBtn">Check</button>
-        <button class="btn btn-outline" id="mathNewProblemBtn">New Problem</button>
+        <button class="btn btn-secondary" id="mathNewProblemBtn">New Problem</button>
       </div>
       <div class="math-score" id="mathScore">Practice score: 0/0</div>
     </div>
@@ -764,6 +788,7 @@ button{user-select:none;-webkit-user-select:none;touch-action:manipulation}
         </select>
       </div>
       <button class="btn btn-outline" id="speedStartBtn" style="margin-top:6px">Start Drill</button>
+      <button class="btn btn-outline" id="speedStopBtn" style="margin-top:6px;display:none">Stop Drill</button>
     </div>
 
     <div class="card speed-stage-body" id="speedStage" style="display:none">
@@ -777,7 +802,7 @@ button{user-select:none;-webkit-user-select:none;touch-action:manipulation}
       <div class="card-title">What's the count?</div>
       <div class="hint" style="margin-top:0">Running count of the 51 cards you just saw.</div>
       <input type="number" id="speedAnswerInput" class="quiz-input" style="margin-top:10px" placeholder="e.g. -3">
-      <button class="btn" id="speedSubmitBtn" style="background:var(--green2);color:#fff">Submit</button>
+      <button class="btn btn-outline" id="speedSubmitBtn">Submit</button>
       <div class="quiz-feedback" id="speedFeedback"></div>
     </div>
 
@@ -820,30 +845,24 @@ button{user-select:none;-webkit-user-select:none;touch-action:manipulation}
     </div>
 
     <div class="card">
-      <div class="card-title">Card Backs</div>
-      <div class="hint" style="margin-top:-6px;margin-bottom:10px">Spend Blood Drops to unlock a new look for the dealer's hidden card. Purely cosmetic — equip any owned back at any time.</div>
-      <div class="cardback-grid" id="cardBackGrid"></div>
-    </div>
-
-    <div class="card">
       <div class="card-title">Blood Vials</div>
       <div class="hint" style="margin-top:-6px;margin-bottom:10px">Entertainment only — no cash value, no cash-out. No purchase is ever necessary — every game mode is fully playable for free.</div>
       <div class="vial-grid">
       <button class="vial-tile" data-amount="1000" data-link="https://buy.stripe.com/fZu4gz1Im6MN6WXfmDgnK03">
-        <svg viewBox="0 0 20 32" width="22" height="30"><rect x="7" y="0" width="6" height="4" rx="1" fill="#5a3a1a"/><path d="M6 4 H14 V22 A4 4 0 0 1 6 22 Z" fill="#fff" stroke="#6b5a4a" stroke-width="1.1"/><path d="M6 15 H14 V22 A4 4 0 0 1 6 22 Z" fill="#8a0517"/><ellipse cx="8" cy="17" rx="1" ry="2" fill="#e2647a" opacity=".6"/></svg>
+        <svg viewBox="0 0 20 32" width="22" height="30"><rect x="7" y="0" width="6" height="4" rx="1" fill="#5a3a1a"/><path d="M6 4 H14 V22 A4 4 0 0 1 6 22 Z" fill="#fff" stroke="#6b5a4a" stroke-width="1.1"/><path d="M6 15 H14 V22 A4 4 0 0 1 6 22 Z" fill="#a01020"/><ellipse cx="8" cy="17" rx="1" ry="2" fill="#e2647a" opacity=".6"/></svg>
         <div class="vial-name">Tiny Vial</div>
         <div class="vial-amount">+1,000 🩸</div>
         <div class="vial-price">$0.99</div>
       </button>
       <button class="vial-tile" data-amount="3500" data-link="https://buy.stripe.com/fZueVddr41sta99gqHgnK04">
-        <svg viewBox="0 0 20 32" width="26" height="32"><rect x="7" y="0" width="6" height="4" rx="1" fill="#5a3a1a"/><path d="M6 4 H14 V23 A4 4 0 0 1 6 23 Z" fill="#fff" stroke="#6b5a4a" stroke-width="1.1"/><path d="M6 14 H14 V23 A4 4 0 0 1 6 23 Z" fill="#8a0517"/><ellipse cx="8" cy="16.5" rx="1.1" ry="2.4" fill="#e2647a" opacity=".6"/></svg>
+        <svg viewBox="0 0 20 32" width="26" height="32"><rect x="7" y="0" width="6" height="4" rx="1" fill="#5a3a1a"/><path d="M6 4 H14 V23 A4 4 0 0 1 6 23 Z" fill="#fff" stroke="#6b5a4a" stroke-width="1.1"/><path d="M6 14 H14 V23 A4 4 0 0 1 6 23 Z" fill="#a01020"/><ellipse cx="8" cy="16.5" rx="1.1" ry="2.4" fill="#e2647a" opacity=".6"/></svg>
         <div class="vial-name">Small Vial</div>
         <div class="vial-amount">+3,500 🩸</div>
         <div class="vial-price">$2.99</div>
         <div class="vial-bonus">+15% Bonus</div>
       </button>
       <button class="vial-tile" data-amount="13000" data-link="https://buy.stripe.com/00w8wP86K2wxa99cargnK05">
-        <svg viewBox="0 0 20 34" width="30" height="34"><rect x="7" y="0" width="6" height="4" rx="1" fill="#5a3a1a"/><path d="M6 4 H14 V25 A4 4 0 0 1 6 25 Z" fill="#fff" stroke="#6b5a4a" stroke-width="1.1"/><path d="M6 12 H14 V25 A4 4 0 0 1 6 25 Z" fill="#8a0517"/><ellipse cx="8" cy="15" rx="1.2" ry="2.8" fill="#e2647a" opacity=".6"/></svg>
+        <svg viewBox="0 0 20 34" width="30" height="34"><rect x="7" y="0" width="6" height="4" rx="1" fill="#5a3a1a"/><path d="M6 4 H14 V25 A4 4 0 0 1 6 25 Z" fill="#fff" stroke="#6b5a4a" stroke-width="1.1"/><path d="M6 12 H14 V25 A4 4 0 0 1 6 25 Z" fill="#a01020"/><ellipse cx="8" cy="15" rx="1.2" ry="2.8" fill="#e2647a" opacity=".6"/></svg>
         <div class="vial-name">Large Vial</div>
         <div class="vial-amount">+13,000 🩸</div>
         <div class="vial-price">$9.99</div>
@@ -853,9 +872,9 @@ button{user-select:none;-webkit-user-select:none;touch-action:manipulation}
         <svg viewBox="0 0 30 40" width="30" height="40">
           <path d="M11 2 L19 2 L25 10 L19 30 L11 30 L5 10 Z" fill="#4a2f18" stroke="#2a1810" stroke-width="1.1"/>
           <path d="M7.5 7 H22.5" stroke="#2a1810" stroke-width="1" opacity=".5"/>
-          <path d="M10 28 C8.8 30 8.8 31.6 10 33 C11.2 31.6 11.2 30 10 28 Z" fill="#8a0517" class="blood-drip" style="animation-delay:.5s"/>
-          <path d="M15 30 C13.3 33 13.3 35.5 15 37.5 C16.7 35.5 16.7 33 15 30 Z" fill="#8a0517" class="blood-drip"/>
-          <path d="M20 28 C18.8 30 18.8 31.6 20 33 C21.2 31.6 21.2 30 20 28 Z" fill="#8a0517" class="blood-drip" style="animation-delay:1s"/>
+          <path d="M10 28 C8.8 30 8.8 31.6 10 33 C11.2 31.6 11.2 30 10 28 Z" fill="#a01020" class="blood-drip" style="animation-delay:.5s"/>
+          <path d="M15 30 C13.3 33 13.3 35.5 15 37.5 C16.7 35.5 16.7 33 15 30 Z" fill="#a01020" class="blood-drip"/>
+          <path d="M20 28 C18.8 30 18.8 31.6 20 33 C21.2 31.6 21.2 30 20 28 Z" fill="#a01020" class="blood-drip" style="animation-delay:1s"/>
         </svg>
         <div class="vial-name">Coffin Hoard</div>
         <div class="vial-amount">+45,000 🩸</div>
@@ -866,13 +885,13 @@ button{user-select:none;-webkit-user-select:none;touch-action:manipulation}
         <svg viewBox="0 0 38 38" width="38" height="38">
           <path d="M6 16 Q19 4 32 16 Z" fill="#6b4423" stroke="#2a1810" stroke-width="1.1"/>
           <rect x="6" y="16" width="26" height="15" rx="2" fill="#4a2f18" stroke="#2a1810" stroke-width="1.1"/>
-          <rect x="6" y="20.5" width="26" height="3" fill="#8a6d1a"/>
-          <circle cx="19" cy="22" r="2.1" fill="#c9a227" stroke="#2a1810" stroke-width=".6"/>
-          <circle cx="11" cy="31" r="2.2" fill="#c9a227" stroke="#8a6d1a" stroke-width=".5"/>
-          <circle cx="16" cy="32.5" r="2" fill="#e8c96b" stroke="#8a6d1a" stroke-width=".5"/>
-          <circle cx="22" cy="32" r="2.1" fill="#c9a227" stroke="#8a6d1a" stroke-width=".5"/>
-          <path d="M30 7 L31 9.4 L33.4 10.4 L31 11.4 L30 13.8 L29 11.4 L26.6 10.4 L29 9.4 Z" fill="#f3e6bf" class="hoard-sparkle"/>
-          <path d="M8 5 L8.7 6.7 L10.4 7.4 L8.7 8.1 L8 9.8 L7.3 8.1 L5.6 7.4 L7.3 6.7 Z" fill="#f3e6bf" class="hoard-sparkle" style="animation-delay:.6s"/>
+          <rect x="6" y="20.5" width="26" height="3" fill="#9c7c22"/>
+          <circle cx="19" cy="22" r="2.1" fill="#c8a94b" stroke="#2a1810" stroke-width=".6"/>
+          <circle cx="11" cy="31" r="2.2" fill="#c8a94b" stroke="#9c7c22" stroke-width=".5"/>
+          <circle cx="16" cy="32.5" r="2" fill="#e8c96b" stroke="#9c7c22" stroke-width=".5"/>
+          <circle cx="22" cy="32" r="2.1" fill="#c8a94b" stroke="#9c7c22" stroke-width=".5"/>
+          <path d="M30 7 L31 9.4 L33.4 10.4 L31 11.4 L30 13.8 L29 11.4 L26.6 10.4 L29 9.4 Z" fill="#eee0b0" class="hoard-sparkle"/>
+          <path d="M8 5 L8.7 6.7 L10.4 7.4 L8.7 8.1 L8 9.8 L7.3 8.1 L5.6 7.4 L7.3 6.7 Z" fill="#eee0b0" class="hoard-sparkle" style="animation-delay:.6s"/>
         </svg>
         <div class="vial-name">Ancient Hoard</div>
         <div class="vial-amount">+105,000 🩸</div>
@@ -882,6 +901,15 @@ button{user-select:none;-webkit-user-select:none;touch-action:manipulation}
       </div>
     </div>
 
+  </div>
+
+  <!-- ===================== CARD BACKS VIEW ===================== -->
+  <div class="view" id="cardBacksView">
+    <div class="card">
+      <div class="card-title">Card Backs</div>
+      <div class="hint" style="margin-top:-6px;margin-bottom:10px">Spend Blood Drops to unlock a new look for the dealer's hidden card. Purely cosmetic — equip any owned back at any time.</div>
+      <div class="cardback-grid" id="cardBackGrid"></div>
+    </div>
   </div>
 
   <div class="quiz-overlay" id="adOverlay" style="display:none">
@@ -899,24 +927,24 @@ button{user-select:none;-webkit-user-select:none;touch-action:manipulation}
       <div class="wheel-wrap">
         <div class="wheel-pointer">▼</div>
         <svg class="wheel-svg" viewBox="0 0 200 200" width="220" height="220">
-          <circle cx="100" cy="100" r="97" fill="#2a1810" stroke="#c9a227" stroke-width="2"/>
+          <circle cx="100" cy="100" r="97" fill="#2a1810" stroke="#c8a94b" stroke-width="2"/>
           <g id="wheelSpin">
-            <path d="M100,100 L100.00,5.00 A95,95 0 0,1 174.27,40.77 Z" fill="#8a0517"/>
-            <path d="M100,100 L174.27,40.77 A95,95 0 0,1 192.62,121.14 Z" fill="#c9a227"/>
-            <path d="M100,100 L192.62,121.14 A95,95 0 0,1 141.22,185.59 Z" fill="#8a0517"/>
-            <path d="M100,100 L141.22,185.59 A95,95 0 0,1 58.78,185.59 Z" fill="#c9a227"/>
-            <path d="M100,100 L58.78,185.59 A95,95 0 0,1 7.38,121.14 Z" fill="#8a0517"/>
-            <path d="M100,100 L7.38,121.14 A95,95 0 0,1 25.73,40.77 Z" fill="#c9a227"/>
-            <path d="M100,100 L25.73,40.77 A95,95 0 0,1 100.00,5.00 Z" fill="#8a0517"/>
-            <text x="100" y="42" transform="rotate(25.71 100 100)" text-anchor="middle" fill="#f3e6bf" font-weight="700" font-size="15">50</text>
+            <path d="M100,100 L100.00,5.00 A95,95 0 0,1 174.27,40.77 Z" fill="#a01020"/>
+            <path d="M100,100 L174.27,40.77 A95,95 0 0,1 192.62,121.14 Z" fill="#c8a94b"/>
+            <path d="M100,100 L192.62,121.14 A95,95 0 0,1 141.22,185.59 Z" fill="#a01020"/>
+            <path d="M100,100 L141.22,185.59 A95,95 0 0,1 58.78,185.59 Z" fill="#c8a94b"/>
+            <path d="M100,100 L58.78,185.59 A95,95 0 0,1 7.38,121.14 Z" fill="#a01020"/>
+            <path d="M100,100 L7.38,121.14 A95,95 0 0,1 25.73,40.77 Z" fill="#c8a94b"/>
+            <path d="M100,100 L25.73,40.77 A95,95 0 0,1 100.00,5.00 Z" fill="#a01020"/>
+            <text x="100" y="42" transform="rotate(25.71 100 100)" text-anchor="middle" fill="#eee0b0" font-weight="700" font-size="15">50</text>
             <text x="100" y="42" transform="rotate(77.14 100 100)" text-anchor="middle" fill="#3a0a12" font-weight="700" font-size="15">100</text>
-            <text x="100" y="42" transform="rotate(128.57 100 100)" text-anchor="middle" fill="#f3e6bf" font-weight="700" font-size="15">100</text>
+            <text x="100" y="42" transform="rotate(128.57 100 100)" text-anchor="middle" fill="#eee0b0" font-weight="700" font-size="15">100</text>
             <text x="100" y="42" transform="rotate(180.00 100 100)" text-anchor="middle" fill="#3a0a12" font-weight="700" font-size="15">150</text>
-            <text x="100" y="42" transform="rotate(231.43 100 100)" text-anchor="middle" fill="#f3e6bf" font-weight="700" font-size="15">250</text>
+            <text x="100" y="42" transform="rotate(231.43 100 100)" text-anchor="middle" fill="#eee0b0" font-weight="700" font-size="15">250</text>
             <text x="100" y="42" transform="rotate(282.86 100 100)" text-anchor="middle" fill="#3a0a12" font-weight="700" font-size="15">500</text>
-            <text x="100" y="42" transform="rotate(334.29 100 100)" text-anchor="middle" fill="#f3e6bf" font-weight="700" font-size="15">1000</text>
+            <text x="100" y="42" transform="rotate(334.29 100 100)" text-anchor="middle" fill="#eee0b0" font-weight="700" font-size="15">1000</text>
           </g>
-          <circle cx="100" cy="100" r="11" fill="#c9a227" stroke="#2a1810" stroke-width="2"/>
+          <circle cx="100" cy="100" r="11" fill="#c8a94b" stroke="#2a1810" stroke-width="2"/>
         </svg>
       </div>
       <div class="quiz-question" id="wheelResult">Spinning...</div>
@@ -939,7 +967,7 @@ button{user-select:none;-webkit-user-select:none;touch-action:manipulation}
         <button class="bet-preset-btn" data-preset="1000">1000</button>
       </div>
       <div class="hint" id="betSetupError" style="color:var(--red);display:none;margin-bottom:8px"></div>
-      <button class="btn" id="betSetupConfirmBtn" style="background:var(--wine);color:#f3e6bf">Start Playing</button>
+      <button class="btn" id="betSetupConfirmBtn" style="background:var(--wine);color:#eee0b0">Start Playing</button>
     </div>
   </div>
 
@@ -947,7 +975,7 @@ button{user-select:none;-webkit-user-select:none;touch-action:manipulation}
     <div class="quiz-box">
       <div class="quiz-title">Before You Enter</div>
       <div class="quiz-question" style="font-size:14px;font-weight:400">CountDracula simulates blackjack betting with Blood Drops, a virtual currency with no cash value — for entertainment purposes only. You must be 18 or older to continue.</div>
-      <button class="btn" id="ageGateConfirmBtn" style="background:var(--wine);color:#f3e6bf;margin-top:14px">I am 18 or older — Enter</button>
+      <button class="btn" id="ageGateConfirmBtn" style="background:var(--wine);color:#eee0b0;margin-top:14px">I am 18 or older — Enter</button>
       <button class="btn btn-outline" id="ageGateDenyBtn" style="margin-top:10px">I am under 18</button>
     </div>
   </div>
@@ -963,7 +991,7 @@ button{user-select:none;-webkit-user-select:none;touch-action:manipulation}
     <div class="quiz-box">
       <div class="quiz-title">Welcome to CountDracula</div>
       <div class="quiz-question" style="font-size:14px;font-weight:400">Create an account to sync your Blood Drops across devices and buy Blood Vials, or jump straight in and practice the count as a guest.</div>
-      <button class="btn" id="welcomeCreateAccountBtn" style="background:var(--wine);color:#f3e6bf;margin-top:14px">Create Account</button>
+      <button class="btn" id="welcomeCreateAccountBtn" style="background:var(--wine);color:#eee0b0;margin-top:14px">Create Account</button>
       <button class="btn btn-outline" id="welcomeGuestBtn" style="margin-top:10px">Continue as Guest</button>
     </div>
   </div>
@@ -972,7 +1000,7 @@ button{user-select:none;-webkit-user-select:none;touch-action:manipulation}
     <div class="quiz-box">
       <div class="quiz-title">Before You Buy</div>
       <div class="quiz-question" style="font-size:14px;font-weight:400">Blood Drops are a virtual in-app currency for entertainment only. They have no cash value and cannot be redeemed, exchanged, refunded, or cashed out for real money. All purchases are final.</div>
-      <button class="btn" id="disclaimerAckBtn" style="background:var(--wine);color:#f3e6bf;margin-top:14px">I Understand</button>
+      <button class="btn" id="disclaimerAckBtn" style="background:var(--wine);color:#eee0b0;margin-top:14px">I Understand</button>
     </div>
   </div>
 
@@ -983,11 +1011,11 @@ button{user-select:none;-webkit-user-select:none;touch-action:manipulation}
       <div class="card-title">Account</div>
       <div id="authSignedOutPrompt">
         <div class="hint" style="margin-top:0">Sign in to buy Blood Drops in the Store and keep them synced across devices. Everything else works fine without an account.</div>
-        <button class="btn" id="goToSignInBtn" style="background:var(--wine);color:#f3e6bf;margin-top:10px">Sign In / Create Account</button>
+        <button class="btn" id="goToSignInBtn" style="background:var(--wine);color:var(--gold-soft);margin-top:10px">Sign In / Create Account</button>
       </div>
       <div id="authSignedIn" style="display:none">
         <div class="hint" style="margin-top:0">Signed in as <b id="authEmailDisplay"></b></div>
-        <button class="btn" id="authSignOutBtn" style="background:var(--gray-pale);color:var(--text);margin-top:10px">Sign Out</button>
+        <button class="btn btn-secondary" id="authSignOutBtn" style="margin-top:10px">Sign Out</button>
       </div>
     </div>
 
@@ -1052,8 +1080,8 @@ button{user-select:none;-webkit-user-select:none;touch-action:manipulation}
       <input type="password" id="authPass" class="auth-input" placeholder="Password" autocomplete="current-password" style="margin-top:8px">
       <div class="hint" id="authError" style="color:var(--red);display:none;margin-top:6px"></div>
       <div class="btn-row" style="margin-top:10px">
-        <button class="btn" id="authSignInBtn" style="background:var(--wine);color:#f3e6bf">Sign In</button>
-        <button class="btn" id="authSignUpBtn" style="background:var(--gray-pale);color:var(--text)">Sign Up</button>
+        <button class="btn" id="authSignInBtn" style="background:var(--wine);color:#eee0b0">Sign In</button>
+        <button class="btn btn-secondary" id="authSignUpBtn">Sign Up</button>
       </div>
       <div class="hint" id="authForgotBtn" style="margin-top:8px;text-decoration:underline;cursor:pointer">Forgot password?</div>
     </div>
@@ -1065,7 +1093,8 @@ button{user-select:none;-webkit-user-select:none;touch-action:manipulation}
 <div class="bottom-nav" id="bottomNav">
   <button class="nav-btn" data-tab="home"><span class="nav-icon">🏠</span><span class="nav-label">Home</span></button>
   <button class="nav-btn" data-tab="store"><span class="nav-icon">🩸</span><span class="nav-label">Store</span></button>
-  <button class="nav-btn" data-tab="account"><span class="nav-icon">👤</span><span class="nav-label">Account</span></button>
+  <button class="nav-btn" data-tab="cardbacks"><span class="nav-icon">🂠</span><span class="nav-label">Backs</span></button>
+  <button class="nav-btn" data-tab="account"><span class="nav-icon">👤</span><span class="nav-label">Profile</span></button>
 </div>
 
 <!-- Quiz modal -->
@@ -1074,7 +1103,7 @@ button{user-select:none;-webkit-user-select:none;touch-action:manipulation}
     <div class="quiz-title">Quick Check</div>
     <div class="quiz-question" id="quizQuestion">What's the running count right now?</div>
     <input type="number" id="quizInput" class="quiz-input" inputmode="numeric" placeholder="e.g. -3">
-    <button class="btn" id="quizSubmitBtn" style="background:var(--green2);color:#fff">Submit</button>
+    <button class="btn btn-outline" id="quizSubmitBtn">Submit</button>
     <div class="quiz-feedback" id="quizFeedback"></div>
     <button class="btn btn-outline" id="quizContinueBtn" style="display:none;margin-top:8px">Continue</button>
   </div>
@@ -1085,7 +1114,7 @@ button{user-select:none;-webkit-user-select:none;touch-action:manipulation}
     <div class="quiz-title">Quick Check</div>
     <div class="quiz-question">What's the count so far?</div>
     <input type="number" id="speedMidAskInput" class="quiz-input" inputmode="numeric" placeholder="e.g. -3">
-    <button class="btn" id="speedMidAskSubmitBtn" style="background:var(--green2);color:#fff">Submit</button>
+    <button class="btn btn-outline" id="speedMidAskSubmitBtn">Submit</button>
     <div class="quiz-feedback" id="speedMidAskFeedback"></div>
     <button class="btn btn-outline" id="speedMidAskContinueBtn" style="display:none;margin-top:8px">Continue</button>
   </div>
@@ -1338,15 +1367,75 @@ function basicStrategyAction(cards, dealerUpRank, canDouble, canSplit){
   return action === 'D' ? (canDouble ? 'D' : 'H') : action;
 }
 
+// True-count deviations from basic strategy (Illustrious 18 minus Insurance —
+// this app has no insurance mechanic). Distinct from the existing player-
+// mistake "deviation" concept (describeDeviation/hasDeviations) — named
+// countDeviation/COUNT_DEVIATIONS to avoid collisions. 10-10 vs 5/6 are
+// traditionally quoted assuming double-after-split; this engine is S17/
+// DAS-off, so real thresholds run a bit higher — kept the classic numbers
+// here since this is a trainer, not an EV tool.
+const COUNT_DEVIATIONS = [
+  { type:'hard', total:16, dealer:'10', dir:'gte', tc: 0, action:'S' }, // base H
+  { type:'hard', total:15, dealer:'10', dir:'gte', tc: 4, action:'S' }, // base H
+  { type:'hard', total:16, dealer:'9',  dir:'gte', tc: 5, action:'S' }, // base H
+  { type:'hard', total:12, dealer:'2',  dir:'gte', tc: 3, action:'S' }, // base H
+  { type:'hard', total:12, dealer:'3',  dir:'gte', tc: 2, action:'S' }, // base H
+  { type:'hard', total:10, dealer:'10', dir:'gte', tc: 4, action:'D' }, // base H
+  { type:'hard', total:10, dealer:'A',  dir:'gte', tc: 4, action:'D' }, // base H
+  { type:'hard', total:11, dealer:'A',  dir:'gte', tc: 1, action:'D' }, // base H
+  { type:'hard', total:9,  dealer:'2',  dir:'gte', tc: 1, action:'D' }, // base H
+  { type:'hard', total:9,  dealer:'7',  dir:'gte', tc: 3, action:'D' }, // base H
+  { type:'pair', rank:'10', dealer:'5', dir:'gte', tc: 5, action:'P' }, // base S
+  { type:'pair', rank:'10', dealer:'6', dir:'gte', tc: 4, action:'P' }, // base S
+  { type:'hard', total:13, dealer:'2', dir:'lte', tc:-1, action:'H' }, // base S
+  { type:'hard', total:13, dealer:'3', dir:'lte', tc:-2, action:'H' }, // base S
+  { type:'hard', total:12, dealer:'4', dir:'lte', tc: 0, action:'H' }, // base S
+  { type:'hard', total:12, dealer:'5', dir:'lte', tc:-2, action:'H' }, // base S
+  { type:'hard', total:12, dealer:'6', dir:'lte', tc:-1, action:'H' }, // base S
+];
+
+function findCountDeviation(cards, dealerUpRank, canSplit){
+  const dIdx = dealerIdx(dealerUpRank);
+  if(canSplit && cards.length === 2 && pairKey(cards[0].rank) === pairKey(cards[1].rank)){
+    const key = pairKey(cards[0].rank);
+    const hit = COUNT_DEVIATIONS.find(e => e.type === 'pair' && e.rank === key && dealerIdx(e.dealer) === dIdx);
+    if(hit) return hit;
+  }
+  const { total, soft } = softTotalInfo(cards);
+  if(soft) return null; // no soft-total entries in this subset
+  return COUNT_DEVIATIONS.find(e => e.type === 'hard' && e.total === total && dealerIdx(e.dealer) === dIdx) || null;
+}
+
+function deviationAction(cards, dealerUpRank, trueCount, canDouble, canSplit){
+  const base = basicStrategyAction(cards, dealerUpRank, canDouble, canSplit);
+  const entry = findCountDeviation(cards, dealerUpRank, canSplit);
+  if(!entry) return { action: base, base, active: false };
+  const met = entry.dir === 'gte' ? trueCount >= entry.tc : trueCount <= entry.tc;
+  if(!met) return { action: base, base, active: false };
+  let action = entry.action;
+  if(action === 'D' && !canDouble) action = 'H'; // same fallback basicStrategyAction applies
+  return { action, base, active: true };
+}
+
+function strategyTipMessage(result){
+  if(!result.active) return 'The book says: ' + ACTION_LABELS[result.base];
+  if(result.action === result.base) return 'The book and the count agree: ' + ACTION_LABELS[result.action];
+  return 'The count says: ' + ACTION_LABELS[result.action] + ' (the book alone would say ' + ACTION_LABELS[result.base] + ')';
+}
+
 /* ============================================================ */
 /* Tab switching                                                 */
 /* ============================================================ */
 const TAB_KEY = 'cardCountingActiveTab';
 let activeTab = 'home';
 
-const TOP_LEVEL_TABS = ['home','store','account'];
+const TOP_LEVEL_TABS = ['home','store','cardbacks','account'];
 
 function setActiveTab(tab){
+  if(activeTab === 'speed' && speedRunning && tab !== 'speed'){
+    if(!confirm('A Speed Drill is in progress. Leaving now will end it. Continue?')) return;
+    stopSpeedDrill();
+  }
   activeTab = tab;
   localStorage.setItem(TAB_KEY, tab);
   document.querySelector('.hdr').classList.toggle('hdr-big', tab === 'home');
@@ -1356,10 +1445,12 @@ function setActiveTab(tab){
   document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.toggle('active', btn.dataset.tab === tab));
   document.getElementById('homeView').classList.toggle('active', tab === 'home');
   document.getElementById('storeView').classList.toggle('active', tab === 'store');
+  document.getElementById('cardBacksView').classList.toggle('active', tab === 'cardbacks');
   document.getElementById('accountView').classList.toggle('active', tab === 'account');
   document.getElementById('signinView').classList.toggle('active', tab === 'signin');
   document.getElementById('manualView').classList.toggle('active', tab === 'manual');
   document.getElementById('dealerView').classList.toggle('active', tab === 'peek' || tab === 'quiz');
+  document.body.classList.toggle('fill-mode', tab === 'peek' || tab === 'quiz');
   document.getElementById('deckMathView').classList.toggle('active', tab === 'math');
   document.getElementById('speedView').classList.toggle('active', tab === 'speed');
   document.getElementById('rulesView').classList.toggle('active', tab === 'rules');
@@ -1367,14 +1458,15 @@ function setActiveTab(tab){
     document.getElementById('peekBtn').style.display = (tab === 'peek') ? 'flex' : 'none';
     document.getElementById('quizScore').style.display = (tab === 'quiz') ? 'block' : 'none';
     document.getElementById('dealerModeHint').textContent = (tab === 'peek')
-      ? '👁 Peek the count — 10 🩸 · 💡 Betting Tip — 15 🩸'
-      : "Count stays hidden — you'll be quizzed on it at random moments.";
+      ? '👁 Peek the count — 10 🩸 · 💡 Betting Tip — 15 🩸 · 💡 Strategy Tip — 15 🩸'
+      : "Count stays hidden — you'll be quizzed on it at random moments. 💡 Strategy Tip is free here.";
     isPeeking = false;
     renderDealer();
     if(!betEstablishedThisSession && handIsIdle()) openBetSetupModal();
   }
   if(tab === 'account'){ renderStats(); }
   if(tab === 'store'){ renderStore(); }
+  if(tab === 'cardbacks'){ renderCardBackShop(); }
   if(tab === 'home'){ renderHome(); }
 }
 
@@ -1785,6 +1877,34 @@ document.getElementById('betTipBtn').addEventListener('click', () => {
   renderDealer();
 });
 
+const STRATEGY_TIP_COST = 15;
+let strategyTipShownFor = null;
+let strategyTipUsedThisDecision = false;
+document.getElementById('strategyTipBtn').addEventListener('click', () => {
+  const h = dealerState.hand;
+  if(!h || h.stage !== 'player' || strategyTipUsedThisDecision) return;
+  const cur = h.hands[h.activeIndex];
+  const canDouble = canDoubleNow(h, cur);
+  const canSplit = canSplitNow(h, cur);
+  let message;
+  if(activeTab === 'quiz'){
+    const rec = basicStrategyAction(cur.cards, h.dealerUp.rank, canDouble, canSplit);
+    message = 'The book says: ' + ACTION_LABELS[rec]; // never count-aware in Quiz — no free count leak
+  } else {
+    if(dealerState.drops < STRATEGY_TIP_COST){
+      showBetFeedback('Too little blood for a strategy tip — the Store awaits.', false);
+      return;
+    }
+    dealerState.drops -= STRATEGY_TIP_COST;
+    saveDealerState();
+    const result = deviationAction(cur.cards, h.dealerUp.rank, currentTrueCount(), canDouble, canSplit);
+    message = strategyTipMessage(result);
+  }
+  strategyTipUsedThisDecision = true;
+  document.getElementById('strategyTipResult').textContent = message;
+  renderDealer();
+});
+
 /* --- Quiz trigger (Quiz Practice tab only) --- */
 let isPeeking = false;
 let quizPending = false;
@@ -1991,6 +2111,9 @@ function dealNewHand(){
   flashBetTaken(dealerState.currentBet);
   betTipUsedThisHand = false;
   document.getElementById('betTipResult').textContent = '';
+  strategyTipShownFor = null;
+  strategyTipUsedThisDecision = false;
+  document.getElementById('strategyTipResult').textContent = '';
 
   const hand = {
     id: ++handIdCounter,
@@ -2375,6 +2498,8 @@ function renderDealer(){
     const hasDeviations = dealerState.coachingEnabled && h.hands.some(hd => (hd.decisions || []).some(d => !d.correct));
     reviewLineEl.textContent = draculaSay(hasDeviations ? DRACULA_HAND_REVIEW_PROMPT : DRACULA_HAND_REVIEW_PROMPT_NEUTRAL);
     reviewLineEl.style.display = 'block';
+    document.getElementById('strategyTipBtn').style.display = 'none';
+    document.getElementById('strategyTipResult').style.display = 'none';
   } else if(h.stage === 'player'){
     document.getElementById('handReviewLine').style.display = 'none';
     bannerEl.innerHTML = '';
@@ -2386,13 +2511,20 @@ function renderDealer(){
     splitBtnEl.style.display = canSplit ? 'flex' : 'none';
     splitBtnEl.disabled = quizPending || dealerState.drops < cur.bet;
 
-    const hintEl = document.getElementById('dealerModeHint');
+    const stratBtn = document.getElementById('strategyTipBtn');
+    const stratResultEl = document.getElementById('strategyTipResult');
     if(dealerState.coachingEnabled){
-      const rec = basicStrategyAction(cur.cards, h.dealerUp.rank, canDouble, canSplit);
-      hintEl.textContent = 'The book says: ' + ACTION_LABELS[rec];
-      hintEl.style.display = 'block';
+      const decisionKey = h.id + ':' + h.activeIndex + ':' + cur.cards.length;
+      if(decisionKey !== strategyTipShownFor){
+        strategyTipShownFor = decisionKey;
+        strategyTipUsedThisDecision = false;
+        stratResultEl.textContent = '';
+      }
+      stratBtn.style.display = strategyTipUsedThisDecision ? 'none' : 'flex';
+      stratResultEl.style.display = strategyTipUsedThisDecision ? 'block' : 'none';
     } else {
-      hintEl.style.display = 'none';
+      stratBtn.style.display = 'none';
+      stratResultEl.style.display = 'none';
     }
   } else {
     // h.stage === 'dealer' — the dealer is playing out one card at a time;
@@ -2401,6 +2533,8 @@ function renderDealer(){
     bannerEl.innerHTML = '';
     playActionsEl.style.display = 'none';
     dealBtnEl.style.display = 'none';
+    document.getElementById('strategyTipBtn').style.display = 'none';
+    document.getElementById('strategyTipResult').style.display = 'none';
   }
 
   hitBtnEl.disabled = quizPending;
@@ -2522,10 +2656,41 @@ let speedCdInterval = null, speedAdvanceTimer = null;
 let speedCardsSinceAsk = 0;
 let speedResumeAfterAsk = null;
 
+function speedBeforeUnloadHandler(e){ e.preventDefault(); e.returnValue = ''; }
+
+// Shared cleanup for both an early Stop and a natural finish — the single
+// place that clears the drill's timers/listener so nothing keeps running
+// against a hidden view after the user navigates away.
+function teardownSpeedDrill(){
+  clearInterval(speedCdInterval);
+  clearTimeout(speedAdvanceTimer);
+  speedCdInterval = null;
+  speedAdvanceTimer = null;
+  speedRunning = false;
+  speedResumeAfterAsk = null;
+  document.getElementById('speedStartBtn').disabled = false;
+  document.getElementById('speedStopBtn').style.display = 'none';
+  document.getElementById('speedMidAskOverlay').style.display = 'none';
+  window.removeEventListener('beforeunload', speedBeforeUnloadHandler);
+}
+
+function stopSpeedDrill(){
+  if(!speedRunning) return;
+  teardownSpeedDrill();
+  document.getElementById('speedStage').style.display = 'none';
+  document.getElementById('speedAnswerCard').style.display = 'none';
+  document.getElementById('speedCardArea').innerHTML = '';
+  document.getElementById('speedCountdown').textContent = '';
+  document.getElementById('speedElapsed').textContent = '';
+  document.getElementById('speedTapBtn').style.display = 'none';
+}
+
 function startSpeedDrill(){
   if(speedRunning) return; // re-entrancy guard: a run is already in progress
   speedRunning = true;
   document.getElementById('speedStartBtn').disabled = true;
+  document.getElementById('speedStopBtn').style.display = 'block';
+  window.addEventListener('beforeunload', speedBeforeUnloadHandler);
   clearInterval(speedCdInterval);
   clearTimeout(speedAdvanceTimer);
 
@@ -2613,9 +2778,8 @@ function runSpeedSequence(pace){
 }
 
 function finishSpeedDrill(){
-  speedRunning = false;
-  document.getElementById('speedStartBtn').disabled = false;
   const elapsedMs = performance.now() - speedStartTime;
+  teardownSpeedDrill();
   document.getElementById('speedElapsed').textContent = 'Elapsed: ' + (elapsedMs / 1000).toFixed(2) + 's';
   document.getElementById('speedTapBtn').style.display = 'none';
   const answerCard = document.getElementById('speedAnswerCard');
@@ -2626,6 +2790,7 @@ function finishSpeedDrill(){
 }
 
 document.getElementById('speedStartBtn').addEventListener('click', startSpeedDrill);
+document.getElementById('speedStopBtn').addEventListener('click', stopSpeedDrill);
 
 document.getElementById('speedSubmitBtn').addEventListener('click', () => {
   const val = parseInt(document.getElementById('speedAnswerInput').value, 10);
@@ -2854,8 +3019,6 @@ function renderStore(){
     ? 'Come back tomorrow'
     : ('+150 🩸 (' + (AD_CAP - adCountToday) + ' left today)');
   document.getElementById('watchAdBtn').disabled = adCountToday >= AD_CAP;
-
-  renderCardBackShop();
 }
 
 function cardBackTileHTML(back){
