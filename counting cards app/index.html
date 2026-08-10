@@ -368,12 +368,14 @@ button{user-select:none;-webkit-user-select:none;touch-action:manipulation}
 .felt .hand-review-line{color:var(--gold-soft)}
 .felt-empty-hint{margin:auto;text-align:center;font-size:13px;color:var(--gold-soft);font-style:italic}
 .felt-msg-zone{min-height:24px;margin-top:6px}
-/* Play view fills the screen height while playing (Peek/Quiz tabs only —
-   scoped under body.fill-mode so every other view is untouched). */
+/* Every screen except Card Backs/Store/Account/Rules fills the viewport
+   height with no page scroll (scoped under body.fill-mode so those four
+   screens, which can have more content than fits, scroll normally). */
 body.fill-mode{height:100dvh;overflow:hidden;display:flex;flex-direction:column}
 body.fill-mode .hdr{flex:0 0 auto}
 body.fill-mode #C{flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column}
-body.fill-mode #dealerView.active{flex:1;min-height:0;display:flex;flex-direction:column}
+body.fill-mode .view.active{flex:1;min-height:0;display:flex;flex-direction:column;overflow-y:auto}
+body.fill-mode #dealerView.active{overflow-y:visible}
 body.fill-mode #dealerView.active > .card:first-child{flex:1;min-height:0;display:flex;flex-direction:column}
 body.fill-mode .felt{flex:1 1 auto;min-height:150px;overflow-y:auto}
 
@@ -1473,7 +1475,7 @@ function setActiveTab(tab){
   document.getElementById('signinView').classList.toggle('active', tab === 'signin');
   document.getElementById('manualView').classList.toggle('active', tab === 'manual');
   document.getElementById('dealerView').classList.toggle('active', tab === 'peek' || tab === 'quiz');
-  document.body.classList.toggle('fill-mode', tab === 'peek' || tab === 'quiz');
+  document.body.classList.toggle('fill-mode', !['rules', 'store', 'cardbacks', 'account'].includes(tab));
   document.getElementById('deckMathView').classList.toggle('active', tab === 'math');
   document.getElementById('speedView').classList.toggle('active', tab === 'speed');
   document.getElementById('rulesView').classList.toggle('active', tab === 'rules');
