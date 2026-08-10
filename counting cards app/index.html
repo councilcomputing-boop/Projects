@@ -376,8 +376,11 @@ body.fill-mode .hdr{flex:0 0 auto}
 body.fill-mode #C{flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column}
 body.fill-mode .view.active{flex:1;min-height:0;display:flex;flex-direction:column;overflow-y:auto}
 body.fill-mode #dealerView.active{overflow-y:visible}
-body.fill-mode #dealerView.active > .card:first-child{flex:1;min-height:0;display:flex;flex-direction:column}
-body.fill-mode .felt{flex:1 1 auto;min-height:150px;overflow-y:auto}
+body.fill-mode #dealerView.active > .card:first-child{flex:1;min-height:0;display:flex;flex-direction:column;overflow-y:auto}
+body.fill-mode .felt{flex:1 1 0;min-height:0;overflow-y:auto;margin:6px 0;padding:8px}
+body.fill-mode .felt-grid{min-height:0}
+body.fill-mode .felt-main{min-height:0}
+body.fill-mode #dealerView.active > .card:first-child{padding:12px}
 
 /* Store */
 .store-drops-wrap{position:relative}
@@ -675,13 +678,13 @@ body.fill-mode .felt{flex:1 1 auto;min-height:150px;overflow-y:auto}
 
       <div class="hint" id="dealerModeHint">Hold the button below to peek at the count.</div>
       <div class="quiz-feedback" id="betFeedback"></div>
-      <div style="min-height:36px;transition:min-height .2s ease">
+      <div style="min-height:0;transition:min-height .2s ease">
         <div class="peek-count-badge" id="peekCountBadge" style="display:none">
           <span class="peek-rc" id="peekRC">0</span>
           <span class="peek-tc" id="peekTC"></span>
         </div>
       </div>
-      <div style="min-height:26px;transition:min-height .2s ease">
+      <div style="min-height:0;transition:min-height .2s ease">
         <div class="hint" id="betTipResult" style="display:none;text-align:center"></div>
       </div>
 
