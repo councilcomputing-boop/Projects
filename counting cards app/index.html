@@ -22,7 +22,7 @@
 :root{
   --green:#1c3b2b;--green2:#1c3b2b;--green-pale:#e3f0e8;
   --gold:#c8a94b;--gold-pale:#eee0b0;--gold-deep:#9c7c22;--gold-soft:#eee0b0;
-  --red:#a01020;--red-pale:#f8dde1;--blood:#e0184f;--blood-deep:#a01020;
+  --red:#a01020;--red-pale:#f8dde1;--blood:#e0184f;--blood-deep:#a01020;--epic:#7c4dbe;
   --gray:#5c4b3f;--gray-pale:#e6e3ea;
   --blue:#3b1219;--blue-pale:#e6e3ea;
   --text:#241a15;--muted:#5c4b3f;--border:#ddd2b4;
@@ -439,6 +439,34 @@ body.fill-mode #dealerView.active > .card:first-child{padding:12px}
 .vial-price{font-size:10.5px;font-weight:600;color:var(--muted)}
 .vial-bonus{font-size:9.5px;font-weight:700;color:#9c7c22;background:var(--gold-pale);border-radius:6px;padding:1px 7px;margin-top:2px}
 .store-buy-amount{font-family:var(--display-font);font-weight:700;color:#9c7c22}
+.chest-list{display:flex;flex-direction:column;gap:10px}
+.chest-tile{background:var(--gray-pale);border-radius:var(--r);padding:12px 14px}
+.chest-tile-head{display:flex;align-items:center;gap:10px}
+.chest-tile-icon{font-size:26px}
+.chest-tile-name{font-weight:700;font-size:13.5px;color:var(--text);flex:1}
+.chest-tile-cost{font-family:var(--display-font);font-weight:700;font-size:12px;color:#9c7c22}
+.chest-progress-track{background:var(--card-mute);border-radius:10px;height:8px;overflow:hidden;margin:8px 0}
+.chest-progress-bar{background:var(--gold);height:100%}
+.chest-tile-hint{font-size:10.5px;color:var(--muted);margin-bottom:8px}
+.chest-icon{font-size:64px;line-height:1;margin:10px 0}
+.chest-icon.shaking{animation:chestShake 1.1s ease-in-out}
+@keyframes chestShake{0%,100%{transform:rotate(0)}10%,30%,50%,70%,90%{transform:rotate(-8deg)}20%,40%,60%,80%{transform:rotate(8deg)}}
+.rarity-pill{display:inline-block;font-family:var(--display-font);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;padding:4px 12px;border-radius:20px;margin-bottom:10px;color:#fff}
+.rarity-pill.r-common{background:#6b6258}
+.rarity-pill.r-rare{background:var(--gold-deep)}
+.rarity-pill.r-epic{background:var(--epic)}
+.rarity-pill.r-legendary{background:var(--blood-deep)}
+.reveal-card-wrap{width:96px;height:134px;margin:0 auto}
+.reveal-card-wrap .playing-card.reveal-flip{box-shadow:0 0 0 3px rgba(255,255,255,.2),0 0 26px 6px var(--reveal-glow,rgba(120,110,100,.55)),var(--shadow-card)}
+.fragment-progress{font-size:12px;color:var(--muted);margin-top:4px}
+.fragment-progress-track{background:var(--card-mute);border-radius:10px;height:6px;overflow:hidden;margin:4px auto 0;max-width:160px}
+.fragment-progress-bar{background:var(--gold);height:100%}
+.rarity-ring.r-common{box-shadow:0 1px 4px rgba(0,0,0,.35),0 0 0 2px rgba(120,110,100,.55)}
+.rarity-ring.r-rare{box-shadow:0 1px 4px rgba(0,0,0,.35),0 0 0 2px var(--gold)}
+.rarity-ring.r-epic{box-shadow:0 1px 4px rgba(0,0,0,.35),0 0 0 2px var(--epic)}
+.rarity-ring.r-legendary{box-shadow:0 1px 4px rgba(0,0,0,.35),0 0 0 2px var(--blood)}
+.cardback-tile-fragments{font-size:9.5px;color:var(--muted);margin-top:2px}
+.rising-drop{position:fixed;left:0;top:0;font-size:16px;pointer-events:none;z-index:600}
 .cardback-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
 .cardback-tile{display:flex;flex-direction:column;align-items:center;gap:5px;background:var(--card-mute);border:none;border-radius:14px;padding:10px 4px 9px;cursor:pointer;text-align:center;transition:background-color .15s ease}
 .cardback-tile:active{background-color:#fff}
@@ -944,13 +972,20 @@ body.fill-mode #dealerView.active > .card:first-child{padding:12px}
       </div>
     </div>
 
+    <div class="card">
+      <div class="card-title">Crypt Chests</div>
+      <div class="hint" style="margin-top:-6px;margin-bottom:10px">Spend Blood Drops for a chance at card-back fragments. Collect enough fragments of a back to unlock it — duplicates past that convert to Blood Drops.</div>
+      <div class="chest-list" id="chestList"></div>
+    </div>
+
   </div>
 
   <!-- ===================== CARD BACKS VIEW ===================== -->
   <div class="view" id="cardBacksView">
     <div class="card">
       <div class="card-title">Card Backs</div>
-      <div class="hint" style="margin-top:-6px;margin-bottom:10px">Spend Blood Drops to unlock a new look for the dealer's hidden card. Purely cosmetic — equip any owned back at any time.</div>
+      <div class="hint" style="margin-top:-6px;margin-bottom:6px">Spend Blood Drops to unlock a new look for the dealer's hidden card, or collect fragments from Crypt Chests and the Spin Wheel. Purely cosmetic — equip any owned back at any time.</div>
+      <div class="hint" id="cardBacksCollectedHint" style="margin-bottom:10px;font-weight:700"></div>
       <div class="cardback-grid" id="cardBackGrid"></div>
     </div>
   </div>
@@ -980,8 +1015,8 @@ body.fill-mode #dealerView.active > .card:first-child{padding:12px}
             <path d="M100,100 L7.38,121.14 A95,95 0 0,1 25.73,40.77 Z" fill="#c8a94b"/>
             <path d="M100,100 L25.73,40.77 A95,95 0 0,1 100.00,5.00 Z" fill="#a01020"/>
             <text x="100" y="42" transform="rotate(25.71 100 100)" text-anchor="middle" fill="#eee0b0" font-weight="700" font-size="15">50</text>
-            <text x="100" y="42" transform="rotate(77.14 100 100)" text-anchor="middle" fill="#3a0a12" font-weight="700" font-size="15">100</text>
-            <text x="100" y="42" transform="rotate(128.57 100 100)" text-anchor="middle" fill="#eee0b0" font-weight="700" font-size="15">100</text>
+            <text x="100" y="42" transform="rotate(77.14 100 100)" text-anchor="middle" fill="#3a0a12" font-weight="700" font-size="10">CARD</text>
+            <text x="100" y="42" transform="rotate(128.57 100 100)" text-anchor="middle" fill="#eee0b0" font-weight="700" font-size="10">CARD</text>
             <text x="100" y="42" transform="rotate(180.00 100 100)" text-anchor="middle" fill="#3a0a12" font-weight="700" font-size="15">150</text>
             <text x="100" y="42" transform="rotate(231.43 100 100)" text-anchor="middle" fill="#eee0b0" font-weight="700" font-size="15">250</text>
             <text x="100" y="42" transform="rotate(282.86 100 100)" text-anchor="middle" fill="#3a0a12" font-weight="700" font-size="15">500</text>
@@ -992,6 +1027,24 @@ body.fill-mode #dealerView.active > .card:first-child{padding:12px}
       </div>
       <div class="quiz-question" id="wheelResult">Spinning...</div>
       <button class="btn btn-outline" id="wheelCloseBtn" style="display:none">Nice!</button>
+    </div>
+  </div>
+
+  <div class="quiz-overlay" id="chestOverlay" style="display:none">
+    <div class="quiz-box">
+      <div class="quiz-title" id="chestModalTitle">Crypt Chest</div>
+      <div class="chest-icon" id="chestShakeIcon">🪦</div>
+      <div id="rarityRevealArea" style="display:none">
+        <div class="rarity-pill" id="rarityPill">Common</div>
+        <div class="reveal-card-wrap">
+          <div class="playing-card hidden-card" id="rarityRevealCard"></div>
+        </div>
+        <div class="quiz-question" id="rarityRevealName" style="margin:10px 0 2px"></div>
+        <div class="fragment-progress" id="fragmentProgressText"></div>
+        <div class="fragment-progress-track"><div class="fragment-progress-bar" id="fragmentProgressBar"></div></div>
+        <div class="hint" id="rarityRevealNote" style="display:none;font-weight:700;margin-top:8px"></div>
+      </div>
+      <button class="btn btn-outline" id="chestCollectBtn" style="display:none;margin-top:14px">Collect</button>
     </div>
   </div>
 
@@ -1078,6 +1131,14 @@ body.fill-mode #dealerView.active > .card:first-child{padding:12px}
           <input type="checkbox" id="ownCountToggle">
           <span class="switch-slider"></span>
         </label>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Card Backs</div>
+      <div class="toggle-row-compact">
+        <label class="toggle-label" for="autoEquipToggle">Auto-equip new card backs</label>
+        <label class="switch"><input type="checkbox" id="autoEquipToggle"><span class="switch-slider"></span></label>
       </div>
     </div>
 
@@ -2959,35 +3020,99 @@ const STORE_KEY = 'cardCountingStoreState';
 
 /* ---- Card back skins: 20 designs, priced by how striking they are ---- */
 const CARD_BACKS = [
-  { id:'classic',       name:'Classic Wine',    tier:'Starter',   price:0 },
-  { id:'slate',         name:'Midnight Slate',  tier:'Common',    price:400 },
-  { id:'bone',          name:'Bone White',      tier:'Common',    price:600 },
-  { id:'coffin',        name:'Coffin Black',    tier:'Common',    price:600 },
-  { id:'bloodfade',     name:'Blood Fade',      tier:'Uncommon',  price:1200 },
-  { id:'silvermist',    name:'Silver Mist',     tier:'Uncommon',  price:1500 },
-  { id:'ivoryrose',     name:'Ivory Rose',      tier:'Uncommon',  price:1500 },
-  { id:'onyxgold',      name:'Onyx Gold',       tier:'Uncommon',  price:1800 },
-  { id:'garnet',        name:'Garnet Sheen',    tier:'Rare',      price:3500 },
-  { id:'moonstone',     name:'Moonstone',       tier:'Rare',      price:4000 },
-  { id:'velvetplum',    name:'Velvet Plum',     tier:'Rare',      price:4500 },
-  { id:'champagne',     name:'Champagne',       tier:'Rare',      price:5000 },
-  { id:'crimsonpulse',  name:'Crimson Pulse',   tier:'Epic',      price:9000,  fx:true },
-  { id:'silvershimmer', name:'Silver Shimmer',  tier:'Epic',      price:11000, fx:true },
-  { id:'batsigil',      name:'Bat Sigil',       tier:'Epic',      price:13000, fx:true },
-  { id:'frostbite',     name:'Frostbite',       tier:'Epic',      price:15000, fx:true },
-  { id:'draculaseal',   name:"Dracula's Seal",  tier:'Legendary', price:25000, fx:true },
-  { id:'eternalnight',  name:'Eternal Night',   tier:'Legendary', price:30000, fx:true },
-  { id:'fullmoon',      name:'Full Moon Curse', tier:'Legendary', price:40000, fx:true },
-  { id:'vampirehoard',  name:"Vampire's Hoard", tier:'Mythic',    price:60000, fx:true }
+  { id:'classic',       name:'Classic Wine',    tier:'Starter',   price:0,     rarity:'common' },
+  { id:'slate',         name:'Midnight Slate',  tier:'Common',    price:400,   rarity:'common' },
+  { id:'bone',          name:'Bone White',      tier:'Common',    price:600,   rarity:'common' },
+  { id:'coffin',        name:'Coffin Black',    tier:'Common',    price:600,   rarity:'common' },
+  { id:'bloodfade',     name:'Blood Fade',      tier:'Uncommon',  price:1200,  rarity:'common' },
+  { id:'silvermist',    name:'Silver Mist',     tier:'Uncommon',  price:1500,  rarity:'rare' },
+  { id:'ivoryrose',     name:'Ivory Rose',      tier:'Uncommon',  price:1500,  rarity:'rare' },
+  { id:'onyxgold',      name:'Onyx Gold',       tier:'Uncommon',  price:1800,  rarity:'rare' },
+  { id:'garnet',        name:'Garnet Sheen',    tier:'Rare',      price:3500,  rarity:'rare' },
+  { id:'moonstone',     name:'Moonstone',       tier:'Rare',      price:4000,  rarity:'rare' },
+  { id:'velvetplum',    name:'Velvet Plum',     tier:'Rare',      price:4500,  rarity:'epic' },
+  { id:'champagne',     name:'Champagne',       tier:'Rare',      price:5000,  rarity:'epic' },
+  { id:'crimsonpulse',  name:'Crimson Pulse',   tier:'Epic',      price:9000,  fx:true, rarity:'epic' },
+  { id:'silvershimmer', name:'Silver Shimmer',  tier:'Epic',      price:11000, fx:true, rarity:'epic' },
+  { id:'batsigil',      name:'Bat Sigil',       tier:'Epic',      price:13000, fx:true, rarity:'epic' },
+  { id:'frostbite',     name:'Frostbite',       tier:'Epic',      price:15000, fx:true, rarity:'legendary' },
+  { id:'draculaseal',   name:"Dracula's Seal",  tier:'Legendary', price:25000, fx:true, rarity:'legendary' },
+  { id:'eternalnight',  name:'Eternal Night',   tier:'Legendary', price:30000, fx:true, rarity:'legendary' },
+  { id:'fullmoon',      name:'Full Moon Curse', tier:'Legendary', price:40000, fx:true, rarity:'legendary' },
+  { id:'vampirehoard',  name:"Vampire's Hoard", tier:'Mythic',    price:60000, fx:true, rarity:'legendary' }
 ];
 function findCardBack(id){ return CARD_BACKS.find(b => b.id === id) || CARD_BACKS[0]; }
+function backsByRarity(rarity){ return CARD_BACKS.filter(b => b.rarity === rarity); }
+
+const RARITY_META = {
+  common:    { label:'Common',    glow:'rgba(120,110,100,.55)', fragmentsNeeded:3 },
+  rare:      { label:'Rare',      glow:'rgba(200,169,75,.75)',  fragmentsNeeded:5 },
+  epic:      { label:'Epic',      glow:'rgba(124,77,190,.8)',   fragmentsNeeded:8 },
+  legendary: { label:'Legendary', glow:'rgba(224,24,79,.85)',   fragmentsNeeded:12 }
+};
+
+const CHESTS = [
+  { id:'crypt', name:'Crypt Chest',         icon:'🪦', dropCost:5000,  odds:{common:70, rare:25, epic:5,  legendary:0} },
+  { id:'royal', name:'Blood Royal Chest',   icon:'👑', dropCost:20000, odds:{common:30, rare:45, epic:20, legendary:5} },
+  { id:'vault', name:'Ancient Vault Chest', icon:'🏺', dropCost:50000, odds:{common:0,  rare:25, epic:45, legendary:30} }
+];
+function findChest(id){ return CHESTS.find(c => c.id === id); }
+
+/** Rolls a rarity from a chest/wheel's odds, then a target back within that
+   rarity to award a fragment toward — preferring a back you've already
+   started collecting (but haven't finished), then any unfinished back of
+   that rarity, falling back to an already-owned one only if you've somehow
+   completed every back of that rarity. */
+function rollFragmentTarget(odds){
+  const total = Object.values(odds).reduce((a,b) => a+b, 0);
+  let r = Math.random() * total;
+  let rarity = 'common';
+  for(const key of ['common','rare','epic','legendary']){
+    const w = odds[key] || 0;
+    if(r < w){ rarity = key; break; }
+    r -= w;
+  }
+  const pool = backsByRarity(rarity);
+  const unfinished = pool.filter(b => !storeState.cardBacks.owned.includes(b.id));
+  const inProgress = unfinished.filter(b => (storeState.cardBacks.fragments[b.id] || 0) > 0);
+  const choices = inProgress.length ? inProgress : unfinished.length ? unfinished : pool;
+  return choices[Math.floor(Math.random() * choices.length)];
+}
+
+/** Any not-fully-owned back, regardless of rarity — used by the wheel's plain "CARD" segments. */
+function randomUnownedBack(){
+  const unowned = CARD_BACKS.filter(b => !storeState.cardBacks.owned.includes(b.id));
+  const pool = unowned.length ? unowned : CARD_BACKS;
+  return pool[Math.floor(Math.random() * pool.length)];
+}
+
+/** Awards one fragment of `back` and unlocks it if that completes the set.
+   Returns { unlocked, back, have, need } — `have`/`need` are post-award. */
+function awardFragment(back){
+  const need = RARITY_META[back.rarity].fragmentsNeeded;
+  if(storeState.cardBacks.owned.includes(back.id)){
+    return { unlocked:false, alreadyOwned:true, back, have:need, need };
+  }
+  const have = Math.min(need, (storeState.cardBacks.fragments[back.id] || 0) + 1);
+  if(have >= need){
+    delete storeState.cardBacks.fragments[back.id];
+    storeState.cardBacks.owned.push(back.id);
+    if(storeState.autoEquipNewBacks) storeState.cardBacks.equipped = back.id;
+    saveStoreState();
+    return { unlocked:true, back, have, need };
+  }
+  storeState.cardBacks.fragments[back.id] = have;
+  saveStoreState();
+  return { unlocked:false, back, have, need };
+}
 
 function defaultStoreState(){
   return {
     dailyBonus: { streak: 0, lastClaimDate: null },
     adWatch: { count: 0, date: null },
     spinWheel: { lastSpinDate: null },
-    cardBacks: { owned: ['classic'], equipped: 'classic' }
+    cardBacks: { owned: ['classic'], equipped: 'classic', fragments: {} },
+    autoEquipNewBacks: false
   };
 }
 function loadStoreState(){
@@ -2997,6 +3122,8 @@ function loadStoreState(){
       if(!s.cardBacks || !Array.isArray(s.cardBacks.owned)) s.cardBacks = { owned: ['classic'], equipped: 'classic' };
       if(!s.cardBacks.owned.includes('classic')) s.cardBacks.owned.push('classic');
       if(!s.cardBacks.equipped) s.cardBacks.equipped = 'classic';
+      if(!s.cardBacks.fragments || typeof s.cardBacks.fragments !== 'object') s.cardBacks.fragments = {};
+      if(typeof s.autoEquipNewBacks !== 'boolean') s.autoEquipNewBacks = false;
       return s;
     }
   } catch(e) {}
@@ -3004,6 +3131,11 @@ function loadStoreState(){
 }
 let storeState = loadStoreState();
 function saveStoreState(){ localStorage.setItem(STORE_KEY, JSON.stringify(storeState)); }
+document.getElementById('autoEquipToggle').checked = storeState.autoEquipNewBacks;
+document.getElementById('autoEquipToggle').addEventListener('change', (e) => {
+  storeState.autoEquipNewBacks = e.target.checked;
+  saveStoreState();
+});
 
 function todayStr(){
   const d = new Date();
@@ -3065,6 +3197,7 @@ function renderStore(){
     ? 'Come back tomorrow'
     : ('+150 🩸 (' + (AD_CAP - adCountToday) + ' left today)');
   document.getElementById('watchAdBtn').disabled = adCountToday >= AD_CAP;
+  renderChests();
 }
 
 function cardBackTileHTML(back){
@@ -3072,11 +3205,15 @@ function cardBackTileHTML(back){
   const equipped = storeState.cardBacks.equipped === back.id;
   const priceLabel = equipped ? 'Equipped' : owned ? 'Owned' : ('🩸 ' + back.price.toLocaleString());
   const priceCls = equipped ? 'equipped' : owned ? 'owned' : '';
+  const have = storeState.cardBacks.fragments[back.id] || 0;
+  const need = RARITY_META[back.rarity].fragmentsNeeded;
+  const fragHTML = !owned && have > 0 ? '<div class="cardback-tile-fragments">' + have + '/' + need + ' fragments</div>' : '';
   return '<button class="cardback-tile' + (owned ? '' : ' locked') + (equipped ? ' equipped-tile' : '') + '" data-back-id="' + back.id + '">' +
-    '<div class="playing-card hidden-card cardback-' + back.id + '"></div>' +
+    '<div class="playing-card hidden-card cardback-' + back.id + ' rarity-ring r-' + back.rarity + '"></div>' +
     '<div class="cardback-tile-tier tier-' + back.tier + '">' + back.tier + '</div>' +
     '<div class="cardback-tile-name">' + back.name + '</div>' +
     '<div class="cardback-tile-price ' + priceCls + '">' + priceLabel + '</div>' +
+    fragHTML +
     '</button>';
 }
 
@@ -3084,6 +3221,8 @@ function renderCardBackShop(){
   const grid = document.getElementById('cardBackGrid');
   if(!grid) return;
   grid.innerHTML = CARD_BACKS.map(cardBackTileHTML).join('');
+  const hint = document.getElementById('cardBacksCollectedHint');
+  if(hint) hint.textContent = storeState.cardBacks.owned.length + ' of ' + CARD_BACKS.length + ' collected.';
 }
 
 function buyOrEquipCardBack(id){
@@ -3105,6 +3244,7 @@ function buyOrEquipCardBack(id){
   updateHeaderDrops();
   storeState.cardBacks.owned.push(id);
   storeState.cardBacks.equipped = id;
+  delete storeState.cardBacks.fragments[id];
   saveStoreState();
   pulseDebitBadge(document.getElementById('storeDropsBadge'));
   document.getElementById('storeDropsBadge').textContent = '🩸 ' + dealerState.drops;
@@ -3116,6 +3256,125 @@ document.getElementById('cardBackGrid').addEventListener('click', (e) => {
   const tile = e.target.closest('.cardback-tile');
   if(!tile) return;
   buyOrEquipCardBack(tile.dataset.backId);
+});
+
+function chestTileHTML(chest){
+  const affordable = dealerState.drops >= chest.dropCost;
+  const pct = Math.min(100, Math.round(dealerState.drops / chest.dropCost * 100));
+  return '<div class="chest-tile">' +
+    '<div class="chest-tile-head">' +
+      '<div class="chest-tile-icon">' + chest.icon + '</div>' +
+      '<div class="chest-tile-name">' + chest.name + '</div>' +
+      '<div class="chest-tile-cost">🩸 ' + chest.dropCost.toLocaleString() + '</div>' +
+    '</div>' +
+    '<div class="chest-progress-track"><div class="chest-progress-bar" style="width:' + pct + '%"></div></div>' +
+    '<div class="chest-tile-hint">' + (affordable ? 'Ready to open.' : ('Collect ' + (chest.dropCost - dealerState.drops).toLocaleString() + ' more drops to unlock.')) + '</div>' +
+    '<button class="btn btn-outline chest-open-btn" data-chest-id="' + chest.id + '"' + (affordable ? '' : ' disabled') + '>Open Chest</button>' +
+  '</div>';
+}
+function renderChests(){
+  const list = document.getElementById('chestList');
+  if(!list) return;
+  list.innerHTML = CHESTS.map(chestTileHTML).join('');
+}
+document.getElementById('chestList').addEventListener('click', (e) => {
+  const btn = e.target.closest('.chest-open-btn');
+  if(!btn || btn.disabled) return;
+  openChest(btn.dataset.chestId);
+});
+
+function openChest(chestId){
+  const chest = findChest(chestId);
+  if(!chest || dealerState.drops < chest.dropCost) return;
+  dealerState.drops -= chest.dropCost;
+  saveDealerState();
+  updateHeaderDrops();
+  pulseDebitBadge(document.getElementById('storeDropsBadge'));
+  document.getElementById('storeDropsBadge').textContent = '🩸 ' + dealerState.drops;
+  renderChests();
+  startChestOpening(chest);
+}
+
+let pendingRevealFinalize = null;
+
+function startChestOpening(chest){
+  const overlay = document.getElementById('chestOverlay');
+  const icon = document.getElementById('chestShakeIcon');
+  const revealArea = document.getElementById('rarityRevealArea');
+  const collectBtn = document.getElementById('chestCollectBtn');
+  document.getElementById('chestModalTitle').textContent = chest.name;
+  icon.textContent = chest.icon;
+  icon.style.display = 'block';
+  icon.className = 'chest-icon shaking';
+  revealArea.style.display = 'none';
+  collectBtn.style.display = 'none';
+  overlay.style.display = 'flex';
+
+  setTimeout(() => {
+    const target = rollFragmentTarget(chest.odds);
+    const refund = Math.round(chest.dropCost * 0.25);
+    showRarityReveal(target, refund);
+  }, 1100);
+}
+
+/** Shared reveal for both chests and the wheel's card outcomes — always
+   shown inside #chestOverlay (the wheel closes its own overlay first). */
+function showRarityReveal(back, duplicateRefundAmount, title){
+  const overlay = document.getElementById('chestOverlay');
+  const icon = document.getElementById('chestShakeIcon');
+  const revealArea = document.getElementById('rarityRevealArea');
+  const card = document.getElementById('rarityRevealCard');
+  const pill = document.getElementById('rarityPill');
+  const nameEl = document.getElementById('rarityRevealName');
+  const progressText = document.getElementById('fragmentProgressText');
+  const progressBar = document.getElementById('fragmentProgressBar');
+  const note = document.getElementById('rarityRevealNote');
+  const collectBtn = document.getElementById('chestCollectBtn');
+  const meta = RARITY_META[back.rarity];
+
+  document.getElementById('chestModalTitle').textContent = title || 'A Discovery';
+  overlay.style.display = 'flex';
+  icon.style.display = 'none';
+
+  const result = awardFragment(back);
+
+  card.className = 'playing-card hidden-card cardback-' + back.id;
+  card.style.setProperty('--reveal-glow', meta.glow);
+  pill.textContent = meta.label;
+  pill.className = 'rarity-pill r-' + back.rarity;
+  nameEl.textContent = back.name;
+
+  if(result.alreadyOwned){
+    progressText.textContent = 'Already owned';
+    progressBar.style.width = '100%';
+    note.style.display = 'block';
+    note.textContent = 'Converted to +' + duplicateRefundAmount + ' 🩸.';
+  } else if(result.unlocked){
+    progressText.textContent = 'Unlocked!';
+    progressBar.style.width = '100%';
+    note.style.display = 'block';
+    note.textContent = storeState.autoEquipNewBacks ? 'Unlocked and equipped!' : 'Unlocked — equip it from Card Backs.';
+  } else {
+    progressText.textContent = result.have + '/' + result.need + ' fragments';
+    progressBar.style.width = Math.round(result.have / result.need * 100) + '%';
+    note.style.display = 'none';
+  }
+
+  revealArea.style.display = 'block';
+  card.classList.remove('reveal-flip', 'flip-in');
+  void card.offsetWidth;
+  requestAnimationFrame(() => card.classList.add('reveal-flip', 'flip-in'));
+
+  collectBtn.style.display = 'inline-flex';
+  pendingRevealFinalize = () => {
+    if(result.alreadyOwned) addDrops(duplicateRefundAmount);
+    overlay.style.display = 'none';
+    renderCardBackShop();
+    renderStore();
+  };
+}
+document.getElementById('chestCollectBtn').addEventListener('click', () => {
+  if(pendingRevealFinalize){ pendingRevealFinalize(); pendingRevealFinalize = null; }
 });
 
 function claimDailyBonus(){
@@ -3134,9 +3393,18 @@ function claimDailyBonus(){
 document.getElementById('dailyBonusBtn').addEventListener('click', claimDailyBonus);
 document.getElementById('homeDailyBonusBtn').addEventListener('click', claimDailyBonus);
 
-const WHEEL_PRIZES = [50, 100, 100, 150, 250, 500, 1000];
-const WHEEL_SEGMENT_ANGLE = 360 / WHEEL_PRIZES.length;
+const WHEEL_SEGMENTS = [
+  { type:'drops', value:50 },
+  { type:'card' },
+  { type:'card' },
+  { type:'drops', value:150 },
+  { type:'drops', value:250 },
+  { type:'drops', value:500 },
+  { type:'drops', value:1000 }
+];
+const WHEEL_SEGMENT_ANGLE = 360 / WHEEL_SEGMENTS.length;
 const WHEEL_SPIN_MS = 3000;
+const WHEEL_CARD_DUPLICATE_REFUND = 1000;
 document.getElementById('spinWheelBtn').addEventListener('click', () => {
   const today = todayStr();
   if(storeState.spinWheel.lastSpinDate === today) return;
@@ -3151,8 +3419,8 @@ document.getElementById('spinWheelBtn').addEventListener('click', () => {
   // Pick the prize FIRST, then compute the rotation that actually lands the
   // pointer on that segment — the wheel's visual outcome always matches
   // what's credited, unlike the old emoji spin which was purely cosmetic.
-  const prizeIndex = Math.floor(Math.random() * WHEEL_PRIZES.length);
-  const prize = WHEEL_PRIZES[prizeIndex];
+  const prizeIndex = Math.floor(Math.random() * WHEEL_SEGMENTS.length);
+  const segment = WHEEL_SEGMENTS[prizeIndex];
   const jitter = (Math.random() - 0.5) * (WHEEL_SEGMENT_ANGLE - 8);
   const targetAngle = prizeIndex * WHEEL_SEGMENT_ANGLE + WHEEL_SEGMENT_ANGLE / 2 + jitter;
   const extraSpins = 5 + Math.floor(Math.random() * 3);
@@ -3168,11 +3436,17 @@ document.getElementById('spinWheelBtn').addEventListener('click', () => {
 
   setTimeout(() => {
     storeState.spinWheel.lastSpinDate = today;
-    addDrops(prize);
     saveStoreState();
-    resultEl.textContent = 'You won ' + prize + ' 🩸!';
-    closeBtn.style.display = 'inline-flex';
-    renderStore();
+    if(segment.type === 'drops'){
+      addDrops(segment.value);
+      resultEl.textContent = 'You won ' + segment.value + ' 🩸!';
+      closeBtn.style.display = 'inline-flex';
+      renderStore();
+    } else {
+      overlay.style.display = 'none';
+      const back = randomUnownedBack();
+      showRarityReveal(back, WHEEL_CARD_DUPLICATE_REFUND, 'You Found...');
+    }
   }, WHEEL_SPIN_MS);
 });
 document.getElementById('wheelCloseBtn').addEventListener('click', () => {
@@ -3254,6 +3528,23 @@ function celebrateVialPurchase(amount){
   const targetEl = document.getElementById('hdrDropsBadge');
   pulseCreditBadge(startEl);
   flyDropsToken('+' + amount + ' 🩸', startEl, targetEl, null, () => pulseCreditBadge(targetEl));
+  if(startEl) spawnRisingDrops(startEl, 4);
+}
+function spawnRisingDrops(anchorEl, count){
+  const rect = anchorEl.getBoundingClientRect();
+  for(let i = 0; i < count; i++){
+    const drop = document.createElement('div');
+    drop.className = 'rising-drop';
+    drop.textContent = '🩸';
+    drop.style.left = (rect.left + rect.width / 2 + (Math.random() * 40 - 20)) + 'px';
+    drop.style.top = (rect.top + rect.height / 2) + 'px';
+    document.body.appendChild(drop);
+    const anim = drop.animate([
+      { transform: 'translate(-50%,-50%) scale(.8)', opacity: 1, offset: 0 },
+      { transform: 'translate(-50%,calc(-50% - 60px)) scale(1.1)', opacity: 0, offset: 1 }
+    ], { duration: 900 + Math.random() * 300, delay: i * 80, easing: 'ease-out' });
+    anim.onfinish = () => drop.remove();
+  }
 }
 
 // Fired when a hand is won — flies the payout from the result banner into
