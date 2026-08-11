@@ -215,10 +215,15 @@ button{user-select:none;-webkit-user-select:none;touch-action:manipulation}
 .shoe-row{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:13px;color:var(--muted);margin-bottom:4px}
 .shoe-row select{padding:6px 8px;border:1.5px solid var(--border);border-radius:8px;font-size:14px;background:#fff}
 .table-label{font-size:11px;font-weight:700;text-transform:uppercase;color:var(--muted);letter-spacing:.5px;text-align:center;margin-bottom:4px}
-.card-row{display:flex;gap:0;flex-wrap:nowrap;justify-content:center;margin-bottom:4px;height:112px;overflow-x:auto;overflow-y:hidden;padding:0 4px}
-.playing-card{width:74px;height:104px;flex-shrink:0;border-radius:12px;background:#fff;border:none;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-family:var(--display-font);font-weight:700;font-size:30px;box-shadow:var(--shadow-card)}
-.card-row .playing-card:not(:first-child){margin-left:-30px}
-.card-row .playing-card{position:relative}
+/* Fixed row height; card width derives from height via aspect-ratio, so
+   the row's footprint never changes no matter how many cards are dealt —
+   only the fan overlap tightens as more cards join. Card typography scales
+   with each card's own rendered width via container query units (cqw),
+   so the same markup looks right whether it's ~80px in a hand or huge in
+   Speed Drill. */
+.card-row{display:flex;gap:0;flex-wrap:nowrap;justify-content:center;align-items:center;margin-bottom:4px;height:104px;overflow:visible;padding:0}
+.playing-card{position:relative;width:auto;height:100%;flex-shrink:0;aspect-ratio:5/7;container-type:inline-size;border-radius:10px;background:#fff;border:none;box-shadow:var(--shadow-card)}
+.card-row .playing-card:not(:first-child){margin-left:-38px}
 .card-row .playing-card:nth-child(1){z-index:1}
 .card-row .playing-card:nth-child(2){z-index:2}
 .card-row .playing-card:nth-child(3){z-index:3}
@@ -226,13 +231,17 @@ button{user-select:none;-webkit-user-select:none;touch-action:manipulation}
 .card-row .playing-card:nth-child(5){z-index:5}
 .card-row .playing-card:nth-child(6){z-index:6}
 .card-row .playing-card:nth-child(7){z-index:7}
-.card-row .playing-card div:last-child{font-size:18px}
 #speedCardArea{height:auto;padding:0}
-#speedCardArea .playing-card{width:100%;max-width:190px;height:auto;aspect-ratio:5/7;margin:0 auto;font-size:56px;gap:6px}
-#speedCardArea .playing-card div:last-child{font-size:32px}
+#speedCardArea .playing-card{width:100%;max-width:190px;height:auto;margin:0 auto}
+.playing-card .pc-corner{position:absolute;display:flex;flex-direction:column;align-items:center;line-height:1;font-family:var(--display-font);font-weight:700}
+.playing-card .pc-corner-tl{top:7cqw;left:7cqw}
+.playing-card .pc-corner-br{bottom:7cqw;right:7cqw;transform:rotate(180deg)}
+.playing-card .pc-rank{font-size:26cqw}
+.playing-card .pc-suit-sm{font-size:20cqw}
+.playing-card .pc-suit-center{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:50cqw;line-height:1}
 .playing-card.red{color:var(--blood-deep)}
 .playing-card.black{color:var(--text)}
-.playing-card.hidden-card{position:relative;overflow:hidden;color:transparent;font-size:20px;border-color:transparent;background:var(--cardback1)}
+.playing-card.hidden-card{position:relative;overflow:hidden;color:transparent;border-color:transparent;background:var(--cardback1)}
 .playing-card.hidden-card::before,.playing-card.hidden-card::after{content:'';position:absolute}
 
 /* ---- Card back skins (Store > Card Backs) ---- */
@@ -1300,7 +1309,10 @@ function cardHTML(card, hidden, animClass, delayMs, extraClass){
   if(animClass) cls.push(animClass);
   if(extraClass) cls.push(extraClass);
   const style = animClass ? ' style="animation-delay:' + (delayMs || 0) + 'ms"' : '';
-  const inner = hidden ? '?' : '<div>' + card.rank + '</div><div>' + card.suit + '</div>';
+  const inner = hidden ? '<span class="pc-suit-center">?</span>' :
+    '<span class="pc-corner pc-corner-tl"><span class="pc-rank">' + card.rank + '</span><span class="pc-suit-sm">' + card.suit + '</span></span>' +
+    '<span class="pc-corner pc-corner-br"><span class="pc-rank">' + card.rank + '</span><span class="pc-suit-sm">' + card.suit + '</span></span>' +
+    '<span class="pc-suit-center">' + card.suit + '</span>';
   return '<div class="' + cls.join(' ') + '"' + style + '>' + inner + '</div>';
 }
 function fmtSigned(n){ return n > 0 ? '+' + n : String(n); }
