@@ -208,7 +208,8 @@ button{user-select:none;-webkit-user-select:none;touch-action:manipulation}
 .mini-count-btn.reset{flex:0 0 auto;padding:9px 12px;background:#fff;color:var(--text);border:1px solid var(--border)}
 
 /* Dealer game */
-.shoe-row{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:13px;color:var(--muted);margin-bottom:4px}
+.shoe-row{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:4px}
+.shoe-row span{font-family:var(--display-font);font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--gold-deep)}
 .shoe-row select{padding:6px 8px;border:1.5px solid var(--border);border-radius:8px;font-size:14px;background:#fff}
 .table-label{font-size:11px;font-weight:700;text-transform:uppercase;color:var(--muted);letter-spacing:.5px;text-align:center;margin-bottom:4px}
 /* Fixed row height; card width derives from height via aspect-ratio, so
@@ -1588,7 +1589,7 @@ function setActiveTab(tab){
     document.getElementById('peekBtn').style.display = (tab === 'peek') ? 'flex' : 'none';
     document.getElementById('quizScore').style.display = (tab === 'quiz') ? 'block' : 'none';
     document.getElementById('dealerModeHint').textContent = (tab === 'peek')
-      ? '👁 Peek the count — 10 🩸 · 💡 Betting Tip — 15 🩸 · 💡 Strategy Tip — 15 🩸'
+      ? ''
       : "Count stays hidden — you'll be quizzed on it at random moments. 💡 Strategy Tip is free here.";
     isPeeking = false;
     renderDealer();
