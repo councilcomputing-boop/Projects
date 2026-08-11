@@ -57,22 +57,17 @@ button{user-select:none;-webkit-user-select:none;touch-action:manipulation}
 .hdr-row{display:flex;align-items:center;gap:10px;transition:gap .25s ease}
 .hdr-text{flex:1;min-width:0;text-align:left;transition:text-align .25s ease}
 .dracula-mark{width:44px;height:44px;flex-shrink:0;margin:0;display:block;border-radius:50%;object-fit:cover;box-shadow:0 0 0 1px rgba(200,169,75,.6);transition:width .25s ease,height .25s ease}
-.hdr.hdr-big{padding:10px 16px 8px}
-.hdr.hdr-big .hdr-row{flex-direction:column;gap:0}
-.hdr.hdr-big .hdr-text{text-align:center}
-.hdr.hdr-big .dracula-mark{width:72px;height:72px;margin:0 auto 4px}
-.hdr.hdr-big .hdr-title{font-size:20px;letter-spacing:1.5px;white-space:normal}
-.hdr.hdr-big .hdr-sub{font-size:11px;white-space:normal}
-.hdr.hdr-big .menu-link{display:none}
 .hdr-drops{background:rgba(255,255,255,.15);color:#eee0b0;font-family:var(--display-font);font-weight:700;font-size:12.5px;padding:7px 10px;border-radius:10px;flex-shrink:0;white-space:nowrap;transition:transform .2s ease,box-shadow .2s ease}
-.hdr.hdr-big .hdr-drops{position:absolute;top:10px;right:14px}
 .hdr-drops.credit-pulse{animation:creditPulse .6s ease}
+.screen-title-block{display:none;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}
+.screen-title-text{font-family:var(--display-font);font-size:24px;line-height:1;color:var(--gold-soft)}
+.screen-subtitle-text{font-size:12px;font-style:italic;color:rgba(238,224,176,.55);margin-top:6px}
+.screen-home-btn{background:var(--wine-light);color:var(--gold-soft);border:none;border-radius:20px;padding:9px 14px;font-weight:700;font-size:13px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;flex-shrink:0}
+.screen-home-btn:active{background:var(--wine-border)}
 .dealer-portrait{display:block;width:56px;height:56px;margin:0 auto 6px;border-radius:50%;object-fit:cover;object-position:top center;box-shadow:0 0 0 2px var(--gold),0 3px 8px rgba(0,0,0,.4)}
 .hdr-title{font-family:var(--display-font);font-size:19px;font-weight:700;letter-spacing:1px;color:#eee0b0;text-shadow:0 0 12px rgba(201,162,39,.35);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .hdr-title-accent{color:var(--gold)}
 .hdr-sub{font-size:11px;color:#c9a9a9;margin-top:1px;font-style:italic;letter-spacing:.3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.menu-link{background:rgba(255,255,255,.15);color:#fff;border:none;border-radius:10px;padding:8px 12px;font-weight:700;font-size:12.5px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;flex-shrink:0}
-.menu-link:active{background:rgba(255,255,255,.28)}
 .home-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
 .menu-card{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;background:var(--card);border-radius:16px;box-shadow:var(--shadow-panel);padding:20px 6px;cursor:pointer;border:none;text-align:center;min-width:0;overflow:hidden;transition:background-color .15s ease}
 .menu-card:active{background-color:var(--card-light);transform:scale(.99)}
@@ -547,11 +542,18 @@ body.fill-mode #dealerView.active > .card:first-child{padding:12px}
       <div class="hdr-sub">He never loses count · Hi-Lo System</div>
     </div>
     <div class="hdr-drops" id="hdrDropsBadge">🩸 1000</div>
-    <button class="menu-link" id="menuBtn">← Home</button>
   </div>
 </div>
 
 <div id="C">
+
+  <div class="screen-title-block" id="screenTitleBlock">
+    <div>
+      <div class="screen-title-text" id="screenTitleText"></div>
+      <div class="screen-subtitle-text" id="screenSubtitleText"></div>
+    </div>
+    <button class="screen-home-btn" id="menuBtn">&#8592; Home</button>
+  </div>
 
   <!-- ===================== HOME MENU ===================== -->
   <div class="view" id="homeView">
@@ -563,7 +565,7 @@ body.fill-mode #dealerView.active > .card:first-child{padding:12px}
       </button>
       <button class="menu-card" data-tab="peek">
         <div class="menu-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg></div>
-        <div class="menu-title">Classic/Peek Practice</div>
+        <div class="menu-title">Classic / Peek</div>
         <div class="menu-subtitle">Play hands, peek allowed</div>
       </button>
       <button class="menu-card" data-tab="quiz">
@@ -1543,6 +1545,17 @@ const TAB_KEY = 'cardCountingActiveTab';
 let activeTab = 'home';
 
 const TOP_LEVEL_TABS = ['home','store','cardbacks','account'];
+const SCREEN_TITLES = {
+  manual:    { title:'Manual',        subtitle:'Count a real deck' },
+  peek:      { title:'Classic / Peek', subtitle:'Play hands, peek allowed' },
+  quiz:      { title:'Quiz Practice', subtitle:'Count stays hidden' },
+  math:      { title:'Deck Math',     subtitle:'Running → true count' },
+  speed:     { title:'Speed Drill',   subtitle:'Beat the clock' },
+  rules:     { title:'Rules',         subtitle:'Learn the Hi-Lo system' },
+  store:     { title:'Store',         subtitle:'Blood drops, hoards & chests' },
+  cardbacks: { title:'Card Backs',    subtitle:'Equip any owned back' },
+  account:   { title:'Profile',       subtitle:'Account & stats' }
+};
 
 function setActiveTab(tab){
   if(activeTab === 'speed' && speedRunning && tab !== 'speed'){
@@ -1551,8 +1564,12 @@ function setActiveTab(tab){
   }
   activeTab = tab;
   localStorage.setItem(TAB_KEY, tab);
-  document.querySelector('.hdr').classList.toggle('hdr-big', tab === 'home');
-  document.getElementById('menuBtn').style.display = TOP_LEVEL_TABS.includes(tab) ? 'none' : 'inline-flex';
+  const screenMeta = SCREEN_TITLES[tab];
+  document.getElementById('screenTitleBlock').style.display = screenMeta ? 'flex' : 'none';
+  if(screenMeta){
+    document.getElementById('screenTitleText').textContent = screenMeta.title;
+    document.getElementById('screenSubtitleText').textContent = screenMeta.subtitle;
+  }
   document.getElementById('bottomNav').classList.toggle('show', TOP_LEVEL_TABS.includes(tab));
   document.getElementById('C').classList.toggle('with-nav', TOP_LEVEL_TABS.includes(tab));
   document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.toggle('active', btn.dataset.tab === tab));
