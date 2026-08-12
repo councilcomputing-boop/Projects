@@ -80,6 +80,10 @@ export interface DealerGameState {
   trackOwnCount: boolean;
   strategy: { correct: number; total: number };
   coachingEnabled: boolean;
+  /** The table bankroll — the pool bets/doubles/splits/peeks/tips/quiz-rewards actually
+      draw from and win into, separate from the player's total Blood Drops balance until
+      they buy in or cash out. */
+  bankroll: number;
   currentBet: number;
   betCoachingEnabled: boolean;
   stats: { hands: number; win: number; lose: number; push: number; blackjack: number };

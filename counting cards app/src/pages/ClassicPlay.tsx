@@ -18,6 +18,7 @@ const DECK_OPTIONS = [1, 2, 4, 6, 8];
 export function ClassicPlay({ allowPeek }: ClassicPlayProps) {
   const game = useDealerGame(allowPeek);
   const [betInput, setBetInput] = useState(25);
+  const [buyInInput, setBuyInInput] = useState(500);
   const [quizAnswer, setQuizAnswer] = useState(0);
   const [reviewOpen, setReviewOpen] = useState(false);
 
@@ -109,9 +110,17 @@ export function ClassicPlay({ allowPeek }: ClassicPlayProps) {
           </label>
         </div>
 
-        <div className="mt-2 flex items-center justify-center gap-1.5 rounded-lg bg-maroon-700 px-3 py-1.5 text-gold-soft shadow-gold">
+        <div className="mt-2 flex items-center justify-center gap-2 rounded-lg bg-maroon-700 px-3 py-1.5 text-gold-soft shadow-gold">
           <BloodDrop className="h-3.5 w-3.5 text-blood" />
-          <span className="tabular font-serif text-sm font-semibold">{game.drops.toLocaleString()}</span>
+          <span className="tabular font-serif text-sm font-semibold">{game.bankroll.toLocaleString()} at the table</span>
+          {game.bankroll > 0 && game.handIsIdle() &&
+          <button
+            type="button"
+            onClick={game.cashOut}
+            className="ml-1 rounded-full bg-maroon-900/60 px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.08em] text-parch/80 hover:text-parch">
+              Cash Out
+            </button>
+          }
         </div>
 
         <div className="mt-3 grid grid-cols-[1fr_112px] gap-3 rounded-2xl bg-felt p-3">
@@ -221,7 +230,32 @@ export function ClassicPlay({ allowPeek }: ClassicPlayProps) {
         }
 
         <div className="mt-3 flex min-h-[112px] flex-col gap-2">
-          {!game.betEstablished || game.showBetSetup ?
+          {game.needsBuyIn ?
+          <div className="rounded-xl bg-parch-mute px-3 py-3">
+              <p className="text-center text-[11px] font-semibold uppercase tracking-[0.12em] text-charcoal-soft">Buy In</p>
+              <p className="mt-1 text-center text-[10px] font-semibold text-charcoal-soft">
+                {game.drops.toLocaleString()} 🩸 in your balance
+              </p>
+              <div className="mt-2 grid grid-cols-4 gap-1.5">
+                {[100, 500, 1000, 5000].map((amt) =>
+              <button
+                key={amt}
+                type="button"
+                onClick={() => setBuyInInput(amt)}
+                className={`rounded-lg py-2 text-xs font-bold ${buyInInput === amt ? 'bg-maroon-800 text-gold' : 'bg-white text-charcoal'}`}>
+                    {amt}
+                  </button>
+              )}
+              </div>
+              <button
+              type="button"
+              onClick={() => game.buyIn(buyInInput)}
+              disabled={game.drops < buyInInput}
+              className="mt-3 w-full rounded-xl bg-white py-3 text-sm font-bold text-charcoal shadow-card disabled:opacity-40">
+                Buy In ({buyInInput} 🩸)
+              </button>
+            </div> :
+          !game.betEstablished || game.showBetSetup ?
           <div className="rounded-xl bg-parch-mute px-3 py-3">
               <p className="text-center text-[11px] font-semibold uppercase tracking-[0.12em] text-charcoal-soft">Declare your wager</p>
               <div className="mt-2 grid grid-cols-4 gap-1.5">
@@ -261,14 +295,14 @@ export function ClassicPlay({ allowPeek }: ClassicPlayProps) {
                 <button
                 type="button"
                 onClick={game.playerDouble}
-                disabled={!game.canDoubleNow || game.drops < (cur?.bet ?? 0)}
+                disabled={!game.canDoubleNow || game.bankroll < (cur?.bet ?? 0)}
                 className="rounded-xl bg-white py-4 text-sm font-bold text-charcoal shadow-card transition-colors hover:bg-parch-light disabled:opacity-40">
                   Double
                 </button>
                 <button
                 type="button"
                 onClick={game.playerSplit}
-                disabled={!game.canSplitNow || game.drops < (cur?.bet ?? 0)}
+                disabled={!game.canSplitNow || game.bankroll < (cur?.bet ?? 0)}
                 className="rounded-xl bg-white py-4 text-sm font-bold text-charcoal shadow-card transition-colors hover:bg-parch-light disabled:opacity-40">
                   Split
                 </button>
