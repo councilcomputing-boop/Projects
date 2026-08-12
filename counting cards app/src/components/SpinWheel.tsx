@@ -84,14 +84,25 @@ export function SpinWheel({ onClose }: SpinWheelProps) {
             animate={{ rotate: angle }}
             transition={{ duration: WHEEL_SPIN_MS / 1000, ease: [0.15, 0.7, 0.15, 1] }}>
 
-              {WHEEL_SEGMENTS.map((segment, i) =>
-            <span
-              key={i}
-              className="absolute left-1/2 top-1/2 origin-left font-serif text-[11px] font-bold uppercase tracking-[0.08em] text-gold-soft"
-              style={{ transform: `rotate(${i * WHEEL_SEGMENT_ANGLE + WHEEL_SEGMENT_ANGLE / 2}deg) translate(46px, -6px)` }}>
-                  {segment.type === 'card' ? 'CARD' : `+${segment.value}`}
-                </span>
-            )}
+              {WHEEL_SEGMENTS.map((segment, i) => {
+              const segAngle = i * WHEEL_SEGMENT_ANGLE + WHEEL_SEGMENT_ANGLE / 2;
+              const normalized = ((segAngle % 360) + 360) % 360;
+              // Labels on the bottom/left half of the wheel would render upside-down at
+              // their placement angle, so counter-rotate just the text in that zone.
+              const upsideDown = normalized > 90 && normalized < 270;
+              return (
+                <span
+                  key={i}
+                  className="absolute left-1/2 top-1/2 origin-left"
+                  style={{ transform: `rotate(${segAngle}deg) translate(46px, -6px)` }}>
+                    <span
+                    className="block font-serif text-[11px] font-bold uppercase tracking-[0.08em] text-gold-soft"
+                    style={{ transform: upsideDown ? 'rotate(180deg)' : undefined }}>
+                      {segment.type === 'card' ? 'CARD' : `+${segment.value}`}
+                    </span>
+                  </span>);
+
+            })}
             </motion.div>
             <span className="absolute left-1/2 top-1/2 h-10 w-10 -translate-x-1/2 -translate-y-1/2 rounded-full bg-maroon-800 ring-2 ring-gold" />
           </div>

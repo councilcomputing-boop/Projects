@@ -37,7 +37,7 @@ export function PlayingCard({ card, size = 'lg', width }: PlayingCardProps) {
       <span className="tabular font-serif font-semibold" style={{ fontSize: rankSize, lineHeight: 1 }}>
         {card.rank}
       </span>
-      <span style={{ fontSize: cornerSuitSize, lineHeight: 1 }}>{glyph}</span>
+      <span className="font-serif" style={{ fontSize: cornerSuitSize, lineHeight: 1 }}>{glyph}</span>
     </span>;
 
 
@@ -58,9 +58,8 @@ export function PlayingCard({ card, size = 'lg', width }: PlayingCardProps) {
       </span>
       <span
         aria-hidden="true"
-        className={`leading-none ${ink}`}
+        className={`font-serif leading-none ${ink}`}
         style={{ fontSize: centreSize, lineHeight: 1 }}>
-        
         {glyph}
       </span>
     </div>);

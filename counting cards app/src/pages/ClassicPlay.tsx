@@ -68,9 +68,7 @@ export function ClassicPlay({ allowPeek }: ClassicPlayProps) {
   const bannerTone = !settled ? '' : hand!.hands[0].result === 'win' || hand!.hands[0].result === 'blackjack' ? 'good' : hand!.hands[0].result === 'push' ? 'neutral' : 'bad';
 
   const dealerLine =
-  game.coachMessage ||
-  game.betTipResult ||
-  game.strategyTipResult ||
+  game.hintMessage ||
   (settled ?
   bannerTone === 'good' ? 'Your instincts sharpen, mortal.' :
   bannerTone === 'neutral' ? 'A stalemate. Neither of us feeds.' :

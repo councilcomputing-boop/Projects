@@ -1,5 +1,6 @@
 import { BrowserRouter, Route, Routes } from 'react-router-dom';
 import { CardBackProvider } from './contexts/CardBackContext';
+import { DropsProvider } from './contexts/DropsContext';
 import { PhoneShell } from './components/PhoneShell';
 import { UpdateBanner } from './components/UpdateBanner';
 import { EntryGates } from './components/EntryGates';
@@ -16,24 +17,26 @@ import { Profile } from './pages/Profile';
 export function App() {
   return (
     <BrowserRouter>
-      <CardBackProvider>
-        <EntryGates />
-        <UpdateBanner />
-        <PhoneShell>
-        <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/manual" element={<Manual />} />
-          <Route path="/peek" element={<ClassicPlay allowPeek />} />
-          <Route path="/quiz" element={<ClassicPlay allowPeek={false} />} />
-          <Route path="/deck-math" element={<DeckMath />} />
-          <Route path="/drill" element={<SpeedDrill />} />
-          <Route path="/rules" element={<Rules />} />
-          <Route path="/store" element={<Store />} />
-          <Route path="/card-backs" element={<CardBacks />} />
-          <Route path="/profile" element={<Profile />} />
-          </Routes>
-        </PhoneShell>
-      </CardBackProvider>
+      <DropsProvider>
+        <CardBackProvider>
+          <EntryGates />
+          <UpdateBanner />
+          <PhoneShell>
+          <Routes>
+            <Route path="/" element={<Home />} />
+            <Route path="/manual" element={<Manual />} />
+            <Route path="/peek" element={<ClassicPlay allowPeek />} />
+            <Route path="/quiz" element={<ClassicPlay allowPeek={false} />} />
+            <Route path="/deck-math" element={<DeckMath />} />
+            <Route path="/drill" element={<SpeedDrill />} />
+            <Route path="/rules" element={<Rules />} />
+            <Route path="/store" element={<Store />} />
+            <Route path="/card-backs" element={<CardBacks />} />
+            <Route path="/profile" element={<Profile />} />
+            </Routes>
+          </PhoneShell>
+        </CardBackProvider>
+      </DropsProvider>
     </BrowserRouter>);
 
 }

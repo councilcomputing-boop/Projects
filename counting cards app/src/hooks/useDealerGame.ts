@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { PlayingCardData, Hand, SubHand, DealerGameState, Action, Rank, Outcome, HandOutcomeReason } from '../types/blackjack';
 import { buildShoe, hiLoValue } from '../utils/deck';
-import { auth, fdb } from '../lib/firebase';
+import { useDrops } from '../contexts/DropsContext';
 import {
   handTotal,
   softTotalInfo,
@@ -38,13 +38,10 @@ function defaultDealerState(numDecks = 6): DealerGameState {
     trackOwnCount: false,
     strategy: { correct: 0, total: 0 },
     coachingEnabled: true,
-    drops: 1000,
-    dropsHigh: 1000,
     currentBet: 25,
     betCoachingEnabled: true,
     stats: { hands: 0, win: 0, lose: 0, push: 0, blackjack: 0 },
-    handHistory: [],
-    disclaimerAckAt: null
+    handHistory: []
   };
 }
 
@@ -124,34 +121,43 @@ function describeOutcome(reason: HandOutcomeReason, handLabel: string): string {
   }
 }
 
+/** Recomputes the payout for a resolved SubHand from its result — used by the
+    settlement effect below, kept in sync with resolveHand's own result logic. */
+function payoutFor(h: SubHand): number {
+  switch (h.result) {
+    case 'win':return h.bet * 2;
+    case 'blackjack':return Math.round(h.bet * 2.5);
+    case 'push':return h.bet;
+    default:return 0;
+  }
+}
+
 function resolveHand(state: DealerGameState): DealerGameState {
   if (!state.hand) return state;
   const dealerTotal = handTotal(dealerCardsOf(state.hand));
   const dealerBJ = isBlackjack(dealerCardsOf(state.hand));
 
-  let drops = state.drops;
   let win = 0, lose = 0, push = 0, blackjack = 0;
   const resolvedHands: SubHand[] = state.hand.hands.map((h) => {
     const playerTotal = handTotal(h.cards);
-    let result: Outcome, reason: HandOutcomeReason, payout: number;
+    let result: Outcome, reason: HandOutcomeReason;
     if (playerTotal > 21) {
-      result = 'lose';reason = 'bust';payout = 0;
+      result = 'lose';reason = 'bust';
     } else if (dealerBJ && isBlackjack(h.cards) && state.hand!.hands.length === 1) {
-      result = 'push';reason = 'both-blackjack';payout = h.bet;
+      result = 'push';reason = 'both-blackjack';
     } else if (dealerBJ) {
-      result = 'lose';reason = 'dealer-blackjack';payout = 0;
+      result = 'lose';reason = 'dealer-blackjack';
     } else if (isBlackjack(h.cards) && state.hand!.hands.length === 1) {
-      result = 'blackjack';reason = 'player-blackjack';payout = Math.round(h.bet * 2.5);
+      result = 'blackjack';reason = 'player-blackjack';
     } else if (dealerTotal > 21) {
-      result = 'win';reason = 'dealer-bust';payout = h.bet * 2;
+      result = 'win';reason = 'dealer-bust';
     } else if (playerTotal > dealerTotal) {
-      result = 'win';reason = 'higher-total';payout = h.bet * 2;
+      result = 'win';reason = 'higher-total';
     } else if (playerTotal < dealerTotal) {
-      result = 'lose';reason = 'lower-total';payout = 0;
+      result = 'lose';reason = 'lower-total';
     } else {
-      result = 'push';reason = 'tie';payout = h.bet;
+      result = 'push';reason = 'tie';
     }
-    drops += payout;
     if (result === 'win') win += 1;else
     if (result === 'lose') lose += 1;else
     if (result === 'push') push += 1;else
@@ -159,7 +165,6 @@ function resolveHand(state: DealerGameState): DealerGameState {
     return { ...h, stage: playerTotal > 21 ? 'bust' : 'stood', result, reason };
   });
 
-  const dropsHigh = Math.max(state.dropsHigh, drops);
   const totalCorrect = resolvedHands.reduce((s, h) => s + h.movesCorrect, 0);
   const totalMoves = resolvedHands.reduce((s, h) => s + h.movesTotal, 0);
   const primary = resolvedHands[0];
@@ -170,8 +175,6 @@ function resolveHand(state: DealerGameState): DealerGameState {
 
   return {
     ...state,
-    drops,
-    dropsHigh,
     hand: { ...state.hand, hands: resolvedHands, stage: 'done', holeRevealed: true },
     stats: {
       hands: state.stats.hands + 1,
@@ -187,15 +190,17 @@ function resolveHand(state: DealerGameState): DealerGameState {
 let nextHandId = 1;
 
 export function useDealerGame(allowPeek: boolean) {
+  const dropsCtx = useDrops();
   const [state, setState] = useState<DealerGameState>(loadState);
   const [isPeeking, setIsPeeking] = useState(false);
   const [betEstablished, setBetEstablished] = useState(false);
   const [showBetSetup, setShowBetSetup] = useState(false);
   const [strategyTipUsedKey, setStrategyTipUsedKey] = useState<string | null>(null);
   const [betTipUsedThisHand, setBetTipUsedThisHand] = useState(false);
-  const [coachMessage, setCoachMessage] = useState<string | null>(null);
-  const [betTipResult, setBetTipResult] = useState<string | null>(null);
-  const [strategyTipResult, setStrategyTipResult] = useState<string | null>(null);
+  // Single source of truth for "the last thing Dracula said" — strategy coaching, bet
+  // tip, strategy tip, and affordability messages all funnel through this one state, so
+  // a stale message from an earlier action can never silently mask a newer one.
+  const [hintMessage, setHintMessage] = useState<string | null>(null);
   const [quizOpen, setQuizOpen] = useState(false);
   const [quizType, setQuizType] = useState<'running' | 'true'>('running');
   const [quizFeedback, setQuizFeedback] = useState<string | null>(null);
@@ -209,82 +214,20 @@ export function useDealerGame(allowPeek: boolean) {
     localStorage.setItem(DEALER_KEY, JSON.stringify(state));
   }, [state]);
 
-  // ── Firestore sync: only drops/dropsHigh/disclaimerAckAt ever sync, matching the real
-  //    app exactly and matching firestore.rules' allowed client-writable field set.
-  //    One-shot bootstrap read + a real-time listener for the rest of the session;
-  //    outbound pushes are debounced ~3.5s. A snapshot that matches what's already in
-  //    local state is treated as a no-op (covers both "it's an echo of our own push"
-  //    and "genuinely already in sync" — either way there's nothing to apply). ──
-  const [uid, setUid] = useState<string | null>(() => auth.currentUser?.uid ?? null);
+  // ── Settlement payout: credited via the shared DropsContext (single source of truth for
+  //    the balance shown everywhere, including the header) rather than tracked locally.
+  //    Keyed off hand.id so a hand is credited exactly once — including on mount, where a
+  //    previously-persisted "done" hand from an earlier session must NOT be recredited. ──
+  const lastCreditedHandId = useRef<number | null>(
+    state.hand && state.hand.stage === 'done' ? state.hand.id : null
+  );
   useEffect(() => {
-    const unsub = auth.onAuthStateChanged((u) => setUid(u?.uid ?? null));
-    return unsub;
-  }, []);
-
-  useEffect(() => {
-    if (!uid) return;
-    const ref = fdb.collection('users').doc(uid);
-    let cancelled = false;
-
-    ref.get().then((snap) => {
-      if (cancelled) return;
-      if (snap.exists) {
-        const data = snap.data()!;
-        setState((prev) => ({
-          ...prev,
-          drops: typeof data.drops === 'number' ? data.drops : prev.drops,
-          dropsHigh: Math.max(prev.dropsHigh, prev.drops, data.dropsHigh || 0),
-          disclaimerAckAt: data.disclaimerAckAt ?? prev.disclaimerAckAt
-        }));
-      } else {
-        setState((prev) => {
-          ref.set({ drops: prev.drops, dropsHigh: prev.dropsHigh, disclaimerAckAt: prev.disclaimerAckAt }, { merge: true }).catch(() => {});
-          return prev;
-        });
-      }
-    }).catch(() => {});
-
-    const unsub = ref.onSnapshot((snap) => {
-      if (!snap.exists) return;
-      const data = snap.data()!;
-      setState((prev) => {
-        if (data.drops === prev.drops && data.dropsHigh === prev.dropsHigh && data.disclaimerAckAt === prev.disclaimerAckAt) return prev;
-        return {
-          ...prev,
-          drops: typeof data.drops === 'number' ? data.drops : prev.drops,
-          dropsHigh: Math.max(prev.dropsHigh, prev.drops, data.dropsHigh || 0),
-          disclaimerAckAt: data.disclaimerAckAt ?? prev.disclaimerAckAt
-        };
-      });
-    }, () => {});
-
-    return () => { cancelled = true; unsub(); };
-  }, [uid]);
-
-  const pushTimer = useRef<number | null>(null);
-  useEffect(() => {
-    if (!uid) return;
-    if (pushTimer.current) window.clearTimeout(pushTimer.current);
-    pushTimer.current = window.setTimeout(() => {
-      fdb.collection('users').doc(uid).set(
-        { drops: state.drops, dropsHigh: state.dropsHigh, disclaimerAckAt: state.disclaimerAckAt },
-        { merge: true }
-      ).catch(() => {});
-    }, 3500);
-    return () => { if (pushTimer.current) window.clearTimeout(pushTimer.current); };
-  }, [uid, state.drops, state.dropsHigh, state.disclaimerAckAt]);
-
-  useEffect(() => {
-    function flushOnHide() {
-      if (document.visibilityState !== 'hidden' || !uid) return;
-      fdb.collection('users').doc(uid).set(
-        { drops: state.drops, dropsHigh: state.dropsHigh, disclaimerAckAt: state.disclaimerAckAt },
-        { merge: true }
-      ).catch(() => {});
-    }
-    document.addEventListener('visibilitychange', flushOnHide);
-    return () => document.removeEventListener('visibilitychange', flushOnHide);
-  }, [uid, state.drops, state.dropsHigh, state.disclaimerAckAt]);
+    if (!state.hand || state.hand.stage !== 'done') return;
+    if (lastCreditedHandId.current === state.hand.id) return;
+    lastCreditedHandId.current = state.hand.id;
+    const payout = state.hand.hands.reduce((sum, h) => sum + payoutFor(h), 0);
+    if (payout > 0) dropsCtx.addDrops(payout);
+  }, [state.hand]);
 
   const trueCountNow = calcTrueCount(state.runningCount, Math.max(0.5, state.shoe.length / 52));
 
@@ -310,9 +253,9 @@ export function useDealerGame(allowPeek: boolean) {
       const correct = roundedCorrect === roundedAnswer;
       setState((prev) => ({
         ...prev,
-        quizTrue: { correct: prev.quizTrue.correct + (correct ? 1 : 0), total: prev.quizTrue.total + 1 },
-        drops: prev.drops + (correct ? QUIZ_REWARD : 0)
+        quizTrue: { correct: prev.quizTrue.correct + (correct ? 1 : 0), total: prev.quizTrue.total + 1 }
       }));
+      if (correct) dropsCtx.addDrops(QUIZ_REWARD);
       setQuizFeedback(
         (correct ? 'Exact.' : 'Off the count.') + ` True count is ${roundedCorrect}.` + (correct ? ` (+${QUIZ_REWARD} 🩸)` : '')
       );
@@ -320,9 +263,9 @@ export function useDealerGame(allowPeek: boolean) {
       const correct = rawAnswer === state.runningCount;
       setState((prev) => ({
         ...prev,
-        quiz: { correct: prev.quiz.correct + (correct ? 1 : 0), total: prev.quiz.total + 1 },
-        drops: prev.drops + (correct ? QUIZ_REWARD : 0)
+        quiz: { correct: prev.quiz.correct + (correct ? 1 : 0), total: prev.quiz.total + 1 }
       }));
+      if (correct) dropsCtx.addDrops(QUIZ_REWARD);
       setQuizFeedback(
         (correct ? 'Exact.' : 'Off the count.') + ` Running count is ${state.runningCount}.` + (correct ? ` (+${QUIZ_REWARD} 🩸)` : '')
       );
@@ -354,12 +297,12 @@ export function useDealerGame(allowPeek: boolean) {
   // ── Dealing ──
   function dealNewHand() {
     if (!betEstablished) { setShowBetSetup(true); return; }
-    if (state.drops < state.currentBet) { setCoachMessage("You don't have enough Blood Drops for that bet."); return; }
+    if (!dropsCtx.spendDrops(state.currentBet)) { setHintMessage("You don't have enough Blood Drops for that bet."); return; }
+    setHintMessage(null);
 
     setState((prev) => {
       let s = maybeReshuffle(prev);
       const bet = s.currentBet;
-      s = { ...s, drops: s.drops - bet };
 
       let playerCard1: PlayingCardData, playerCard2: PlayingCardData, dealerUp: PlayingCardData, dealerHole: PlayingCardData;
       ({ card: playerCard1, state: s } = drawCard(s, true));
@@ -412,14 +355,12 @@ export function useDealerGame(allowPeek: boolean) {
         const rec = recommendedUnits(trueCountAtBet.current);
         const actualUnits = Math.round(prev.currentBet / BET_STEP);
         const matched = Math.abs(actualUnits - rec) <= 1;
-        setCoachMessage(matched ? 'Bet matched the count.' : `The count suggested ~${rec * BET_STEP} 🩸 this hand.`);
+        setHintMessage(matched ? 'Bet matched the count.' : `The count suggested ~${rec * BET_STEP} 🩸 this hand.`);
         return prev;
       });
     }
     setBetTipUsedThisHand(false);
     setStrategyTipUsedKey(null);
-    setBetTipResult(null);
-    setStrategyTipResult(null);
     checkQuizThenResume(() => {});
   }
 
@@ -431,7 +372,7 @@ export function useDealerGame(allowPeek: boolean) {
     const decision = { playerTotal: total, soft, dealerUpRank, action, recommended, correct };
     setState((prev) => ({ ...prev, strategy: { correct: prev.strategy.correct + (correct ? 1 : 0), total: prev.strategy.total + 1 } }));
     if (state.coachingEnabled) {
-      setCoachMessage(correct ? 'Correct — the book agrees.' : `Book says ${recommended === 'H' ? 'Hit' : recommended === 'S' ? 'Stand' : recommended === 'D' ? 'Double' : 'Split'}.`);
+      setHintMessage(correct ? 'Correct — the book agrees.' : `Book says ${recommended === 'H' ? 'Hit' : recommended === 'S' ? 'Stand' : recommended === 'D' ? 'Double' : 'Split'}.`);
     }
     return decision;
   }
@@ -514,10 +455,10 @@ export function useDealerGame(allowPeek: boolean) {
     if (!state.hand) return;
     const hand = state.hand;
     const cur = hand.hands[hand.activeIndex];
-    if (!canDoubleNow(hand, cur) || state.drops < cur.bet) return;
+    if (!canDoubleNow(hand, cur) || !dropsCtx.spendDrops(cur.bet)) return;
     const decision = gradeMove(cur, 'D', true, canSplitNow(hand, cur), hand.dealerUp!.rank);
     setState((prev) => {
-      const { card, state: s } = drawCard({ ...prev, drops: prev.drops - cur.bet }, true);
+      const { card, state: s } = drawCard(prev, true);
       const h = s.hand!;
       const c = h.hands[h.activeIndex];
       const cards = [...c.cards, card];
@@ -533,12 +474,12 @@ export function useDealerGame(allowPeek: boolean) {
     if (!state.hand) return;
     const hand = state.hand;
     const cur = hand.hands[hand.activeIndex];
-    if (!canSplitNow(hand, cur) || state.drops < cur.bet) return;
+    if (!canSplitNow(hand, cur) || !dropsCtx.spendDrops(cur.bet)) return;
     const decision = gradeMove(cur, 'P', canDoubleNow(hand, cur), true, hand.dealerUp!.rank);
     const isAces = cur.cards[0].rank === 'A';
 
     setState((prev) => {
-      let s: DealerGameState = { ...prev, drops: prev.drops - cur.bet };
+      let s: DealerGameState = prev;
       let cardA: PlayingCardData, cardB: PlayingCardData;
       ({ card: cardA, state: s } = drawCard(s, true));
       ({ card: cardB, state: s } = drawCard(s, true));
@@ -575,8 +516,7 @@ export function useDealerGame(allowPeek: boolean) {
 
   // ── Peek (Peek mode) ──
   function triggerPeek() {
-    if (state.drops < PEEK_COST) { setCoachMessage('Not enough Blood Drops to peek.'); return; }
-    setState((prev) => ({ ...prev, drops: prev.drops - PEEK_COST }));
+    if (!dropsCtx.spendDrops(PEEK_COST)) { setHintMessage('Not enough Blood Drops to peek.'); return; }
     setIsPeeking(true);
     window.setTimeout(() => setIsPeeking(false), PEEK_REVEAL_MS);
   }
@@ -584,12 +524,11 @@ export function useDealerGame(allowPeek: boolean) {
   // ── Bet tip (Peek mode, count-aware) / Strategy tip (both modes) ──
   function requestBetTip() {
     if (betTipUsedThisHand || !state.hand) return;
-    if (state.drops < BET_TIP_COST) { setBetTipResult('Not enough Blood Drops.'); return; }
-    setState((prev) => ({ ...prev, drops: prev.drops - BET_TIP_COST }));
+    if (!dropsCtx.spendDrops(BET_TIP_COST)) { setHintMessage('Not enough Blood Drops.'); return; }
     setBetTipUsedThisHand(true);
     const rec = recommendedUnits(trueCountNow);
     const actualUnits = Math.round(state.currentBet / BET_STEP);
-    setBetTipResult(Math.abs(actualUnits - rec) <= 1 ? 'Your bet matched the count.' : `The count suggests ~${rec * BET_STEP} 🩸 this hand.`);
+    setHintMessage(Math.abs(actualUnits - rec) <= 1 ? 'Your bet matched the count.' : `The count suggests ~${rec * BET_STEP} 🩸 this hand.`);
   }
 
   function requestStrategyTip() {
@@ -598,14 +537,13 @@ export function useDealerGame(allowPeek: boolean) {
     const cur = hand.hands[hand.activeIndex];
     const key = `${hand.id}:${hand.activeIndex}:${cur.cards.length}`;
     if (strategyTipUsedKey === key) return;
-    if (allowPeek && state.drops < STRATEGY_TIP_COST) { setStrategyTipResult('Not enough Blood Drops.'); return; }
-    if (allowPeek) setState((prev) => ({ ...prev, drops: prev.drops - STRATEGY_TIP_COST }));
+    if (allowPeek && !dropsCtx.spendDrops(STRATEGY_TIP_COST)) { setHintMessage('Not enough Blood Drops.'); return; }
     setStrategyTipUsedKey(key);
     const canDouble = canDoubleNow(hand, cur);
     const canSplit = canSplitNow(hand, cur);
     if (allowPeek) {
       const result = deviationAction(cur.cards, hand.dealerUp!.rank, trueCountNow, canDouble, canSplit);
-      setStrategyTipResult(
+      setHintMessage(
         !result.active ?
         'The book says: ' + (result.base === 'H' ? 'Hit' : result.base === 'S' ? 'Stand' : result.base === 'D' ? 'Double' : 'Split') :
         result.action === result.base ?
@@ -614,7 +552,7 @@ export function useDealerGame(allowPeek: boolean) {
       );
     } else {
       const rec = basicStrategyAction(cur.cards, hand.dealerUp!.rank, canDouble, canSplit);
-      setStrategyTipResult('The book says: ' + (rec === 'H' ? 'Hit' : rec === 'S' ? 'Stand' : rec === 'D' ? 'Double' : 'Split'));
+      setHintMessage('The book says: ' + (rec === 'H' ? 'Hit' : rec === 'S' ? 'Stand' : rec === 'D' ? 'Double' : 'Split'));
     }
   }
 
@@ -639,24 +577,6 @@ export function useDealerGame(allowPeek: boolean) {
     setState((prev) => ({ ...prev, numDecks, shoe: buildShoe(numDecks), runningCount: 0, cardsSeen: 0, hand: null }));
   }
 
-  function ackDisclaimer() {
-    setState((prev) => ({ ...prev, disclaimerAckAt: Date.now() }));
-  }
-
-  /** Credits drops (from a Store purchase, chest refund, quiz reward, etc.) and bumps
-      the high-water mark if this is a new high. */
-  function addDrops(amount: number) {
-    setState((prev) => ({ ...prev, drops: prev.drops + amount, dropsHigh: Math.max(prev.dropsHigh, prev.drops + amount) }));
-  }
-
-  /** Attempts to spend drops; returns false (and leaves state untouched) if the balance
-      is too low, so callers can show an affordability message instead of going negative. */
-  function spendDrops(amount: number): boolean {
-    if (state.drops < amount) return false;
-    setState((prev) => ({ ...prev, drops: prev.drops - amount }));
-    return true;
-  }
-
   return {
     ...state,
     trueCount: trueCountNow,
@@ -665,9 +585,7 @@ export function useDealerGame(allowPeek: boolean) {
     showBetSetup,
     setShowBetSetup,
     betTipUsedThisHand,
-    betTipResult,
-    strategyTipResult,
-    coachMessage,
+    hintMessage,
     quizOpen,
     quizType,
     quizFeedback,
@@ -694,10 +612,7 @@ export function useDealerGame(allowPeek: boolean) {
     setCoachingEnabled,
     setBetCoachingEnabled,
     shuffleNewShoe,
-    ackDisclaimer,
-    addDrops,
-    spendDrops,
-    signedIn: !!uid,
+    ...dropsCtx,
     describeOutcome
   };
 }

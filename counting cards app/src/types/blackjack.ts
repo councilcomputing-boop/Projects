@@ -80,11 +80,8 @@ export interface DealerGameState {
   trackOwnCount: boolean;
   strategy: { correct: number; total: number };
   coachingEnabled: boolean;
-  drops: number;
-  dropsHigh: number;
   currentBet: number;
   betCoachingEnabled: boolean;
   stats: { hands: number; win: number; lose: number; push: number; blackjack: number };
   handHistory: HandHistoryEntry[];
-  disclaimerAckAt: number | null;
 }
