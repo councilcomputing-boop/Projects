@@ -7,7 +7,10 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
-      registerType: 'prompt',
+      // 'autoUpdate' so a fresh deploy takes effect on the visitor's next normal reload
+      // instead of sitting inactive behind an update banner they have to notice and
+      // click — this app has no users yet, so update friction only costs dev iteration.
+      registerType: 'autoUpdate',
       includeAssets: ['icon.ico'],
       manifest: {
         name: 'CountDracula',

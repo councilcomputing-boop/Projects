@@ -355,7 +355,7 @@ export function useDealerGame(allowPeek: boolean) {
         const rec = recommendedUnits(trueCountAtBet.current);
         const actualUnits = Math.round(prev.currentBet / BET_STEP);
         const matched = Math.abs(actualUnits - rec) <= 1;
-        setHintMessage(matched ? 'Bet matched the count.' : `The count suggested ~${rec * BET_STEP} 🩸 this hand.`);
+        setHintMessage(matched ? 'Bet matched the count.' : `The count suggested about ${rec * BET_STEP} 🩸 this hand.`);
         return prev;
       });
     }
@@ -528,7 +528,7 @@ export function useDealerGame(allowPeek: boolean) {
     setBetTipUsedThisHand(true);
     const rec = recommendedUnits(trueCountNow);
     const actualUnits = Math.round(state.currentBet / BET_STEP);
-    setHintMessage(Math.abs(actualUnits - rec) <= 1 ? 'Your bet matched the count.' : `The count suggests ~${rec * BET_STEP} 🩸 this hand.`);
+    setHintMessage(Math.abs(actualUnits - rec) <= 1 ? 'Your bet matched the count.' : `The count suggests about ${rec * BET_STEP} 🩸 this hand.`);
   }
 
   function requestStrategyTip() {

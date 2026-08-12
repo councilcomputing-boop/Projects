@@ -160,7 +160,7 @@ export function ClassicPlay({ allowPeek }: ClassicPlayProps) {
                   disabled={!dealt || game.betTipUsedThisHand}
                   className="flex items-center justify-center gap-1 rounded-lg bg-parch/90 py-2 text-[10px] font-bold uppercase tracking-[0.08em] text-charcoal transition-colors hover:bg-white disabled:opacity-40">
                     <LightbulbIcon size={13} strokeWidth={2.5} />
-                    Bet ({BET_TIP_COST}🩸)
+                    Bet Check ({BET_TIP_COST}🩸)
                   </button>
                 </div>
                 <div className="rounded-lg bg-parch/95 px-2 py-2 text-center">
