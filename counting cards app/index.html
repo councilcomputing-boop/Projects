@@ -68,14 +68,17 @@ button{user-select:none;-webkit-user-select:none;touch-action:manipulation}
 .hdr-title{font-family:var(--display-font);font-size:19px;font-weight:700;letter-spacing:1px;color:#eee0b0;text-shadow:0 0 12px rgba(201,162,39,.35);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .hdr-title-accent{color:var(--gold)}
 .hdr-sub{font-size:11px;color:#c9a9a9;margin-top:1px;font-style:italic;letter-spacing:.3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.home-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
-.menu-card{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;background:var(--card);border-radius:16px;box-shadow:var(--shadow-panel);padding:20px 6px;cursor:pointer;border:none;text-align:center;min-width:0;overflow:hidden;transition:background-color .15s ease}
+.home-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+.menu-card{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;background:var(--card);border-radius:16px;box-shadow:var(--shadow-panel);padding:20px 12px;cursor:pointer;border:none;text-align:center;min-width:0;overflow:hidden;transition:background-color .15s ease}
 .menu-card:active{background-color:var(--card-light);transform:scale(.99)}
 .menu-icon{width:40px;height:40px;border-radius:12px;background:var(--card-mute);display:flex;align-items:center;justify-content:center;color:var(--wine)}
 .menu-icon svg,.nav-icon svg{width:20px;height:20px}
 .nav-icon svg{width:22px;height:22px}
-.menu-title{font-size:12.5px;font-weight:700;color:var(--text)}
-.menu-subtitle{font-size:10px;color:var(--muted);line-height:1.25;margin-top:1px}
+.menu-title{font-size:14px;font-weight:700;color:var(--text);line-height:1.2}
+.menu-subtitle{font-size:11px;color:var(--muted);line-height:1.25;margin-top:1px}
+.blood-drops-row{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.blood-drops-label{font-family:var(--display-font);font-size:13px;font-weight:600;color:var(--gold-deep);text-transform:uppercase;letter-spacing:1.6px}
+.blood-drops-value{display:flex;align-items:center;gap:6px;font-family:var(--display-font);font-size:24px;font-weight:600;color:var(--gold-deep);font-variant-numeric:tabular-nums;line-height:1}
 #C{padding:14px 14px 20px;position:relative}
 #C.with-nav{padding-bottom:90px}
 .bottom-nav{position:fixed;left:0;right:0;bottom:0;max-width:600px;margin:0 auto;display:none;justify-content:space-around;align-items:center;background:linear-gradient(0deg,var(--wine-dark),var(--wine));border-top:1px solid #4d1a22;box-shadow:0 -2px 12px rgba(0,0,0,.5);z-index:200;padding:8px 0 calc(8px + env(safe-area-inset-bottom))}
@@ -170,9 +173,14 @@ button{user-select:none;-webkit-user-select:none;touch-action:manipulation}
 }
 .peek-count-badge .peek-rc{display:block;font-family:var(--display-font);font-weight:700;font-size:15px}
 .peek-count-badge .peek-tc{display:block;font-size:9.5px;color:#c9a9a9}
-.felt-grid{display:flex;gap:8px;flex:1;min-height:0}
+.felt-grid{display:flex;gap:12px;flex:1;min-height:0}
 .felt-main{flex:1;min-width:0;display:flex;flex-direction:column;min-height:0}
-.felt-rail{width:96px;flex-shrink:0;display:flex;flex-direction:column;gap:6px}
+.felt-rail{width:112px;flex-shrink:0;display:flex;flex-direction:column;gap:6px}
+.felt-rail .rail-icon-row{margin:0;justify-content:center}
+.felt-rail .peek-icon-btn{width:100%;height:auto;border-radius:8px;padding:6px 0;font-size:13px}
+.felt-rail .peek-count-badge{width:100%;margin:0}
+.felt-rail .quiz-score{margin:0;font-size:11px}
+.felt-rail .bet-stepper-badge{position:static;width:100%;justify-content:center;margin-top:auto}
 .dealer-portrait-wrap{position:relative;display:block;width:100%}
 .dealer-portrait{width:100%;height:auto;aspect-ratio:1/1;border-radius:12px;object-fit:cover;object-position:top center;box-shadow:0 0 0 1px rgba(200,169,75,.6)}
 .dealer-speech{
@@ -189,7 +197,7 @@ button{user-select:none;-webkit-user-select:none;touch-action:manipulation}
 .toggle-label{font-size:14.5px;font-weight:600}
 .switch{position:relative;display:inline-block;width:46px;height:26px;flex-shrink:0}
 .switch input{opacity:0;width:0;height:0}
-.switch-slider{position:absolute;cursor:pointer;inset:0;background:#ccc;border-radius:26px;transition:.2s}
+.switch-slider{position:absolute;cursor:pointer;inset:0;background:var(--border);border-radius:26px;transition:.2s}
 .switch-slider::before{position:absolute;content:"";height:20px;width:20px;left:3px;bottom:3px;background:#fff;border-radius:50%;transition:.2s;box-shadow:0 1px 3px rgba(0,0,0,.3)}
 .switch input:checked + .switch-slider{background:var(--green2)}
 .switch input:checked + .switch-slider::before{transform:translateX(20px)}
@@ -362,8 +370,6 @@ button{user-select:none;-webkit-user-select:none;touch-action:manipulation}
 .hand-review-list{text-align:left;font-size:14px;line-height:1.5;margin-bottom:4px}
 .hand-review-list>div{margin-bottom:8px}
 .hand-review-list>div:last-child{margin-bottom:0}
-.frame-hdr{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin:10px 0}
-.frame-hdr .bet-stepper-badge,.frame-hdr .drops-badge{position:static}
 .felt{
   background:radial-gradient(circle at 50% 0%,var(--felt-light),var(--felt));
   border-radius:16px;border:3px solid var(--wine-border);padding:12px;margin:8px 0;
@@ -386,11 +392,11 @@ body.fill-mode #dealerView.active > .card:first-child{flex:1;min-height:0;displa
 body.fill-mode .felt{flex:1 1 0;min-height:0;overflow-y:auto;margin:6px 0;padding:8px}
 body.fill-mode .felt-grid{min-height:0}
 body.fill-mode .felt-main{min-height:0}
-body.fill-mode #dealerView .frame-hdr{margin:3px 0;flex-shrink:0}
 body.fill-mode #dealerView .icon-btn-row{margin:2px 0;flex-shrink:0}
 body.fill-mode #dealerView .shoe-row{margin-bottom:2px;flex-shrink:0}
 body.fill-mode #dealerView .hint{margin-top:2px;flex-shrink:0}
 body.fill-mode #dealerView .peek-icon-btn{width:36px;height:36px;font-size:15px}
+body.fill-mode #dealerView .felt-rail .peek-icon-btn{width:100%;height:auto;padding:6px 0;font-size:13px}
 body.fill-mode #dealerView .btn-row,body.fill-mode #dealerView #dealBtn,body.fill-mode #dealerView #newShoeBtn{flex-shrink:0}
 body.fill-mode #dealerView.active > .card:first-child{padding:12px}
 
@@ -516,6 +522,11 @@ body.fill-mode #dealerView.active > .card:first-child{padding:12px}
 .calc-output{font-family:var(--display-font);font-size:18px;font-weight:700;text-align:center;color:var(--gold-deep);background:rgba(200,169,75,.25);border-radius:14px;padding:16px 10px;line-height:1.5}
 .problem-display{display:flex;gap:10px;margin-bottom:8px}
 .problem-box{flex:1;background:var(--gray-pale);border-radius:10px;padding:10px 10px;text-align:center}
+.problem-box.accent{background:rgba(200,169,75,.25)}
+.problem-box.accent .problem-label{color:var(--gold-deep)}
+.problem-box .problem-value.pos{color:var(--felt)}
+.problem-box .problem-value.neg{color:var(--blood-deep)}
+.problem-box .count-value{font-size:34px;line-height:1}
 .problem-box .problem-label{font-family:var(--display-font);font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px}
 .problem-box .problem-value{font-family:var(--display-font);font-size:26px;font-weight:700;color:var(--text)}
 .math-score{text-align:center;font-size:13px;color:var(--muted);margin-top:10px}
@@ -591,11 +602,13 @@ body.fill-mode #dealerView.active > .card:first-child{padding:12px}
       </button>
     </div>
 
-    <div class="card" style="margin-top:14px">
-      <div class="card-title">Blood Drops</div>
-      <div class="store-drops-badge" id="homeDropsBadge">🩸 1000</div>
-      <div class="hint" id="homeStreakHint" style="margin-top:0">Come back every day for a bigger bonus.</div>
-      <button class="btn btn-outline" id="homeDailyBonusBtn" style="margin-top:10px">Claim Daily Bonus</button>
+    <div class="card" style="margin-top:14px;padding:18px">
+      <div class="blood-drops-row">
+        <span class="blood-drops-label">Blood Drops</span>
+        <span class="blood-drops-value" id="homeDropsBadge">🩸 1000</span>
+      </div>
+      <div id="homeStreakHint" style="display:none"></div>
+      <button class="btn btn-outline" id="homeDailyBonusBtn" style="margin-top:12px">Claim Daily Bonus</button>
     </div>
   </div>
 
@@ -672,26 +685,31 @@ body.fill-mode #dealerView.active > .card:first-child{padding:12px}
   <!-- ===================== MANUAL VIEW (physical deck) ===================== -->
   <div class="view" id="manualView">
 
-    <div class="count-display">
-      <div class="count-label">Running Count</div>
-      <div class="count-value zero" id="runningCount">0</div>
-      <div class="cards-seen" id="cardsSeen">0 cards counted</div>
+    <div class="card">
+      <div class="deck-row">
+        <div class="card-title" style="margin-bottom:0">Live Count</div>
+        <select id="decksLeft"></select>
+      </div>
+      <div class="problem-display" style="margin-top:14px;margin-bottom:0">
+        <div class="problem-box accent">
+          <div class="problem-label">Running</div>
+          <div class="count-value zero" id="runningCount">0</div>
+        </div>
+        <div class="problem-box">
+          <div class="problem-label">True</div>
+          <div class="problem-value" id="trueCount" style="font-size:34px">0.0</div>
+        </div>
+      </div>
+      <div class="cards-seen" id="cardsSeen" style="text-align:center;margin-top:10px">0 cards counted</div>
     </div>
 
     <div class="card">
-      <div class="card-title">True Count</div>
-      <div class="deck-row">
-        <label for="decksLeft">Decks remaining</label>
-        <select id="decksLeft"></select>
+      <div class="card-title">Tap Each Card You See</div>
+      <div class="btn-grid" style="margin-bottom:0">
+        <button class="count-btn plus" data-val="1" aria-label="Plus one, cards 2 through 6">+1<span>2–6</span></button>
+        <button class="count-btn zero" data-val="0" aria-label="Zero, cards 7 through 9">0<span>7–9</span></button>
+        <button class="count-btn minus" data-val="-1" aria-label="Minus one, cards 10 through Ace">-1<span>10–A</span></button>
       </div>
-      <div class="true-count-value" id="trueCount">0.0</div>
-      <div class="hint">True Count = Running Count ÷ Decks Remaining. Update "decks remaining" as the shoe gets played through to keep it accurate.</div>
-    </div>
-
-    <div class="btn-grid">
-      <button class="count-btn plus" data-val="1" aria-label="Plus one, cards 2 through 6">+1<span>2–6</span></button>
-      <button class="count-btn zero" data-val="0" aria-label="Zero, cards 7 through 9">0<span>7–9</span></button>
-      <button class="count-btn minus" data-val="-1" aria-label="Minus one, cards 10 through Ace">-1<span>10–A</span></button>
     </div>
 
     <button class="btn btn-secondary" id="resetBtn">Reset Count</button>
@@ -713,29 +731,10 @@ body.fill-mode #dealerView.active > .card:first-child{padding:12px}
         </select>
       </div>
 
-      <div class="frame-hdr">
-        <div class="icon-btn-row" style="margin:0">
-          <button class="peek-icon-btn" id="peekBtn" aria-label="Click to reveal the running count">👁</button>
-          <button class="peek-icon-btn" id="betTipBtn" aria-label="Get a betting tip" style="display:none">💡</button>
-        </div>
-        <div class="drops-badge" id="bankrollBadge">🩸 1000</div>
-      </div>
-      <div class="frame-hdr" style="justify-content:center;margin-top:8px">
-        <div class="bet-stepper-badge" id="betStepperBadge">
-          <button class="bet-step-btn" id="betDecBtn" aria-label="Decrease bet">−</button>
-          <span>Bet <b id="currentBetValue">25</b> 🩸</span>
-          <button class="bet-step-btn" id="betIncBtn" aria-label="Increase bet">+</button>
-        </div>
-      </div>
+      <div class="drops-badge" id="bankrollBadge">🩸 1000</div>
 
       <div class="hint" id="dealerModeHint">Hold the button below to peek at the count.</div>
       <div class="quiz-feedback" id="betFeedback"></div>
-      <div style="min-height:0;transition:min-height .2s ease">
-        <div class="peek-count-badge" id="peekCountBadge" style="display:none">
-          <span class="peek-rc" id="peekRC">0</span>
-          <span class="peek-tc" id="peekTC"></span>
-        </div>
-      </div>
       <div style="min-height:0;transition:min-height .2s ease">
         <div class="hint" id="betTipResult" style="display:none;text-align:center"></div>
       </div>
@@ -748,10 +747,6 @@ body.fill-mode #dealerView.active > .card:first-child{padding:12px}
           <button class="mini-count-btn own-count-btn minus" data-val="-1" aria-label="Minus one">-1</button>
           <button class="mini-count-btn reset" id="ownCountResetBtn">Reset</button>
         </div>
-      </div>
-
-      <div style="min-height:20px">
-        <div class="quiz-score" id="quizScore" style="display:none">Running: 0/0 · True: 0/0</div>
       </div>
 
       <div class="felt">
@@ -777,6 +772,24 @@ body.fill-mode #dealerView.active > .card:first-child{padding:12px}
             </div>
             <div style="min-height:26px;transition:min-height .2s ease">
               <div class="dealer-speech" id="dealerSpeech"></div>
+            </div>
+
+            <div class="icon-btn-row rail-icon-row">
+              <button class="peek-icon-btn" id="peekBtn" aria-label="Click to reveal the running count">👁</button>
+              <button class="peek-icon-btn" id="betTipBtn" aria-label="Get a betting tip" style="display:none">💡</button>
+            </div>
+            <div style="min-height:0;transition:min-height .2s ease">
+              <div class="peek-count-badge" id="peekCountBadge" style="display:none">
+                <span class="peek-rc" id="peekRC">0</span>
+                <span class="peek-tc" id="peekTC"></span>
+              </div>
+            </div>
+            <div class="quiz-score" id="quizScore" style="display:none">Running: 0/0 · True: 0/0</div>
+
+            <div class="bet-stepper-badge" id="betStepperBadge">
+              <button class="bet-step-btn" id="betDecBtn" aria-label="Decrease bet">−</button>
+              <span>Bet <b id="currentBetValue">25</b> 🩸</span>
+              <button class="bet-step-btn" id="betIncBtn" aria-label="Increase bet">+</button>
             </div>
           </div>
         </div>
