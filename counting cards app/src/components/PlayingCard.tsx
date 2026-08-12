@@ -17,6 +17,11 @@ const NOMINAL_WIDTH: Record<CardSize, number> = { lg: 236, md: 82, sm: 64 };
 
 const RADIUS: Record<CardSize, string> = { lg: 'rounded-2xl', md: 'rounded-lg', sm: 'rounded-md' };
 
+/** The display serif (Cormorant Garamond) doesn't carry proper ♠♥♦♣ glyphs and
+    substitutes decorative lookalikes instead of falling back — so suit glyphs get
+    their own plain system font stack, which every platform renders correctly. */
+const SUIT_FONT = 'system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif';
+
 /**
  * A standard playing card: rank + suit index in both corners so the value
  * stays readable when cards overlap in a fan, with a large centre pip.
@@ -37,7 +42,7 @@ export function PlayingCard({ card, size = 'lg', width }: PlayingCardProps) {
       <span className="tabular font-serif font-semibold" style={{ fontSize: rankSize, lineHeight: 1 }}>
         {card.rank}
       </span>
-      <span className="font-serif" style={{ fontSize: cornerSuitSize, lineHeight: 1 }}>{glyph}</span>
+      <span style={{ fontFamily: SUIT_FONT, fontSize: cornerSuitSize, lineHeight: 1 }}>{glyph}</span>
     </span>;
 
 
@@ -58,8 +63,8 @@ export function PlayingCard({ card, size = 'lg', width }: PlayingCardProps) {
       </span>
       <span
         aria-hidden="true"
-        className={`font-serif leading-none ${ink}`}
-        style={{ fontSize: centreSize, lineHeight: 1 }}>
+        className={`leading-none ${ink}`}
+        style={{ fontFamily: SUIT_FONT, fontSize: centreSize, lineHeight: 1 }}>
         {glyph}
       </span>
     </div>);
