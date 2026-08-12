@@ -39,6 +39,16 @@ export function shuffle(cards: PlayingCardData[]): PlayingCardData[] {
   return next;
 }
 
+/** Builds and shuffles `numDecks` full 52-card decks into one shoe. IDs are prefixed
+    per-deck so duplicate rank/suit cards across decks stay unique React keys. */
+export function buildShoe(numDecks: number): PlayingCardData[] {
+  const cards: PlayingCardData[] = [];
+  for (let d = 0; d < numDecks; d += 1) {
+    buildDeck().forEach((card) => cards.push({ ...card, id: `${d}-${card.id}` }));
+  }
+  return shuffle(cards);
+}
+
 export function formatCount(value: number): string {
   if (value > 0) return `+${value}`;
   return `${value}`;
