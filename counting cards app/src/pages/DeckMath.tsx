@@ -1,16 +1,24 @@
 import { useState } from 'react';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { Panel } from '../components/Panel';
-import { trueCount } from '../utils/blackjackMath';
+import { trueCount, roundToHalf, DECKS_LEFT_OPTIONS } from '../utils/blackjackMath';
 import { formatCount } from '../utils/deck';
 
-const DECK_OPTIONS = [1, 2, 3, 4, 5, 6, 7, 8];
+function randomRunningCount() {
+  // Matches the live app: an integer in [-12, +12]
+  return Math.floor(Math.random() * 25) - 12;
+}
+
+function randomDecksLeft() {
+  return DECKS_LEFT_OPTIONS[Math.floor(Math.random() * DECKS_LEFT_OPTIONS.length)];
+}
 
 function newProblem() {
-  return {
-    running: Math.floor(Math.random() * 21) - 10,
-    decksLeft: DECK_OPTIONS[Math.floor(Math.random() * DECK_OPTIONS.length)]
-  };
+  return { running: randomRunningCount(), decksLeft: randomDecksLeft() };
+}
+
+function formatTrueCount(value: number) {
+  return formatCount(Number(value.toFixed(1)));
 }
 
 export function DeckMath() {
@@ -25,7 +33,9 @@ export function DeckMath() {
 
   const check = () => {
     const value = Number(answer);
-    const ok = Number.isFinite(value) && Math.abs(value - expected) <= 0.25;
+    // The real app rounds both the exact answer and the player's guess to the nearest
+    // 0.5 before comparing, so a slightly-off-but-close answer still counts.
+    const ok = Number.isFinite(value) && roundToHalf(value) === roundToHalf(expected);
     setFeedback(ok ? 'correct' : 'wrong');
     setScore((prev) => ({ correct: prev.correct + (ok ? 1 : 0), total: prev.total + 1 }));
   };
@@ -34,6 +44,10 @@ export function DeckMath() {
     setProblem(newProblem());
     setAnswer('');
     setFeedback(null);
+  };
+
+  const handleAnswerKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === 'Enter' && answer !== '') check();
   };
 
   return (
@@ -50,8 +64,7 @@ export function DeckMath() {
               value={decks}
               onChange={(event) => setDecks(Number(event.target.value))}
               className="mt-2 w-full rounded-xl bg-white px-3 py-3 text-center font-serif text-lg font-semibold text-charcoal shadow-card">
-              
-              {DECK_OPTIONS.map((count) =>
+              {DECKS_LEFT_OPTIONS.map((count) =>
               <option key={count} value={count}>
                   {count}
                 </option>
@@ -67,11 +80,10 @@ export function DeckMath() {
               value={running}
               onChange={(event) => setRunning(Number(event.target.value))}
               className="tabular mt-2 w-full rounded-xl bg-white px-3 py-3 text-center font-serif text-lg font-semibold text-charcoal shadow-card" />
-            
           </label>
         </div>
         <p className="mt-3 rounded-xl bg-gold/25 py-4 text-center font-serif text-lg font-semibold uppercase tracking-wide text-gold-deep">
-          {formatCount(running)} ÷ {decks} decks = {formatCount(trueCount(running, decks))} true count
+          {formatCount(running)} ÷ {decks} decks = {formatTrueCount(trueCount(running, decks))} true count
         </p>
       </Panel>
 
@@ -103,9 +115,9 @@ export function DeckMath() {
             step="0.5"
             value={answer}
             onChange={(event) => setAnswer(event.target.value)}
+            onKeyDown={handleAnswerKeyDown}
             placeholder="e.g. -1.5"
             className="tabular mt-2 w-full rounded-xl bg-white px-4 py-3 text-center font-serif text-lg font-semibold text-charcoal shadow-card placeholder:font-sans placeholder:text-sm placeholder:font-normal placeholder:text-charcoal-soft/60" />
-          
         </label>
 
         {feedback &&
@@ -113,9 +125,8 @@ export function DeckMath() {
           className={`mt-3 rounded-xl px-4 py-3 text-center font-serif text-base font-semibold ${
           feedback === 'correct' ? 'bg-felt/15 text-felt' : 'bg-blood-deep/15 text-blood-deep'}`
           }>
-          
             {feedback === 'correct' ? 'Correct.' : 'Not quite.'} True count is{' '}
-            <span className="tabular">{formatCount(expected)}</span>
+            <span className="tabular">{formatTrueCount(expected)}</span>
           </p>
         }
 
@@ -125,14 +136,12 @@ export function DeckMath() {
             onClick={check}
             disabled={answer === ''}
             className="rounded-xl bg-white py-3.5 text-sm font-bold text-charcoal shadow-card disabled:opacity-40">
-            
             Check
           </button>
           <button
             type="button"
             onClick={next}
             className="rounded-xl bg-parch-mute py-3.5 text-sm font-bold text-charcoal transition-colors hover:bg-white">
-            
             New Problem
           </button>
         </div>

@@ -22,8 +22,23 @@ export function isBlackjack(cards: PlayingCardData[]): boolean {
 
 export function trueCount(running: number, decksLeft: number): number {
   const safe = Math.max(0.5, decksLeft);
-  return Math.round(running / safe * 10) / 10;
+  return running / safe;
 }
+
+// Rounds to the nearest 0.5 — the real app rounds both the exact true count and a
+// player's typed answer to this granularity before comparing them for correctness.
+export function roundToHalf(n: number): number {
+  return Math.round(n * 2) / 2;
+}
+
+// Decks-remaining options offered everywhere a player picks how many decks are left
+// (Manual mode's live count, Deck Math's calculator and practice problems): 8 down to
+// 0.5 in half-deck steps.
+export const DECKS_LEFT_OPTIONS: number[] = (() => {
+  const opts: number[] = [];
+  for (let d = 8; d >= 0.5; d -= 0.5) opts.push(d);
+  return opts;
+})();
 
 export function betAdvice(tc: number, unit: number): {units: number;text: string;} {
   if (tc >= 4) return { units: unit * 4, text: 'The shoe is rich — press your bet hard this hand.' };
