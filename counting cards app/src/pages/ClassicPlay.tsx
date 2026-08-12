@@ -5,7 +5,7 @@ import { Panel } from '../components/Panel';
 import { HandRow } from '../components/HandRow';
 import { DealerSpeech } from '../components/DealerSpeech';
 import { BloodDrop } from '../components/BloodDrop';
-import { useDealerGame, BET_MIN, BET_MAX, BET_STEP, PEEK_COST, STRATEGY_TIP_COST, BET_TIP_COST } from '../hooks/useDealerGame';
+import { useDealerGame, BET_MIN, BET_MAX, BET_STEP, PEEK_COST, STRATEGY_TIP_COST } from '../hooks/useDealerGame';
 import { handTotal } from '../utils/blackjackMath';
 import { formatCount } from '../utils/deck';
 
@@ -155,23 +155,13 @@ export function ClassicPlay({ allowPeek }: ClassicPlayProps) {
 
             {allowPeek ?
             <>
-                <div className="grid grid-cols-2 gap-1">
-                  <button
-                  type="button"
-                  onClick={game.triggerPeek}
-                  className="flex items-center justify-center gap-1 rounded-lg bg-gold py-2 text-[10px] font-bold uppercase tracking-[0.08em] text-maroon-900 transition-colors hover:bg-gold-deep hover:text-parch">
-                    {game.isPeeking ? <EyeOffIcon size={13} strokeWidth={2.5} /> : <EyeIcon size={13} strokeWidth={2.5} />}
-                    Peek ({PEEK_COST}🩸)
-                  </button>
-                  <button
-                  type="button"
-                  onClick={game.requestBetTip}
-                  disabled={!dealt || game.betTipUsedThisHand}
-                  className="flex items-center justify-center gap-1 rounded-lg bg-parch/90 py-2 text-[10px] font-bold uppercase tracking-[0.08em] text-charcoal transition-colors hover:bg-white disabled:opacity-40">
-                    <LightbulbIcon size={13} strokeWidth={2.5} />
-                    Bet Check ({BET_TIP_COST}🩸)
-                  </button>
-                </div>
+                <button
+                type="button"
+                onClick={game.triggerPeek}
+                className="flex items-center justify-center gap-1 rounded-lg bg-gold py-2 text-[10px] font-bold uppercase tracking-[0.08em] text-maroon-900 transition-colors hover:bg-gold-deep hover:text-parch">
+                  {game.isPeeking ? <EyeOffIcon size={13} strokeWidth={2.5} /> : <EyeIcon size={13} strokeWidth={2.5} />}
+                  Peek ({PEEK_COST}🩸)
+                </button>
                 <div className="rounded-lg bg-parch/95 px-2 py-2 text-center">
                   <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-charcoal-soft">Run / True</p>
                   <p className="tabular font-serif text-lg font-semibold leading-tight text-charcoal">
