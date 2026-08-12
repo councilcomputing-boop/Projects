@@ -1,4 +1,3 @@
-import React from 'react';
 import { motion } from 'framer-motion';
 import { PlayingCardData } from '../types/blackjack';
 import { PlayingCard, CardBack } from './PlayingCard';

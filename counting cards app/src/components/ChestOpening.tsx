@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { StoreItem, rollCardBack } from '../data/store';
 import { useCardBack } from '../contexts/CardBackContext';

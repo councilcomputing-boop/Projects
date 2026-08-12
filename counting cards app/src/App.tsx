@@ -1,4 +1,3 @@
-import React from 'react';
 import { BrowserRouter, Route, Routes } from 'react-router-dom';
 import { CardBackProvider } from './contexts/CardBackContext';
 import { PhoneShell } from './components/PhoneShell';

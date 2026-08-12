@@ -1,4 +1,3 @@
-import React from 'react';
 import { PlayingCardData } from '../types/blackjack';
 import { SUIT_GLYPHS, isRedSuit } from '../utils/deck';
 import { CardBackSprite } from './CardBackSprite';

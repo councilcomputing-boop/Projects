@@ -1,6 +1,5 @@
-import React from 'react';
 
-export const DEALER_PORTRAIT_URL = "/2f2a54be-5634-4360-9649-d2f3b5747e1e.jpg";
+export const DEALER_PORTRAIT_URL = "/dealer-portrait.jpg";
 
 
 interface DealerSpeechProps {

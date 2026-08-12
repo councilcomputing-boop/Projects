@@ -1,4 +1,3 @@
-import React from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { CheckIcon, MinusIcon, PauseIcon, PlayIcon, PlusIcon, RotateCcwIcon, XIcon } from 'lucide-react';
 import { ScreenHeader } from '../components/ScreenHeader';

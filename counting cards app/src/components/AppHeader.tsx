@@ -1,7 +1,6 @@
-import React from 'react';
 import { BloodDrop } from './BloodDrop';
 
-export const BADGE_LOGO_URL = "/44c82c18-ac72-4429-8db5-22e7dbdaf567.jpg";
+export const BADGE_LOGO_URL = "/badge-logo.jpg";
 
 
 export function AppHeader({ drops }: {drops: string;}) {

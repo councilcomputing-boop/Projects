@@ -1,4 +1,3 @@
-import React from 'react';
 import { Link } from 'react-router-dom';
 import { Panel } from '../components/Panel';
 import { BloodDrop } from '../components/BloodDrop';

@@ -1,4 +1,3 @@
-import React from 'react';
 import { motion } from 'framer-motion';
 import { CardBackItem, RARITY_META } from '../data/store';
 import { CardBackSprite } from './CardBackSprite';

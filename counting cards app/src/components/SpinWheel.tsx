@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { CardBackItem, randomUnownedBack } from '../data/store';
 import { useCardBack } from '../contexts/CardBackContext';

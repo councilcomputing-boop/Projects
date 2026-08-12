@@ -1,4 +1,3 @@
-import React from 'react';
 import { CARD_BACK_SHEET, CardBackItem } from '../data/store';
 
 interface CardBackSpriteProps {
