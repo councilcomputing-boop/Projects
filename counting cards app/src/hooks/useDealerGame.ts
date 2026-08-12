@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { PlayingCardData, Hand, SubHand, DealerGameState, Action, Rank, Outcome, HandOutcomeReason } from '../types/blackjack';
 import { buildShoe, hiLoValue } from '../utils/deck';
+import { auth, fdb } from '../lib/firebase';
 import {
   handTotal,
   softTotalInfo,
@@ -207,6 +208,83 @@ export function useDealerGame(allowPeek: boolean) {
   useEffect(() => {
     localStorage.setItem(DEALER_KEY, JSON.stringify(state));
   }, [state]);
+
+  // ── Firestore sync: only drops/dropsHigh/disclaimerAckAt ever sync, matching the real
+  //    app exactly and matching firestore.rules' allowed client-writable field set.
+  //    One-shot bootstrap read + a real-time listener for the rest of the session;
+  //    outbound pushes are debounced ~3.5s. A snapshot that matches what's already in
+  //    local state is treated as a no-op (covers both "it's an echo of our own push"
+  //    and "genuinely already in sync" — either way there's nothing to apply). ──
+  const [uid, setUid] = useState<string | null>(() => auth.currentUser?.uid ?? null);
+  useEffect(() => {
+    const unsub = auth.onAuthStateChanged((u) => setUid(u?.uid ?? null));
+    return unsub;
+  }, []);
+
+  useEffect(() => {
+    if (!uid) return;
+    const ref = fdb.collection('users').doc(uid);
+    let cancelled = false;
+
+    ref.get().then((snap) => {
+      if (cancelled) return;
+      if (snap.exists) {
+        const data = snap.data()!;
+        setState((prev) => ({
+          ...prev,
+          drops: typeof data.drops === 'number' ? data.drops : prev.drops,
+          dropsHigh: Math.max(prev.dropsHigh, prev.drops, data.dropsHigh || 0),
+          disclaimerAckAt: data.disclaimerAckAt ?? prev.disclaimerAckAt
+        }));
+      } else {
+        setState((prev) => {
+          ref.set({ drops: prev.drops, dropsHigh: prev.dropsHigh, disclaimerAckAt: prev.disclaimerAckAt }, { merge: true }).catch(() => {});
+          return prev;
+        });
+      }
+    }).catch(() => {});
+
+    const unsub = ref.onSnapshot((snap) => {
+      if (!snap.exists) return;
+      const data = snap.data()!;
+      setState((prev) => {
+        if (data.drops === prev.drops && data.dropsHigh === prev.dropsHigh && data.disclaimerAckAt === prev.disclaimerAckAt) return prev;
+        return {
+          ...prev,
+          drops: typeof data.drops === 'number' ? data.drops : prev.drops,
+          dropsHigh: Math.max(prev.dropsHigh, prev.drops, data.dropsHigh || 0),
+          disclaimerAckAt: data.disclaimerAckAt ?? prev.disclaimerAckAt
+        };
+      });
+    }, () => {});
+
+    return () => { cancelled = true; unsub(); };
+  }, [uid]);
+
+  const pushTimer = useRef<number | null>(null);
+  useEffect(() => {
+    if (!uid) return;
+    if (pushTimer.current) window.clearTimeout(pushTimer.current);
+    pushTimer.current = window.setTimeout(() => {
+      fdb.collection('users').doc(uid).set(
+        { drops: state.drops, dropsHigh: state.dropsHigh, disclaimerAckAt: state.disclaimerAckAt },
+        { merge: true }
+      ).catch(() => {});
+    }, 3500);
+    return () => { if (pushTimer.current) window.clearTimeout(pushTimer.current); };
+  }, [uid, state.drops, state.dropsHigh, state.disclaimerAckAt]);
+
+  useEffect(() => {
+    function flushOnHide() {
+      if (document.visibilityState !== 'hidden' || !uid) return;
+      fdb.collection('users').doc(uid).set(
+        { drops: state.drops, dropsHigh: state.dropsHigh, disclaimerAckAt: state.disclaimerAckAt },
+        { merge: true }
+      ).catch(() => {});
+    }
+    document.addEventListener('visibilitychange', flushOnHide);
+    return () => document.removeEventListener('visibilitychange', flushOnHide);
+  }, [uid, state.drops, state.dropsHigh, state.disclaimerAckAt]);
 
   const trueCountNow = calcTrueCount(state.runningCount, Math.max(0.5, state.shoe.length / 52));
 
@@ -565,6 +643,20 @@ export function useDealerGame(allowPeek: boolean) {
     setState((prev) => ({ ...prev, disclaimerAckAt: Date.now() }));
   }
 
+  /** Credits drops (from a Store purchase, chest refund, quiz reward, etc.) and bumps
+      the high-water mark if this is a new high. */
+  function addDrops(amount: number) {
+    setState((prev) => ({ ...prev, drops: prev.drops + amount, dropsHigh: Math.max(prev.dropsHigh, prev.drops + amount) }));
+  }
+
+  /** Attempts to spend drops; returns false (and leaves state untouched) if the balance
+      is too low, so callers can show an affordability message instead of going negative. */
+  function spendDrops(amount: number): boolean {
+    if (state.drops < amount) return false;
+    setState((prev) => ({ ...prev, drops: prev.drops - amount }));
+    return true;
+  }
+
   return {
     ...state,
     trueCount: trueCountNow,
@@ -603,6 +695,9 @@ export function useDealerGame(allowPeek: boolean) {
     setBetCoachingEnabled,
     shuffleNewShoe,
     ackDisclaimer,
+    addDrops,
+    spendDrops,
+    signedIn: !!uid,
     describeOutcome
   };
 }

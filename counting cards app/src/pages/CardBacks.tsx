@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { CheckIcon } from 'lucide-react';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { Panel } from '../components/Panel';
@@ -6,16 +5,12 @@ import { BloodDrop } from '../components/BloodDrop';
 import { CardBackSprite } from '../components/CardBackSprite';
 import { RARITY_META, CARD_BACKS } from '../data/store';
 import { useCardBack } from '../contexts/CardBackContext';
-
-// TEMPORARY: real Blood Drops balance gets wired in when Firebase sync lands (a later
-// step in the rewrite) — for now this page uses a local stub starting at the same 1000
-// new players get, just so the direct-buy button has a real balance to check against.
-const STUB_STARTING_DROPS = 1000;
+import { useDealerGame } from '../hooks/useDealerGame';
 
 export function CardBacks() {
   const { cardBacks, buyOrEquipCardBack, equipCardBack } = useCardBack();
   const { owned, equipped, fragments } = cardBacks;
-  const [drops, setDrops] = useState(STUB_STARTING_DROPS);
+  const { drops, spendDrops } = useDealerGame(true);
 
   const ownedCount = owned.length;
 
@@ -24,8 +19,7 @@ export function CardBacks() {
       equipCardBack(backId);
       return;
     }
-    if (drops < price) return;
-    setDrops((d) => d - price);
+    if (!spendDrops(price)) return;
     buyOrEquipCardBack(backId);
   };
 
