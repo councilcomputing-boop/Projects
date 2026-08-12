@@ -68,6 +68,6 @@ export function PlayingCard({ card, size = 'lg', width }: PlayingCardProps) {
 }
 
 export function CardBack({ className = '', width }: {className?: string;width?: number;}) {
-  const { equipped } = useCardBack();
-  return <CardBackSprite back={equipped} width={width} className={className} />;
+  const { equippedBack } = useCardBack();
+  return <CardBackSprite back={equippedBack} width={width} className={className} />;
 }

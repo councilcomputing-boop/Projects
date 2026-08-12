@@ -1,39 +1,15 @@
-import React, { createContext, useCallback, useContext, useMemo, useState } from 'react';
-import { CardBackItem, cardBacks, getCardBack } from '../data/store';
+import { createContext, useContext, type ReactNode } from 'react';
+import { useCardBackStore } from '../hooks/useCardBackStore';
 
-interface CardBackContextValue {
-  equipped: CardBackItem;
-  equippedId: string;
-  equip: (id: string) => void;
-  ownedIds: string[];
-  isOwned: (id: string) => boolean;
-  unlock: (id: string) => void;
-}
+type CardBackContextValue = ReturnType<typeof useCardBackStore>;
 
 const CardBackContext = createContext<CardBackContextValue | null>(null);
 
-export function CardBackProvider({ children }: {children: React.ReactNode;}) {
-  const [equippedId, setEquippedId] = useState('classic');
-  const [ownedIds, setOwnedIds] = useState<string[]>(() =>
-  cardBacks.filter((back) => back.owned).map((back) => back.id)
-  );
-
-  const unlock = useCallback((id: string) => {
-    setOwnedIds((prev) => prev.includes(id) ? prev : [...prev, id]);
-  }, []);
-
-  const value = useMemo(
-    () => ({
-      equippedId,
-      equipped: getCardBack(equippedId),
-      equip: setEquippedId,
-      ownedIds,
-      isOwned: (id: string) => ownedIds.includes(id),
-      unlock
-    }),
-    [equippedId, ownedIds, unlock]
-  );
-
+// A single shared instance of useCardBackStore, so every screen (Card Backs, Store, and
+// later the blackjack table's face-down card rendering) reads/writes the same collection
+// state instead of each maintaining its own copy.
+export function CardBackProvider({ children }: { children: ReactNode }) {
+  const value = useCardBackStore();
   return <CardBackContext.Provider value={value}>{children}</CardBackContext.Provider>;
 }
 

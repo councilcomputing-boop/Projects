@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { CardBackItem, randomUnownedBack } from '../data/store';
+import { CardBackItem, WHEEL_SEGMENTS, WHEEL_SEGMENT_ANGLE, WHEEL_SPIN_MS, WHEEL_CARD_DUPLICATE_REFUND, randomUnownedBack } from '../data/store';
 import { useCardBack } from '../contexts/CardBackContext';
 import { RarityReveal } from './RarityReveal';
 import { BloodDrop } from './BloodDrop';
@@ -9,52 +9,49 @@ interface SpinWheelProps {
   onClose: (dropsWon: number) => void;
 }
 
-type Segment = {label: string;drops?: number;card?: boolean;};
-
-const SEGMENTS: Segment[] = [
-{ label: '+250', drops: 250 },
-{ label: 'CARD', card: true },
-{ label: '+500', drops: 500 },
-{ label: '+1,000', drops: 1000 },
-{ label: 'CARD', card: true },
-{ label: '+250', drops: 250 },
-{ label: '+2,500', drops: 2500 },
-{ label: '+750', drops: 750 }];
-
-
-const SLICE = 360 / SEGMENTS.length;
-
 export function SpinWheel({ onClose }: SpinWheelProps) {
-  const { ownedIds, unlock } = useCardBack();
+  const { cardBacks, awardFragment } = useCardBack();
   const [angle, setAngle] = useState(0);
   const [spinning, setSpinning] = useState(false);
-  const [result, setResult] = useState<Segment | null>(null);
+  const [segmentIndex, setSegmentIndex] = useState<number | null>(null);
   const [prize, setPrize] = useState<CardBackItem | null>(null);
-  const [duplicate, setDuplicate] = useState(false);
+  const [fragmentResult, setFragmentResult] = useState<ReturnType<typeof awardFragment> | null>(null);
 
   const spin = () => {
-    if (spinning || result) return;
-    const index = Math.floor(Math.random() * SEGMENTS.length);
-    const target = 360 * 5 + (360 - index * SLICE - SLICE / 2);
+    if (spinning || segmentIndex !== null) return;
+    const index = Math.floor(Math.random() * WHEEL_SEGMENTS.length);
+    const target = 360 * 5 + (360 - index * WHEEL_SEGMENT_ANGLE - WHEEL_SEGMENT_ANGLE / 2);
     setSpinning(true);
     setAngle(target);
 
     window.setTimeout(() => {
-      const segment = SEGMENTS[index];
       setSpinning(false);
-      setResult(segment);
-      if (segment.card) {
-        const back = randomUnownedBack(ownedIds);
-        setDuplicate(ownedIds.includes(back.id));
-        setPrize(back);
+      setSegmentIndex(index);
+      const segment = WHEEL_SEGMENTS[index];
+      if (segment.type === 'card') {
+        const target = randomUnownedBack(cardBacks.owned);
+        setPrize(target);
+        setFragmentResult(awardFragment(target));
       }
-    }, 3400);
+    }, WHEEL_SPIN_MS);
   };
 
   const finish = () => {
-    if (prize && !duplicate) unlock(prize.id);
-    onClose(result?.drops ?? (duplicate ? 1000 : 0));
+    if (segmentIndex === null) return;
+    const segment = WHEEL_SEGMENTS[segmentIndex];
+    if (segment.type === 'drops') { onClose(segment.value); return; }
+    // Card segment: refund only if the fragment landed on an already-owned back.
+    onClose(fragmentResult?.alreadyOwned ? WHEEL_CARD_DUPLICATE_REFUND : 0);
   };
+
+  const activeSegment = segmentIndex !== null ? WHEEL_SEGMENTS[segmentIndex] : null;
+  const resultLabel = !fragmentResult ?
+  '' :
+  fragmentResult.alreadyOwned ?
+  `Already owned — refunded ${WHEEL_CARD_DUPLICATE_REFUND.toLocaleString()} 🩸` :
+  fragmentResult.unlocked ?
+  'Unlocked!' :
+  `${fragmentResult.have}/${fragmentResult.need} fragments collected`;
 
   return (
     <motion.div
@@ -64,9 +61,9 @@ export function SpinWheel({ onClose }: SpinWheelProps) {
       exit={{ opacity: 0 }}
       role="dialog"
       aria-label="Spin the wheel">
-      
+
       {prize ?
-      <RarityReveal back={prize} duplicate={duplicate} onCollect={finish} /> :
+      <RarityReveal back={prize} resultLabel={resultLabel} onCollect={finish} /> :
 
       <div className="flex flex-col items-center gap-5">
           <p className="font-serif text-xl text-gold-soft">Spin the Wheel</p>
@@ -75,42 +72,40 @@ export function SpinWheel({ onClose }: SpinWheelProps) {
             <span
             aria-hidden="true"
             className="absolute left-1/2 top-[-6px] z-10 h-0 w-0 -translate-x-1/2 border-x-[10px] border-t-[18px] border-x-transparent border-t-gold" />
-          
+
             <motion.div
             className="h-full w-full rounded-full ring-4 ring-gold"
             style={{
-              background: `conic-gradient(${SEGMENTS.map((segment, i) => {
-                const color = segment.card ? '#8f1420' : i % 2 === 0 ? '#2b0d15' : '#3b1219';
-                return `${color} ${i * SLICE}deg ${(i + 1) * SLICE}deg`;
+              background: `conic-gradient(${WHEEL_SEGMENTS.map((segment, i) => {
+                const color = segment.type === 'card' ? '#8f1420' : i % 2 === 0 ? '#2b0d15' : '#3b1219';
+                return `${color} ${i * WHEEL_SEGMENT_ANGLE}deg ${(i + 1) * WHEEL_SEGMENT_ANGLE}deg`;
               }).join(', ')})`
             }}
             animate={{ rotate: angle }}
-            transition={{ duration: 3.4, ease: [0.15, 0.7, 0.15, 1] }}>
-            
-              {SEGMENTS.map((segment, i) =>
+            transition={{ duration: WHEEL_SPIN_MS / 1000, ease: [0.15, 0.7, 0.15, 1] }}>
+
+              {WHEEL_SEGMENTS.map((segment, i) =>
             <span
-              key={`${segment.label}-${i}`}
+              key={i}
               className="absolute left-1/2 top-1/2 origin-left font-serif text-[11px] font-bold uppercase tracking-[0.08em] text-gold-soft"
-              style={{ transform: `rotate(${i * SLICE + SLICE / 2}deg) translate(46px, -6px)` }}>
-              
-                  {segment.label}
+              style={{ transform: `rotate(${i * WHEEL_SEGMENT_ANGLE + WHEEL_SEGMENT_ANGLE / 2}deg) translate(46px, -6px)` }}>
+                  {segment.type === 'card' ? 'CARD' : `+${segment.value}`}
                 </span>
             )}
             </motion.div>
             <span className="absolute left-1/2 top-1/2 h-10 w-10 -translate-x-1/2 -translate-y-1/2 rounded-full bg-maroon-800 ring-2 ring-gold" />
           </div>
 
-          {result ?
+          {activeSegment ?
         <>
               <p className="tabular flex items-center gap-2 font-serif text-2xl font-semibold text-gold">
-                {result.label}
-                {result.drops && <BloodDrop className="h-5 w-5 text-blood" />}
+                {activeSegment.type === 'card' ? 'A card back!' : `+${activeSegment.value}`}
+                {activeSegment.type === 'drops' && <BloodDrop className="h-5 w-5 text-blood" />}
               </p>
               <button
             type="button"
             onClick={finish}
             className="rounded-xl bg-white px-8 py-3 text-sm font-bold text-charcoal shadow-card">
-            
                 Collect
               </button>
             </> :
@@ -120,7 +115,6 @@ export function SpinWheel({ onClose }: SpinWheelProps) {
           onClick={spin}
           disabled={spinning}
           className="rounded-xl bg-white px-8 py-3 text-sm font-bold text-charcoal shadow-card disabled:opacity-50">
-          
               {spinning ? 'Spinning…' : 'Spin (free)'}
             </button>
         }

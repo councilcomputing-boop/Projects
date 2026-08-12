@@ -32,7 +32,7 @@ export function CardBackSprite({ back, width, className = '' }: CardBackSpritePr
           maxWidth: 'none'
         }} />
       
-      {back.animated && <span className="card-sheen" />}
+      {back.fx && <span className="card-sheen" />}
     </div>);
 
 }

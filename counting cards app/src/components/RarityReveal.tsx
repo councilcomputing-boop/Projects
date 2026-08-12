@@ -4,12 +4,12 @@ import { CardBackSprite } from './CardBackSprite';
 
 interface RarityRevealProps {
   back: CardBackItem;
-  duplicate: boolean;
+  resultLabel: string;
   onCollect: () => void;
 }
 
 /** The prize card flipping face up with rarity glow — shared by chests and the wheel. */
-export function RarityReveal({ back, duplicate, onCollect }: RarityRevealProps) {
+export function RarityReveal({ back, resultLabel, onCollect }: RarityRevealProps) {
   const rarity = RARITY_META[back.rarity];
 
   return (
@@ -51,7 +51,7 @@ export function RarityReveal({ back, duplicate, onCollect }: RarityRevealProps) 
         
         {back.name}
       </motion.p>
-      {duplicate && <p className="text-[11px] text-parch/60">Duplicate — converted to blood drops.</p>}
+      <p className="text-[11px] text-parch/60">{resultLabel}</p>
 
       <motion.button
         type="button"

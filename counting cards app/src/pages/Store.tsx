@@ -7,9 +7,12 @@ import { BloodDrop } from '../components/BloodDrop';
 import { PurchaseBurst } from '../components/PurchaseBurst';
 import { ChestOpening } from '../components/ChestOpening';
 import { SpinWheel } from '../components/SpinWheel';
-import { StoreItem, storeItems } from '../data/store';
+import { vialItems, chestItems, VialItem, ChestItem } from '../data/store';
 
-const START_BALANCE = 279062;
+// TEMPORARY: real Blood Drops balance + real Stripe checkout land in the Stripe/
+// Firebase step of the rewrite. For now this page uses a local stub (same starting
+// balance new players get) so every button here is clickable and visually real.
+const START_BALANCE = 1000;
 
 /** Rolls the balance up (or down) to its new value. */
 function useCountUp(target: number) {
@@ -39,22 +42,19 @@ function useCountUp(target: number) {
 
 export function Store() {
   const [balance, setBalance] = useState(START_BALANCE);
-  const [celebrating, setCelebrating] = useState<StoreItem | null>(null);
-  const [openingChest, setOpeningChest] = useState<StoreItem | null>(null);
+  const [celebrating, setCelebrating] = useState<VialItem | null>(null);
+  const [openingChest, setOpeningChest] = useState<ChestItem | null>(null);
   const [wheelOpen, setWheelOpen] = useState(false);
   const display = useCountUp(balance);
 
-  const vials = storeItems.filter((item) => item.drops !== undefined);
-  const chests = storeItems.filter((item) => item.dropCost !== undefined);
-
-  const buyVial = (item: StoreItem) => {
-    setBalance((prev) => prev + (item.drops ?? 0));
+  const buyVial = (item: VialItem) => {
+    setBalance((prev) => prev + item.drops);
     setCelebrating(item);
   };
 
-  const openChest = (chest: StoreItem) => {
-    if (balance < (chest.dropCost ?? 0)) return;
-    setBalance((prev) => prev - (chest.dropCost ?? 0));
+  const openChest = (chest: ChestItem) => {
+    if (balance < chest.dropCost) return;
+    setBalance((prev) => prev - chest.dropCost);
     setOpeningChest(chest);
   };
 
@@ -117,24 +117,22 @@ export function Store() {
         </p>
 
         <ul className="mt-4 grid grid-cols-2 gap-2">
-          {vials.map((item) =>
+          {vialItems.map((item) =>
           <li key={item.id}>
               <motion.button
               type="button"
               onClick={() => buyVial(item)}
               whileTap={{ scale: 0.94 }}
               className="flex h-full w-full flex-col items-center gap-1.5 rounded-xl bg-parch-mute px-3 py-3 transition-colors hover:bg-white">
-              
-                <img
-                src={item.icon}
-                alt=""
-                className="h-14 w-14 rounded-lg object-cover"
-                style={{ mixBlendMode: 'multiply' }} />
-              
+
+                <span className="flex h-14 w-14 items-center justify-center rounded-lg bg-maroon-800 text-2xl">
+                  🩸
+                </span>
+
                 <span className="text-center text-sm font-bold leading-tight text-charcoal">{item.name}</span>
                 <span className="flex items-center gap-1">
                   <span className="tabular font-serif text-lg font-semibold leading-none text-gold-deep">
-                    +{item.drops?.toLocaleString()}
+                    +{item.drops.toLocaleString()}
                   </span>
                   <BloodDrop className="h-3.5 w-3.5 text-blood" />
                 </span>
@@ -150,8 +148,8 @@ export function Store() {
         </ul>
 
         <ul className="mt-3 flex flex-col gap-2">
-          {chests.map((chest) => {
-            const cost = chest.dropCost ?? 0;
+          {chestItems.map((chest) => {
+            const cost = chest.dropCost;
             const affordable = balance >= cost;
             const progress = Math.min(100, Math.round(balance / cost * 100));
 
@@ -165,14 +163,11 @@ export function Store() {
                   className={`flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left transition-colors ${
                   affordable ? 'bg-parch-mute hover:bg-white' : 'bg-parch-mute/60'}`
                   }>
-                  
+
                   <span className="relative shrink-0">
-                    <img
-                      src={chest.icon}
-                      alt=""
-                      className={`h-14 w-14 rounded-lg object-cover ${affordable ? '' : 'opacity-50 grayscale'}`}
-                      style={{ mixBlendMode: 'multiply' }} />
-                    
+                    <span className={`flex h-14 w-14 items-center justify-center rounded-lg bg-maroon-800 text-2xl ${affordable ? '' : 'opacity-50 grayscale'}`}>
+                      {chest.icon}
+                    </span>
                     {!affordable &&
                     <span className="absolute inset-0 flex items-center justify-center">
                         <LockIcon size={18} strokeWidth={2} className="text-charcoal" aria-hidden="true" />
@@ -184,17 +179,19 @@ export function Store() {
                       <span className="text-sm font-bold text-charcoal">{chest.name}</span>
                       <span className="flex items-center gap-1">
                         <span className="tabular font-serif text-base font-semibold text-gold-deep">
-                          {chest.price}
+                          {chest.dropCost.toLocaleString()}
                         </span>
                         <BloodDrop className="h-3 w-3 text-blood" />
                       </span>
                     </span>
-                    <span className="mt-0.5 block text-[11px] text-charcoal-soft">{chest.contents}</span>
+                    <span className="mt-0.5 block text-[11px] text-charcoal-soft">
+                      1 card back fragment · {chest.odds.legendary > 0 ? 'legendary' : chest.odds.epic > 0 ? 'epic' : 'common'} odds
+                    </span>
                     <span className="mt-2 block h-1.5 w-full rounded-full bg-parch-line">
                       <span
                         className={`block h-1.5 rounded-full ${affordable ? 'bg-gold' : 'bg-blood-deep/60'}`}
                         style={{ width: `${progress}%` }} />
-                      
+
                     </span>
                     <span className="tabular mt-1 block text-[10px] font-semibold text-charcoal-soft">
                       {affordable ?
@@ -209,7 +206,14 @@ export function Store() {
         </ul>
 
         <AnimatePresence>
-          {celebrating && <PurchaseBurst item={celebrating} onDone={() => setCelebrating(null)} />}
+          {celebrating &&
+          <PurchaseBurst
+            icon="🩸"
+            name={celebrating.name}
+            resultText={`+${celebrating.drops.toLocaleString()}`}
+            onDone={() => setCelebrating(null)} />
+
+          }
         </AnimatePresence>
       </Panel>
 
