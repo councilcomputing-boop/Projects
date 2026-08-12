@@ -1,6 +1,7 @@
 import { BrowserRouter, Route, Routes } from 'react-router-dom';
 import { CardBackProvider } from './contexts/CardBackContext';
 import { PhoneShell } from './components/PhoneShell';
+import { UpdateBanner } from './components/UpdateBanner';
 import { Home } from './pages/Home';
 import { SpeedDrill } from './pages/SpeedDrill';
 import { ClassicPlay } from './pages/ClassicPlay';
@@ -15,6 +16,7 @@ export function App() {
   return (
     <BrowserRouter>
       <CardBackProvider>
+        <UpdateBanner />
         <PhoneShell>
         <Routes>
           <Route path="/" element={<Home />} />
