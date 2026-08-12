@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { CheckIcon, EyeIcon, EyeOffIcon, MinusIcon, PlusIcon, LightbulbIcon } from 'lucide-react';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { Panel } from '../components/Panel';
@@ -26,6 +26,29 @@ export function ClassicPlay({ allowPeek }: ClassicPlayProps) {
   const settled = hand?.stage === 'done';
   const cur = hand ? hand.hands[hand.activeIndex] : null;
   const dealerCards = hand ? [hand.dealerUp, hand.dealerHole, ...hand.dealerExtra].filter(Boolean) as typeof hand.dealerExtra : [];
+
+  // Real app's shortcuts: H/S/D/P for Hit/Stand/Double/Split, Space/Enter to deal a new
+  // hand when idle — ignored while an input is focused or the quiz modal is open.
+  useEffect(() => {
+    function onKeyDown(event: KeyboardEvent) {
+      const target = event.target as HTMLElement | null;
+      const tag = target?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || game.quizOpen) return;
+      const key = event.key.toLowerCase();
+      if (dealt && !settled) {
+        if (key === 'h') { event.preventDefault(); game.playerHit(); }
+        else if (key === 's') { event.preventDefault(); game.playerStand(); }
+        else if (key === 'd') { event.preventDefault(); game.playerDouble(); }
+        else if (key === 'p') { event.preventDefault(); game.playerSplit(); }
+      } else if (game.handIsIdle() && (event.key === ' ' || event.key === 'Enter')) {
+        event.preventDefault();
+        game.dealNewHand();
+      }
+    }
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dealt, settled, game.quizOpen]);
 
   const dealerTotalLabel = !dealt ?
   '—' :
@@ -185,6 +208,19 @@ export function ClassicPlay({ allowPeek }: ClassicPlayProps) {
             </div>
           </aside>
         </div>
+
+        {game.trackOwnCount &&
+        <div className="mt-2 flex items-center justify-between gap-2 rounded-xl bg-parch-mute px-3 py-2">
+            <span className="text-[10px] font-semibold uppercase tracking-[0.1em] text-charcoal-soft">Your count</span>
+            <div className="flex items-center gap-2">
+              <button type="button" onClick={() => game.tapOwnCount(-1)} className="flex h-7 w-7 items-center justify-center rounded-full bg-maroon-800 text-xs font-bold text-gold">−1</button>
+              <button type="button" onClick={() => game.tapOwnCount(0)} className="flex h-7 w-7 items-center justify-center rounded-full bg-maroon-800 text-xs font-bold text-gold">0</button>
+              <button type="button" onClick={() => game.tapOwnCount(1)} className="flex h-7 w-7 items-center justify-center rounded-full bg-maroon-800 text-xs font-bold text-gold">+1</button>
+              <span className="tabular w-8 text-center font-serif text-lg font-semibold text-charcoal">{formatCount(game.myCount)}</span>
+              <button type="button" onClick={game.resetOwnCount} className="text-[10px] font-semibold text-charcoal-soft underline">Reset</button>
+            </div>
+          </div>
+        }
 
         <div className="mt-3 flex min-h-[112px] flex-col gap-2">
           {!game.betEstablished || game.showBetSetup ?

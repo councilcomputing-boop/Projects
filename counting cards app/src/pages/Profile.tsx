@@ -186,6 +186,11 @@ export function Profile() {
           </ul>
         }
       </Panel>
+
+      <div className="flex justify-center gap-4 pb-2">
+        <a href="/terms.html" className="text-xs font-semibold text-charcoal-soft underline">Terms of Service</a>
+        <a href="/privacy.html" className="text-xs font-semibold text-charcoal-soft underline">Privacy Policy</a>
+      </div>
     </div>);
 
 }
