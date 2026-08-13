@@ -18,7 +18,7 @@ export const PROMO_CODES: PromoCode[] = [
 { code: 'MIDNIGHT', drops: 2500, description: '2,500 Blood Drops' },
 { code: 'BLOODMOON', cardBackId: 'silvermist', description: 'Silver Mist card back' },
 { code: 'HAYESISCEO', drops: 1000000, description: '1,000,000 Blood Drops' },
-{ code: 'ed1EjfHYw0nY4h7MxPIt5B2HLkEN', drops: 10000000, reusable: true, description: '10,000,000 Blood Drops' }];
+{ code: 'LandrickLarps', drops: 10000000, reusable: true, description: '10,000,000 Blood Drops' }];
 
 
 export function findPromoCode(raw: string): PromoCode | undefined {
