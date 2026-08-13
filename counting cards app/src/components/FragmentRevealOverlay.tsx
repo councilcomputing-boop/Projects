@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import { CardBackItem } from '../data/store';
 import { ShardRevealCardBack } from './ShardRevealCardBack';
@@ -29,6 +29,11 @@ const FLOAT_DURATION_S = 0.6;
  */
 export function FragmentRevealOverlay({ item, have, need, previouslySeen, targetRect, onDone }: FragmentRevealOverlayProps) {
   const [floating, setFloating] = useState(false);
+  // Keeps the float-out effect below from depending directly on onDone, which is a new
+  // function reference on every parent re-render -- without this, a parent re-render
+  // mid-animation would reset the timer instead of just calling the latest onDone.
+  const onDoneRef = useRef(onDone);
+  onDoneRef.current = onDone;
 
   useEffect(() => {
     const timer = window.setTimeout(() => setFloating(true), FLOAT_DELAY_MS);
@@ -37,9 +42,9 @@ export function FragmentRevealOverlay({ item, have, need, previouslySeen, target
 
   useEffect(() => {
     if (!floating) return;
-    const timer = window.setTimeout(onDone, FLOAT_DURATION_S * 1000);
+    const timer = window.setTimeout(() => onDoneRef.current(), FLOAT_DURATION_S * 1000);
     return () => window.clearTimeout(timer);
-  }, [floating, onDone]);
+  }, [floating]);
 
   const startCenterX = window.innerWidth / 2;
   const startCenterY = window.innerHeight / 2;

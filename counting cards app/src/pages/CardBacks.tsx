@@ -152,6 +152,7 @@ export function CardBacks() {
 
       {currentRevealItem &&
       <FragmentRevealOverlay
+        key={currentRevealItem.id}
         item={currentRevealItem}
         have={fragments[currentRevealItem.id] || 0}
         need={RARITY_META[currentRevealItem.rarity].fragmentsNeeded}
