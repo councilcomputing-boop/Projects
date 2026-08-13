@@ -23,11 +23,13 @@ function resultLabel(result: AwardResult, chest: ChestItem): string {
 
 /** Chest(s) shake, burst, then reveal what they awarded -- one fragment per chest,
     each refunded at 25% of the chest's cost if it landed on a back already fully
-    owned. Opening more than one rolls each independently but tracks owned/fragments
-    locally through the loop so back-to-back rolls in the same batch see each other
-    instead of racing against React's batched state. */
+    owned. Opening more than one rolls each independently against a locally-tracked
+    owned/fragments snapshot (via the pure previewAward), then applies every result in
+    one commitAwards() call at the end -- calling the stateful awardFragment repeatedly
+    in a tight loop isn't safe (see previewAward's doc comment) and was the actual cause
+    of multi-open freezing/erroring, not just animation load. */
 export function ChestOpening({ chest, quantity, onClose }: ChestOpeningProps) {
-  const { cardBacks, awardFragment } = useCardBack();
+  const { cardBacks, previewAward, commitAwards } = useCardBack();
   const [opened, setOpened] = useState(false);
   const [results, setResults] = useState<AwardResult[]>([]);
 
@@ -42,7 +44,7 @@ export function ChestOpening({ chest, quantity, onClose }: ChestOpeningProps) {
         const out: AwardResult[] = [];
         for (let i = 0; i < quantity; i++) {
           const target = rollFragmentTarget(chest.odds, owned, fragments);
-          const result = awardFragment(target);
+          const result = previewAward(target, owned, fragments);
           out.push(result);
           if (result.unlocked) {
             owned = [...owned, target.id];
@@ -52,6 +54,7 @@ export function ChestOpening({ chest, quantity, onClose }: ChestOpeningProps) {
             fragments = { ...fragments, [target.id]: result.have };
           }
         }
+        commitAwards(out);
         setResults(out);
       } catch (err) {
         console.error('ChestOpening: failed to roll results', err);

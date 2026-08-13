@@ -87,34 +87,56 @@ export function useCardBackStore() {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   }, [state]);
 
-  /** Awards one fragment of `back`, unlocking it if that completes the set. */
-  const awardFragment = (back: CardBackItem): AwardResult => {
+  /** Pure computation of what awarding `back` would do, given a specific owned/fragments
+      snapshot — touches no state. Batch callers (opening several chests at once) roll
+      multiple results against a locally-tracked snapshot via this, then apply them all
+      in one commitAwards() call at the end.
+
+      This exists because calling a *stateful* award function repeatedly in a tight loop
+      isn't safe: it relied on setState's updater running synchronously so the result
+      could be read back immediately, but React doesn't guarantee that for several rapid
+      calls to the same piece of state in a row — a later call in the loop can read back
+      undefined, and code immediately doing result.unlocked on that throws. That's what
+      was actually behind chest multi-open freezing/erroring, not just animation load. */
+  const previewAward = (back: CardBackItem, owned: string[], fragments: Record<string, number>): AwardResult => {
     const need = RARITY_META[back.rarity].fragmentsNeeded;
-    let result: AwardResult;
+    if (owned.includes(back.id)) {
+      return { unlocked: false, alreadyOwned: true, back, have: need, need };
+    }
+    const have = Math.min(need, (fragments[back.id] || 0) + 1);
+    return { unlocked: have >= need, back, have, need };
+  };
+
+  /** Applies a batch of already-computed previewAward results in a single state update. */
+  const commitAwards = (results: AwardResult[]) => {
+    if (results.length === 0) return;
     setState((prev) => {
-      if (prev.cardBacks.owned.includes(back.id)) {
-        result = { unlocked: false, alreadyOwned: true, back, have: need, need };
-        return prev;
+      let owned = prev.cardBacks.owned;
+      let fragments = prev.cardBacks.fragments;
+      let equipped = prev.cardBacks.equipped;
+      for (const result of results) {
+        if (result.alreadyOwned) continue;
+        if (result.unlocked) {
+          owned = [...owned, result.back.id];
+          const next = { ...fragments };
+          delete next[result.back.id];
+          fragments = next;
+          if (prev.autoEquipNewBacks) equipped = result.back.id;
+        } else {
+          fragments = { ...fragments, [result.back.id]: result.have };
+        }
       }
-      const have = Math.min(need, (prev.cardBacks.fragments[back.id] || 0) + 1);
-      if (have >= need) {
-        const fragments = { ...prev.cardBacks.fragments };
-        delete fragments[back.id];
-        result = { unlocked: true, back, have, need };
-        return {
-          ...prev,
-          cardBacks: {
-            ...prev.cardBacks,
-            fragments,
-            owned: [...prev.cardBacks.owned, back.id],
-            equipped: prev.autoEquipNewBacks ? back.id : prev.cardBacks.equipped
-          }
-        };
-      }
-      result = { unlocked: false, back, have, need };
-      return { ...prev, cardBacks: { ...prev.cardBacks, fragments: { ...prev.cardBacks.fragments, [back.id]: have } } };
+      return { ...prev, cardBacks: { ...prev.cardBacks, owned, fragments, equipped } };
     });
-    return result!;
+  };
+
+  /** Awards one fragment of `back`, unlocking it if that completes the set. For single,
+      isolated calls (the wheel's one card segment) -- batch callers use
+      previewAward + commitAwards instead. */
+  const awardFragment = (back: CardBackItem): AwardResult => {
+    const result = previewAward(back, state.cardBacks.owned, state.cardBacks.fragments);
+    commitAwards([result]);
+    return result;
   };
 
   /** Direct-buy: costs the full listed price and forfeits any partial fragment progress.
@@ -213,6 +235,8 @@ export function useCardBackStore() {
     dailyBonusAvailableToday,
     dailyBonusAmount,
     awardFragment,
+    previewAward,
+    commitAwards,
     buyOrEquipCardBack,
     equipCardBack,
     setAutoEquip,

@@ -601,10 +601,11 @@ export function useDealerGame(allowPeek: boolean) {
 
   // ── Skill Chest: earned by playing well, not bought (see data/store.ts) ──
 
-  /** Rolls a chest tier, then 1-5 fragments within it, awarding each via the shared
-      card-back store. Tracks owned/fragments locally through the loop (rather than
-      re-reading cardBackCtx each iteration) so back-to-back fragment rolls in the same
-      chest correctly see each other instead of racing against React's batched state. */
+  /** Rolls a chest tier, then 1-5 fragments within it, against a locally-tracked
+      owned/fragments snapshot (via the pure previewAward), applying every result in one
+      commitAwards() call at the end. Calling the stateful awardFragment repeatedly in a
+      tight loop isn't safe -- see previewAward's doc comment -- and could leave a
+      fragment silently uncredited or throw partway through. */
   function openSkillChest() {
     const tier = rollWeighted(SKILL_CHEST_TIER_ODDS);
     const fragCount = rollSkillChestFragmentCount();
@@ -613,7 +614,7 @@ export function useDealerGame(allowPeek: boolean) {
     let fragments = { ...cardBackCtx.cardBacks.fragments };
     for (let i = 0; i < fragCount; i++) {
       const target = rollFragmentTarget(SKILL_CHEST_FRAGMENT_ODDS[tier], owned, fragments);
-      const result = cardBackCtx.awardFragment(target);
+      const result = cardBackCtx.previewAward(target, owned, fragments);
       results.push(result);
       if (result.unlocked) {
         owned = [...owned, target.id];
@@ -623,6 +624,7 @@ export function useDealerGame(allowPeek: boolean) {
         fragments = { ...fragments, [target.id]: result.have };
       }
     }
+    cardBackCtx.commitAwards(results);
     setSkillChestReveal({ tier, results });
   }
 
