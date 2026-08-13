@@ -162,6 +162,20 @@ export function useCardBackStore() {
     });
   };
 
+  /** TEMPORARY debug helper: resets owned backs/fragments to the default (just
+      "classic"), so chests/wheel/Skill Chest have fresh backs to target again for
+      repeated testing. Returns the total listed price of everything sold, for the
+      caller to refund via DropsContext's addDrops. Remove once the fragment economy is
+      done being tested. */
+  const sellAllCardBacks = (): number => {
+    let refund = 0;
+    setState((prev) => {
+      refund = prev.cardBacks.owned.reduce((sum, id) => sum + (id === 'classic' ? 0 : findCardBack(id).price), 0);
+      return { ...prev, cardBacks: { owned: ['classic'], equipped: 'classic', fragments: {} } };
+    });
+    return refund;
+  };
+
   const hasRedeemed = (code: string) => state.redeemedCodes.includes(code.trim().toUpperCase());
 
   const markCodeRedeemed = (code: string) => {
@@ -207,6 +221,7 @@ export function useCardBackStore() {
     claimDailyBonus,
     hasRedeemed,
     markCodeRedeemed,
-    markFragmentsSeen
+    markFragmentsSeen,
+    sellAllCardBacks
   };
 }

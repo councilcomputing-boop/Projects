@@ -10,11 +10,17 @@ import { useCardBack } from '../contexts/CardBackContext';
 import { useDrops } from '../contexts/DropsContext';
 
 export function CardBacks() {
-  const { cardBacks, equipCardBack, lastSeenFragments, markFragmentsSeen } = useCardBack();
+  const { cardBacks, equipCardBack, lastSeenFragments, markFragmentsSeen, sellAllCardBacks } = useCardBack();
   const { owned, equipped, fragments } = cardBacks;
-  const { drops } = useDrops();
+  const { drops, addDrops } = useDrops();
 
   const ownedCount = owned.length;
+
+  const handleSellAll = () => {
+    if (!window.confirm('Debug only: reset every owned card back (refunding their drops) so chests/wheel have fresh backs to target?')) return;
+    const refund = sellAllCardBacks();
+    if (refund > 0) addDrops(refund);
+  };
 
   // Freeze what was already seen as of page load, so this visit's shard animations are
   // based on a stable snapshot rather than a moving target as fragments update mid-visit.
@@ -84,6 +90,21 @@ export function CardBacks() {
 
           })}
         </ul>
+      </Panel>
+
+      {/* TEMPORARY debug tool -- remove once the fragment economy is done being tested. */}
+      <Panel label="🧪 Debug">
+        <p className="text-xs leading-relaxed text-charcoal-soft">
+          Resets every owned back to just "Classic Wine" and refunds their listed price in Blood Drops, so chests,
+          the wheel, and the Skill Chest have fresh backs to target for testing.
+        </p>
+        <button
+          type="button"
+          onClick={handleSellAll}
+          disabled={ownedCount <= 1}
+          className="mt-3 w-full rounded-xl bg-blood-deep/80 py-3 text-sm font-bold text-parch shadow-card transition-colors hover:bg-blood-deep disabled:opacity-40">
+          Sell All Card Backs
+        </button>
       </Panel>
     </div>);
 
