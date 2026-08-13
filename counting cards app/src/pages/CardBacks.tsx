@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { CheckIcon, LockIcon } from 'lucide-react';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { Panel } from '../components/Panel';
@@ -45,6 +45,15 @@ export function CardBacks() {
   const tileRefs = useRef<Record<string, HTMLLIElement | null>>({});
   const currentRevealId = revealQueue[0] ?? null;
   const currentRevealItem = currentRevealId ? CARD_BACKS.find((c) => c.id === currentRevealId) ?? null : null;
+
+  // Center the target tile in the scroll container before it's used as a float target --
+  // otherwise a tile that starts near the bottom (or off-screen entirely) makes the card
+  // land somewhere only partially visible. Runs before paint so there's no visible jump.
+  useLayoutEffect(() => {
+    if (!currentRevealId) return;
+    tileRefs.current[currentRevealId]?.scrollIntoView({ behavior: 'auto', block: 'center' });
+  }, [currentRevealId]);
+
   const targetRect = currentRevealId ? tileRefs.current[currentRevealId]?.getBoundingClientRect() ?? null : null;
 
   return (
