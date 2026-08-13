@@ -75,6 +75,15 @@ const PIP_LAYOUTS: Record<string, PipPos[]> = {
 
 };
 
+/** Jack/Queen/King show a vampire court portrait instead of a pip — King is Dracula
+    himself (the same portrait used everywhere else in the app), Queen and Jack are
+    matching companion portraits in the same flat-vector mascot style. */
+const FACE_CARD_PORTRAITS: Partial<Record<string, string>> = {
+  J: '/facecard-jack.jpg',
+  Q: '/facecard-queen.jpg',
+  K: '/dealer-portrait.jpg'
+};
+
 /**
  * A standard playing card: rank + suit index in both corners so the value
  * stays readable when cards overlap in a fan, with a large centre pip.
@@ -85,6 +94,7 @@ export function PlayingCard({ card, size = 'lg', width }: PlayingCardProps) {
   const glyph = SUIT_GLYPHS[card.suit];
   const w = width ?? NOMINAL_WIDTH[size];
   const pipLayout = PIP_LAYOUTS[card.rank];
+  const portrait = FACE_CARD_PORTRAITS[card.rank];
 
   const rankSize = Math.round(w * 0.26);
   const cornerSuitSize = Math.round(w * 0.2);
@@ -133,6 +143,13 @@ export function PlayingCard({ card, size = 'lg', width }: PlayingCardProps) {
           {glyph}
         </span>
       ) :
+      portrait ?
+      <span
+        aria-hidden="true"
+        className="absolute overflow-hidden rounded-lg ring-1 ring-charcoal/20"
+        style={{ width: '64%', aspectRatio: '1 / 1', top: '50%', left: '50%', transform: 'translate(-50%, -50%)' }}>
+          <img src={portrait} alt="" className="h-full w-full object-cover" />
+        </span> :
 
       <span
         aria-hidden="true"
