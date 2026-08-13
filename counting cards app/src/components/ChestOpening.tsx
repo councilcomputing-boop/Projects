@@ -61,7 +61,7 @@ export function ChestOpening({ chest, onClose }: ChestOpeningProps) {
           <p className="font-serif text-lg italic text-parch/70">Unsealing {chest.name}…</p>
         </motion.div> :
 
-      <RarityReveal back={target} resultLabel={resultLabel} onCollect={collect} />
+      <RarityReveal back={target} resultLabel={resultLabel} onCollect={collect} unlocked={result ? result.unlocked || !!result.alreadyOwned : undefined} />
       }
     </motion.div>);
 

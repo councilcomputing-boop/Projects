@@ -66,7 +66,11 @@ export function SpinWheel({ onClose }: SpinWheelProps) {
       aria-label="Spin the wheel">
 
       {prize ?
-      <RarityReveal back={prize} resultLabel={resultLabel} onCollect={finish} /> :
+      <RarityReveal
+        back={prize}
+        resultLabel={resultLabel}
+        onCollect={finish}
+        unlocked={fragmentResult ? fragmentResult.unlocked || !!fragmentResult.alreadyOwned : undefined} /> :
 
       <div className="flex flex-col items-center gap-5">
           <p className="font-serif text-xl text-gold-soft">Spin the Wheel</p>

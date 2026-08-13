@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { RARITY_META, type Rarity } from '../data/store';
-import { CardBackSprite } from './CardBackSprite';
+import { CardBackSprite, CardBackImage } from './CardBackSprite';
+import { FRAGMENT_ICON_CLIP_PATH } from '../utils/puzzlePiece';
 import type { AwardResult } from '../hooks/useCardBackStore';
 
 interface SkillChestRevealProps {
@@ -62,7 +63,15 @@ export function SkillChestReveal({ tier, results, onClose }: SkillChestRevealPro
             initial={{ opacity: 0, scale: 0.6, y: 10 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             transition={{ delay: 0.15 * i, type: 'spring', stiffness: 220, damping: 18 }}>
-              <CardBackSprite back={result.back} width={80} />
+              {result.unlocked || result.alreadyOwned ?
+            <CardBackSprite back={result.back} width={80} /> :
+
+            <div className="relative aspect-[5/7] overflow-hidden rounded-xl bg-ink shadow-card" style={{ width: 80 }}>
+                  <div className="absolute inset-0" style={{ clipPath: FRAGMENT_ICON_CLIP_PATH }}>
+                    <CardBackImage back={result.back} />
+                  </div>
+                </div>
+            }
               <p className="text-center text-[10px] font-semibold leading-tight text-parch/80">{result.back.name}</p>
               <p className="text-center text-[10px] text-gold-soft">{resultLabel(result)}</p>
             </motion.div>

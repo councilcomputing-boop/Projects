@@ -1,6 +1,7 @@
 import { motion } from 'framer-motion';
 import { CardBackItem } from '../data/store';
 import { CardBackImage } from './CardBackSprite';
+import { PUZZLE_PIECE_COUNT, puzzlePieceClipPath } from '../utils/puzzlePiece';
 
 interface ShardRevealCardBackProps {
   back: CardBackItem;
@@ -8,17 +9,7 @@ interface ShardRevealCardBackProps {
   need: number;
 }
 
-const SHARD_ROWS = 3;
-const SHARD_COLS = 2;
-const SHARD_COUNT = SHARD_ROWS * SHARD_COLS;
-
-function shardClipPath(index: number): string {
-  const row = Math.floor(index / SHARD_COLS);
-  const col = index % SHARD_COLS;
-  const x0 = col / SHARD_COLS * 100, x1 = (col + 1) / SHARD_COLS * 100;
-  const y0 = row / SHARD_ROWS * 100, y1 = (row + 1) / SHARD_ROWS * 100;
-  return `polygon(${x0}% ${y0}%, ${x1}% ${y0}%, ${x1}% ${y1}%, ${x0}% ${y1}%)`;
-}
+const SHARD_COUNT = PUZZLE_PIECE_COUNT;
 
 /** A stable (not re-randomized every render), spread-out entry direction per shard
     index, so each piece flies in from its own consistent direction. */
@@ -50,7 +41,7 @@ export function ShardRevealCardBack({ back, have, need }: ShardRevealCardBackPro
           <motion.div
             key={i}
             className="absolute inset-0"
-            style={{ clipPath: shardClipPath(i) }}
+            style={{ clipPath: puzzlePieceClipPath(i) }}
             initial={{ opacity: 0, x: origin.x, y: origin.y, rotate: origin.rotate }}
             animate={
             revealed ?

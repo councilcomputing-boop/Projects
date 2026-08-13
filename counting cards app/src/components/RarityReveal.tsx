@@ -1,15 +1,20 @@
 import { motion } from 'framer-motion';
 import { CardBackItem, RARITY_META } from '../data/store';
-import { CardBackSprite } from './CardBackSprite';
+import { CardBackSprite, CardBackImage } from './CardBackSprite';
+import { FRAGMENT_ICON_CLIP_PATH } from '../utils/puzzlePiece';
 
 interface RarityRevealProps {
   back: CardBackItem;
   resultLabel: string;
   onCollect: () => void;
+  /** false (still collecting) shows just one puzzle-piece-shaped fragment instead of
+      the full card, so it reads as "a piece," not the whole back. Defaults to true
+      (full card) since most callers only know this once their result resolves. */
+  unlocked?: boolean;
 }
 
 /** The prize card flipping face up with rarity glow — shared by chests and the wheel. */
-export function RarityReveal({ back, resultLabel, onCollect }: RarityRevealProps) {
+export function RarityReveal({ back, resultLabel, onCollect, unlocked = true }: RarityRevealProps) {
   const rarity = RARITY_META[back.rarity];
 
   return (
@@ -39,7 +44,15 @@ export function RarityReveal({ back, resultLabel, onCollect }: RarityRevealProps
           }}
           transition={{ duration: 0.7, delay: 0.15, ease: [0.2, 0.8, 0.2, 1] }}>
           
-          <CardBackSprite back={back} width={132} />
+          {unlocked ?
+          <CardBackSprite back={back} width={132} /> :
+
+          <div className="relative aspect-[5/7] overflow-hidden rounded-xl bg-ink shadow-card" style={{ width: 132 }}>
+              <div className="absolute inset-0" style={{ clipPath: FRAGMENT_ICON_CLIP_PATH }}>
+                <CardBackImage back={back} />
+              </div>
+            </div>
+          }
         </motion.div>
       </motion.div>
 
