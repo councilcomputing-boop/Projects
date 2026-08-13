@@ -27,6 +27,10 @@ interface StoreState {
   autoEquipNewBacks: boolean;
   /** Normalized (uppercase) promo codes already redeemed on this device. */
   redeemedCodes: string[];
+  /** Fragment counts as of the last time the Card Backs shop was visited, per back id --
+      lets the shop animate only newly-earned shards flying in instead of replaying every
+      already-seen one on every visit. */
+  lastSeenFragments: Record<string, number>;
 }
 
 function defaultState(): StoreState {
@@ -36,7 +40,8 @@ function defaultState(): StoreState {
     spinWheel: { lastSpinDate: null },
     cardBacks: { owned: ['classic'], equipped: 'classic', fragments: {} },
     autoEquipNewBacks: false,
-    redeemedCodes: []
+    redeemedCodes: [],
+    lastSeenFragments: {}
   };
 }
 
@@ -52,7 +57,8 @@ function loadState(): StoreState {
       spinWheel: { ...base.spinWheel, ...parsed.spinWheel },
       cardBacks: { ...base.cardBacks, ...parsed.cardBacks },
       autoEquipNewBacks: Boolean(parsed.autoEquipNewBacks),
-      redeemedCodes: Array.isArray(parsed.redeemedCodes) ? parsed.redeemedCodes : []
+      redeemedCodes: Array.isArray(parsed.redeemedCodes) ? parsed.redeemedCodes : [],
+      lastSeenFragments: parsed.lastSeenFragments && typeof parsed.lastSeenFragments === 'object' ? parsed.lastSeenFragments : {}
     };
   } catch {
     return defaultState();
@@ -148,6 +154,14 @@ export function useCardBackStore() {
     setState((prev) => ({ ...prev, spinWheel: { lastSpinDate: todayStr() } }));
   };
 
+  /** Records `have` as the seen fragment count for `backId` (only ever moves forward). */
+  const markFragmentsSeen = (backId: string, have: number) => {
+    setState((prev) => {
+      if ((prev.lastSeenFragments[backId] || 0) >= have) return prev;
+      return { ...prev, lastSeenFragments: { ...prev.lastSeenFragments, [backId]: have } };
+    });
+  };
+
   const hasRedeemed = (code: string) => state.redeemedCodes.includes(code.trim().toUpperCase());
 
   const markCodeRedeemed = (code: string) => {
@@ -192,6 +206,7 @@ export function useCardBackStore() {
     markSpinUsed,
     claimDailyBonus,
     hasRedeemed,
-    markCodeRedeemed
+    markCodeRedeemed,
+    markFragmentsSeen
   };
 }

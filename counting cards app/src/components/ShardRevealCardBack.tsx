@@ -7,6 +7,11 @@ interface ShardRevealCardBackProps {
   back: CardBackItem;
   have: number;
   need: number;
+  /** Fragment count as of the start of this shop visit (see useCardBackStore's
+      lastSeenFragments) -- shards already earned by then render in place with no
+      animation; only newly-earned ones fly in, instead of the whole set replaying every
+      visit regardless of what actually changed. */
+  previouslySeen: number;
 }
 
 const SHARD_COUNT = PUZZLE_PIECE_COUNT;
@@ -26,8 +31,9 @@ function shardOrigin(index: number) {
  * you've already earned play their fly-in again, so landing on the shop after winning
  * a fragment actually shows it filling in rather than just appearing already-done.
  */
-export function ShardRevealCardBack({ back, have, need }: ShardRevealCardBackProps) {
+export function ShardRevealCardBack({ back, have, need, previouslySeen }: ShardRevealCardBackProps) {
   const revealedCount = Math.min(SHARD_COUNT, Math.floor(have / need * SHARD_COUNT));
+  const priorRevealedCount = Math.min(SHARD_COUNT, Math.floor(previouslySeen / need * SHARD_COUNT));
 
   return (
     <div className="relative aspect-[5/7] w-full overflow-hidden rounded-xl bg-ink shadow-card">
@@ -36,19 +42,23 @@ export function ShardRevealCardBack({ back, have, need }: ShardRevealCardBackPro
       </div>
       {Array.from({ length: SHARD_COUNT }).map((_, i) => {
         const revealed = i < revealedCount;
+        const alreadySeen = i < priorRevealedCount;
+        const settledState = { opacity: 1, x: 0, y: 0, rotate: 0 };
         const origin = shardOrigin(i);
+        const hiddenState = { opacity: 0, x: origin.x, y: origin.y, rotate: origin.rotate };
         return (
           <motion.div
             key={i}
             className="absolute inset-0"
             style={{ clipPath: puzzlePieceClipPath(i) }}
-            initial={{ opacity: 0, x: origin.x, y: origin.y, rotate: origin.rotate }}
-            animate={
-            revealed ?
-            { opacity: 1, x: 0, y: 0, rotate: 0 } :
-            { opacity: 0, x: origin.x, y: origin.y, rotate: origin.rotate }
-            }
-            transition={{ type: 'spring', stiffness: 260, damping: 20, delay: revealed ? i * 0.08 : 0 }}>
+            initial={alreadySeen ? settledState : hiddenState}
+            animate={revealed ? settledState : hiddenState}
+            transition={{
+              type: 'spring',
+              stiffness: 260,
+              damping: 20,
+              delay: revealed && !alreadySeen ? (i - priorRevealedCount) * 0.08 : 0
+            }}>
 
             <CardBackImage back={back} />
           </motion.div>);

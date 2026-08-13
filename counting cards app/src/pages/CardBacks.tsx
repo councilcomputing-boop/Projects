@@ -1,4 +1,5 @@
-import { CheckIcon } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { CheckIcon, LockIcon } from 'lucide-react';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { Panel } from '../components/Panel';
 import { BloodDrop } from '../components/BloodDrop';
@@ -6,23 +7,26 @@ import { CardBackSprite } from '../components/CardBackSprite';
 import { ShardRevealCardBack } from '../components/ShardRevealCardBack';
 import { RARITY_META, CARD_BACKS } from '../data/store';
 import { useCardBack } from '../contexts/CardBackContext';
-import { useDealerGame } from '../hooks/useDealerGame';
+import { useDrops } from '../contexts/DropsContext';
 
 export function CardBacks() {
-  const { cardBacks, buyOrEquipCardBack, equipCardBack } = useCardBack();
+  const { cardBacks, equipCardBack, lastSeenFragments, markFragmentsSeen } = useCardBack();
   const { owned, equipped, fragments } = cardBacks;
-  const { drops, spendDrops } = useDealerGame(true);
+  const { drops } = useDrops();
 
   const ownedCount = owned.length;
 
-  const handleTileAction = (backId: string, price: number) => {
-    if (owned.includes(backId)) {
-      equipCardBack(backId);
-      return;
-    }
-    if (!spendDrops(price)) return;
-    buyOrEquipCardBack(backId);
-  };
+  // Freeze what was already seen as of page load, so this visit's shard animations are
+  // based on a stable snapshot rather than a moving target as fragments update mid-visit.
+  const [seenSnapshot] = useState(() => lastSeenFragments);
+
+  useEffect(() => {
+    CARD_BACKS.forEach((item) => {
+      const have = fragments[item.id] || 0;
+      if (have > 0) markFragmentsSeen(item.id, have);
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <div className="flex flex-col gap-4">
@@ -31,8 +35,8 @@ export function CardBacks() {
       <Panel label="Collection">
         <div className="flex items-center justify-between gap-3">
           <p className="text-xs leading-relaxed text-charcoal-soft">
-            Your equipped back appears on every face-down card at the table. Rarer backs come from chests
-            and the wheel — or buy one outright below.
+            Your equipped back appears on every face-down card at the table. Every back is earned by collecting
+            fragments from chests, the wheel, and the Skill Chest — there's no shortcut.
           </p>
           <span className="flex shrink-0 items-center gap-1.5 rounded-full bg-maroon-700 px-3 py-1.5 text-gold-soft shadow-gold">
             <BloodDrop className="h-3.5 w-3.5 text-blood" />
@@ -46,31 +50,23 @@ export function CardBacks() {
             const rarity = RARITY_META[item.rarity];
             const have = fragments[item.id] || 0;
             const need = rarity.fragmentsNeeded;
-            // Fragments you already have count toward a buyout too -- paying full price
-            // regardless would waste them, so the price scales down with progress.
-            const buyPrice = have > 0 ? Math.max(1, Math.round(item.price * (1 - have / need))) : item.price;
 
             return (
               <li key={item.id} className="flex flex-col gap-1.5">
                 <div className={`rounded-xl ring-2 ${isEquipped ? 'ring-gold' : 'ring-transparent'}`}>
                   {isOwned ?
                   <CardBackSprite back={item} /> :
-                  <ShardRevealCardBack back={item} have={have} need={need} />
+                  <ShardRevealCardBack back={item} have={have} need={need} previouslySeen={seenSnapshot[item.id] || 0} />
                   }
                 </div>
                 <p className="text-center text-[11px] font-bold leading-tight text-charcoal">{item.name}</p>
                 <p className={`text-center text-[10px] font-bold uppercase tracking-[0.1em] ${rarity.text}`}>
                   {rarity.label}
                 </p>
-                {!isOwned && have > 0 &&
-                <p className="tabular text-center text-[10px] font-semibold text-charcoal-soft">
-                    {have}/{need} fragments
-                  </p>
-                }
                 {isOwned ?
                 <button
                   type="button"
-                  onClick={() => handleTileAction(item.id, item.price)}
+                  onClick={() => equipCardBack(item.id)}
                   aria-pressed={isEquipped}
                   className={`flex items-center justify-center gap-1 rounded-lg py-1.5 text-[11px] font-bold transition-colors ${
                   isEquipped ? 'bg-maroon-800 text-gold' : 'bg-parch-mute text-charcoal hover:bg-white'}`
@@ -79,15 +75,10 @@ export function CardBacks() {
                     {isEquipped ? 'Equipped' : 'Equip'}
                   </button> :
 
-                <button
-                  type="button"
-                  onClick={() => handleTileAction(item.id, buyPrice)}
-                  disabled={drops < buyPrice}
-                  className="flex items-center justify-center gap-1 rounded-lg bg-parch-mute py-1.5 text-[11px] font-bold text-charcoal-soft transition-colors hover:bg-white disabled:opacity-50 disabled:hover:bg-parch-mute">
-                    {have > 0 && <span className="mr-0.5">Finish</span>}
-                    <span className="tabular">{buyPrice.toLocaleString()}</span>
-                    <BloodDrop className="h-2.5 w-2.5 text-blood" />
-                  </button>
+                <p className="tabular flex items-center justify-center gap-1 rounded-lg bg-parch-mute/60 py-1.5 text-[11px] font-bold text-charcoal-soft">
+                    <LockIcon size={11} strokeWidth={2.5} aria-hidden="true" />
+                    {have}/{need}
+                  </p>
                 }
               </li>);
 
