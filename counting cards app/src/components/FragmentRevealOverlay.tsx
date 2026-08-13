@@ -29,6 +29,9 @@ const FLOAT_DURATION_S = 0.6;
  */
 export function FragmentRevealOverlay({ item, have, need, previouslySeen, targetRect, onDone }: FragmentRevealOverlayProps) {
   const [floating, setFloating] = useState(false);
+  // This visit's reveal completed the set -- held on screen longer with its own
+  // celebration below instead of just floating away like any other fragment add.
+  const justUnlocked = have >= need;
   // Keeps the float-out effect below from depending directly on onDone, which is a new
   // function reference on every parent re-render -- without this, a parent re-render
   // mid-animation would reset the timer instead of just calling the latest onDone.
@@ -36,8 +39,10 @@ export function FragmentRevealOverlay({ item, have, need, previouslySeen, target
   onDoneRef.current = onDone;
 
   useEffect(() => {
-    const timer = window.setTimeout(() => setFloating(true), FLOAT_DELAY_MS);
+    const delay = justUnlocked ? FLOAT_DELAY_MS + 900 : FLOAT_DELAY_MS;
+    const timer = window.setTimeout(() => setFloating(true), delay);
     return () => window.clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -66,6 +71,7 @@ export function FragmentRevealOverlay({ item, have, need, previouslySeen, target
       aria-label={`${item.name} fragment earned`}>
 
       <motion.div
+        className="flex flex-col items-center gap-3"
         style={{ width: CARD_SIZE }}
         initial={{ scale: 0.7, opacity: 0 }}
         animate={
@@ -79,7 +85,28 @@ export function FragmentRevealOverlay({ item, have, need, previouslySeen, target
         { type: 'spring', stiffness: 220, damping: 20 }
         }>
 
-        <ShardRevealCardBack back={item} have={have} need={need} previouslySeen={previouslySeen} startDelay={APPEAR_PAUSE_S} />
+        <div className="relative w-full">
+          <ShardRevealCardBack back={item} have={have} need={need} previouslySeen={previouslySeen} startDelay={APPEAR_PAUSE_S} />
+          {justUnlocked &&
+          <motion.div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-0 rounded-xl"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: floating ? 0 : [0, 1, 0.7] }}
+            transition={{ duration: 1.1, delay: APPEAR_PAUSE_S + 0.7 }}
+            style={{ boxShadow: '0 0 6px 2px rgba(212,175,55,0.9), 0 0 40px 14px rgba(212,175,55,0.55)' }} />
+
+          }
+        </div>
+        {justUnlocked && !floating &&
+        <motion.p
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: APPEAR_PAUSE_S + 0.9 }}
+          className="text-center font-serif text-lg font-bold uppercase tracking-[0.15em] text-gold">
+            Card Complete!
+          </motion.p>
+        }
       </motion.div>
     </motion.div>);
 

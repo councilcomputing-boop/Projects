@@ -63,8 +63,16 @@ export function SkillChestReveal({ tier, results, onClose }: SkillChestRevealPro
             initial={{ opacity: 0, scale: 0.6, y: 10 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             transition={{ delay: 0.15 * i, type: 'spring', stiffness: 220, damping: 18 }}>
-              {result.unlocked || result.alreadyOwned ?
-            <CardBackSprite back={result.back} width={80} /> :
+              {result.unlocked ?
+            <motion.div
+              className="rounded-xl ring-2 ring-gold"
+              initial={{ boxShadow: '0 0 0px 0px rgba(212,175,55,0)' }}
+              animate={{ boxShadow: ['0 0 0px 0px rgba(212,175,55,0)', '0 0 18px 4px rgba(212,175,55,0.85)', '0 0 8px 2px rgba(212,175,55,0.5)'] }}
+              transition={{ duration: 0.9, delay: 0.15 * i + 0.25 }}>
+                  <CardBackSprite back={result.back} width={80} />
+                </motion.div> :
+            result.alreadyOwned ?
+            <CardBackSprite back={result.back} width={80} className="opacity-55" /> :
 
             <div className="relative aspect-[5/7] overflow-hidden rounded-xl bg-ink shadow-card" style={{ width: 80 }}>
                   <div className="absolute inset-0" style={{ clipPath: fragmentIconClipPath(result.have) }}>
@@ -73,7 +81,7 @@ export function SkillChestReveal({ tier, results, onClose }: SkillChestRevealPro
                 </div>
             }
               <p className="text-center text-[10px] font-semibold leading-tight text-parch/80">{result.back.name}</p>
-              <p className="text-center text-[10px] text-gold-soft">{resultLabel(result)}</p>
+              <p className={`text-center text-[10px] ${result.unlocked ? 'font-bold text-gold' : 'text-gold-soft'}`}>{resultLabel(result)}</p>
             </motion.div>
           )}
           </div>

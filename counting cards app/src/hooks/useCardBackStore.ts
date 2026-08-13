@@ -107,7 +107,15 @@ export function useCardBackStore() {
     return { unlocked: have >= need, back, have, need };
   };
 
-  /** Applies a batch of already-computed previewAward results in a single state update. */
+  /** Applies a batch of already-computed previewAward results in a single state update.
+      Keeps `fragments[id]` at its final count even once a back is unlocked (rather than
+      clearing it) -- the Card Backs shop's reveal queue decides what to show by
+      comparing the current fragment count against what was last seen, so a back whose
+      count got wiped back to 0 the instant it completed would never register as
+      "changed" and would skip its reveal entirely, silently completing with no
+      animation. Owned-ness is what actually gates re-earning it (see rollFragmentTarget
+      and the shop grid's isOwned check), so a stale full fragment count on an owned
+      back is otherwise harmless. */
   const commitAwards = (results: AwardResult[]) => {
     if (results.length === 0) return;
     setState((prev) => {
@@ -116,14 +124,10 @@ export function useCardBackStore() {
       let equipped = prev.cardBacks.equipped;
       for (const result of results) {
         if (result.alreadyOwned) continue;
+        fragments = { ...fragments, [result.back.id]: result.have };
         if (result.unlocked) {
           owned = [...owned, result.back.id];
-          const next = { ...fragments };
-          delete next[result.back.id];
-          fragments = next;
           if (prev.autoEquipNewBacks) equipped = result.back.id;
-        } else {
-          fragments = { ...fragments, [result.back.id]: result.have };
         }
       }
       return { ...prev, cardBacks: { ...prev.cardBacks, owned, fragments, equipped } };
