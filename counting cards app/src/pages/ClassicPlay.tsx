@@ -303,7 +303,7 @@ export function ClassicPlay({ allowPeek }: ClassicPlayProps) {
               <p className="mt-1 text-center text-[10px] font-semibold text-charcoal-soft">
                 {game.drops.toLocaleString()} 🩸 in your balance
               </p>
-              <div className="mt-2 grid grid-cols-4 gap-1.5">
+              <div className="mt-2 grid grid-cols-5 gap-1.5">
                 {[100, 500, 1000, 5000].map((amt) =>
               <button
                 key={amt}
@@ -313,13 +313,33 @@ export function ClassicPlay({ allowPeek }: ClassicPlayProps) {
                     {amt}
                   </button>
               )}
+                <button
+                type="button"
+                onClick={() => setBuyInInput(game.drops)}
+                disabled={game.drops <= 0}
+                className={`rounded-lg py-2 text-xs font-bold disabled:opacity-40 ${buyInInput === game.drops && game.drops > 0 ? 'bg-maroon-800 text-gold' : 'bg-white text-charcoal'}`}>
+                  All
+                </button>
               </div>
+              <label className="mt-2 flex items-center justify-center gap-2">
+                <span className="text-[10px] font-semibold uppercase tracking-[0.1em] text-charcoal-soft">Or type an amount</span>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  maxLength={9}
+                  value={buyInInput === 0 ? '' : String(buyInInput)}
+                  onChange={(event) => setBuyInInput(Number(event.target.value.replace(/\D/g, '')) || 0)}
+                  aria-label="Custom buy-in amount"
+                  className="tabular w-24 shrink-0 rounded-lg bg-white px-2 py-1.5 text-center text-sm font-bold text-charcoal shadow-card" />
+
+              </label>
               <button
               type="button"
               onClick={() => game.buyIn(buyInInput)}
-              disabled={game.drops < buyInInput}
+              disabled={buyInInput <= 0 || game.drops < buyInInput}
               className="mt-3 w-full rounded-xl bg-white py-3 text-sm font-bold text-charcoal shadow-card disabled:opacity-40">
-                Buy In ({buyInInput} 🩸)
+                Buy In ({buyInInput.toLocaleString()} 🩸)
               </button>
             </div> :
           !game.betEstablished || game.showBetSetup ?
