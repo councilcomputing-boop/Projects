@@ -76,12 +76,12 @@ const PIP_LAYOUTS: Record<string, PipPos[]> = {
 };
 
 /** Jack/Queen/King show a vampire court portrait instead of a pip — King is Dracula
-    himself (the same portrait used everywhere else in the app), Queen and Jack are
-    matching companion portraits in the same flat-vector mascot style. */
+    himself, Queen and Jack are matching companion portraits in the same flat-vector
+    mascot style, all with the background removed so they sit directly on the card. */
 const FACE_CARD_PORTRAITS: Partial<Record<string, string>> = {
-  J: '/facecard-jack.jpg',
-  Q: '/facecard-queen.jpg',
-  K: '/dealer-portrait.jpg'
+  J: '/facecard-jack.png',
+  Q: '/facecard-queen.png',
+  K: '/facecard-king.png'
 };
 
 /**
@@ -144,11 +144,19 @@ export function PlayingCard({ card, size = 'lg', width }: PlayingCardProps) {
         </span>
       ) :
       portrait ?
+      // Classic double-ended court card: the same bust crop shown upright in the top
+      // half and rotated 180deg in the bottom half, meeting at a cut line through the
+      // middle — reads right-side up no matter which way the card is held.
       <span
         aria-hidden="true"
-        className="absolute overflow-hidden rounded-lg ring-1 ring-charcoal/20"
-        style={{ width: '64%', aspectRatio: '1 / 1', top: '50%', left: '50%', transform: 'translate(-50%, -50%)' }}>
-          <img src={portrait} alt="" className="h-full w-full object-cover" />
+        className="absolute flex flex-col items-center"
+        style={{ width: '70%', top: '50%', left: '50%', transform: 'translate(-50%, -50%)' }}>
+          <span className="w-full overflow-hidden rounded-t-md border-b border-charcoal/25" style={{ aspectRatio: '10 / 6.2' }}>
+            <img src={portrait} alt="" className="h-full w-full object-cover object-top" />
+          </span>
+          <span className="w-full overflow-hidden rounded-b-md" style={{ aspectRatio: '10 / 6.2', transform: 'rotate(180deg)' }}>
+            <img src={portrait} alt="" className="h-full w-full object-cover object-top" />
+          </span>
         </span> :
 
       <span
