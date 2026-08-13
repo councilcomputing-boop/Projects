@@ -96,8 +96,13 @@ export function PlayingCard({ card, size = 'lg', width }: PlayingCardProps) {
   const pipLayout = PIP_LAYOUTS[card.rank];
   const portrait = FACE_CARD_PORTRAITS[card.rank];
 
-  const rankSize = Math.round(w * 0.26);
-  const cornerSuitSize = Math.round(w * 0.2);
+  // Sized off card width, but the card itself is much taller than wide (aspect 5/7) --
+  // at the old 0.26/0.2 fractions the corner rank+suit stack worked out to roughly a
+  // third of the card's actual height, which barged into face-card portraits and
+  // crowded pip layouts instead of sitting as a small, unobtrusive corner index like a
+  // real card's.
+  const rankSize = Math.round(w * 0.15);
+  const cornerSuitSize = Math.round(w * 0.12);
   const centreSize = Math.round(w * 0.52);
   const pipSize = Math.round(w * 0.16);
   const inset = Math.round(w * 0.07);
@@ -153,7 +158,7 @@ export function PlayingCard({ card, size = 'lg', width }: PlayingCardProps) {
       <span
         aria-hidden="true"
         className="absolute flex flex-col items-center"
-        style={{ width: '56%', top: '50%', left: '50%', transform: 'translate(-50%, -50%)' }}>
+        style={{ width: '50%', top: '50%', left: '50%', transform: 'translate(-50%, -50%)' }}>
           <span className="w-full overflow-hidden" style={{ aspectRatio: '10 / 9.3' }}>
             <img src={portrait} alt="" className="h-full w-full object-cover object-top" />
           </span>

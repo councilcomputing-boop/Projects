@@ -238,21 +238,27 @@ export function useDealerGame(allowPeek: boolean) {
   const stateRef = useRef(state);
   stateRef.current = state;
 
-  // Safety net for leaving the table: the Quit controls already call cashOut() directly,
-  // but any other way off this page (browser back, a future nav link someone adds and
-  // forgets to wire up, etc.) would otherwise strand the bankroll sitting at the table
-  // instead of back in the account. Deliberately does NOT go through setState -- React
-  // isn't guaranteed to actually invoke a setState updater for a component that's mid-
-  // unmount, which is exactly why the first version of this never fired. Reading
-  // stateRef and calling addDrops/localStorage directly has no such dependency on React
-  // choosing to process the update. cashOut() is a no-op once bankroll is already 0, so
-  // a redundant run from an explicit Quit click right before this fires is harmless.
+  // Leaving the table (Quit, browser back, any other way off this page) returns
+  // whatever bankroll is left to the account AND resets the table itself -- fresh
+  // shoe, no hand in progress, count/stats/quiz score/skill progress all back to zero
+  // -- same as walking up to a table for the first time, rather than resuming exactly
+  // where a previous session left off. Preferences (coaching toggles, deck count)
+  // survive the reset since those aren't table state. Deliberately does NOT go through
+  // setState -- React isn't guaranteed to actually invoke a setState updater for a
+  // component that's mid-unmount, which is exactly why an earlier version of this (the
+  // money-only version) never fired. Reading stateRef and writing addDrops/localStorage
+  // directly has no such dependency on React choosing to process the update.
   useEffect(() => {
     return () => {
-      const bankroll = stateRef.current.bankroll;
-      if (bankroll <= 0) return;
-      dropsCtx.addDrops(bankroll);
-      localStorage.setItem(storageKeyFor(allowPeek), JSON.stringify({ ...stateRef.current, bankroll: 0 }));
+      const prev = stateRef.current;
+      if (prev.bankroll > 0) dropsCtx.addDrops(prev.bankroll);
+      const next: DealerGameState = {
+        ...defaultDealerState(prev.numDecks),
+        coachingEnabled: prev.coachingEnabled,
+        betCoachingEnabled: prev.betCoachingEnabled,
+        trackOwnCount: prev.trackOwnCount
+      };
+      localStorage.setItem(storageKeyFor(allowPeek), JSON.stringify(next));
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

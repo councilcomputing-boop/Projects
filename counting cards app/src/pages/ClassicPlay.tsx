@@ -123,13 +123,11 @@ export function ClassicPlay({ allowPeek }: ClassicPlayProps) {
         title={allowPeek ? 'Classic / Peek' : 'Quiz Practice'}
         subtitle={allowPeek ? 'Play hands, peek allowed' : 'Count stays hidden'}
         backTo="/"
-        backLabel="Quit"
-        onBack={game.cashOut} />
+        backLabel="Quit" />
 
       <Panel ariaLabel="Blackjack table" className="p-4">
         <Link
           to="/"
-          onClick={game.cashOut}
           className="mb-2 flex items-center justify-center gap-1.5 rounded-lg bg-blood-deep py-2 text-xs font-bold uppercase tracking-[0.1em] text-parch transition-colors hover:bg-blood-deep/80">
           <DoorOpenIcon size={14} strokeWidth={2.5} aria-hidden="true" />
           Quit Table
