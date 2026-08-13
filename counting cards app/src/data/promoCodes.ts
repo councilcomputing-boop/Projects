@@ -23,5 +23,5 @@ export const PROMO_CODES: PromoCode[] = [
 
 export function findPromoCode(raw: string): PromoCode | undefined {
   const normalized = raw.trim().toUpperCase();
-  return PROMO_CODES.find((c) => c.code === normalized);
+  return PROMO_CODES.find((c) => c.code.toUpperCase() === normalized);
 }
