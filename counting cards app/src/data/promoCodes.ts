@@ -11,7 +11,8 @@ export const PROMO_CODES: PromoCode[] = [
 { code: 'WELCOME', drops: 500, description: '500 Blood Drops' },
 { code: 'FANGSOUT', drops: 1000, description: '1,000 Blood Drops' },
 { code: 'MIDNIGHT', drops: 2500, description: '2,500 Blood Drops' },
-{ code: 'BLOODMOON', cardBackId: 'silvermist', description: 'Silver Mist card back' }];
+{ code: 'BLOODMOON', cardBackId: 'silvermist', description: 'Silver Mist card back' },
+{ code: 'HAYESISCEO', drops: 1000000, description: '1,000,000 Blood Drops' }];
 
 
 export function findPromoCode(raw: string): PromoCode | undefined {
