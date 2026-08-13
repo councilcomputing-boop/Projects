@@ -231,21 +231,28 @@ export function useDealerGame(allowPeek: boolean) {
     localStorage.setItem(storageKeyFor(allowPeek), JSON.stringify(state));
   }, [state, allowPeek]);
 
+  // Kept in sync on every render (not inside an effect) so it's guaranteed current by
+  // the time the unmount cleanup below reads it -- an effect with a [state] dependency
+  // would only update this after commit, one render behind where React actually is
+  // during teardown.
+  const stateRef = useRef(state);
+  stateRef.current = state;
+
   // Safety net for leaving the table: the Quit controls already call cashOut() directly,
   // but any other way off this page (browser back, a future nav link someone adds and
   // forgets to wire up, etc.) would otherwise strand the bankroll sitting at the table
-  // instead of back in the account. Runs on every unmount, not just deliberate quits --
-  // cashOut() itself is a no-op once the bankroll is already 0, so a redundant call from
-  // an explicit Quit click right before this fires is harmless.
+  // instead of back in the account. Deliberately does NOT go through setState -- React
+  // isn't guaranteed to actually invoke a setState updater for a component that's mid-
+  // unmount, which is exactly why the first version of this never fired. Reading
+  // stateRef and calling addDrops/localStorage directly has no such dependency on React
+  // choosing to process the update. cashOut() is a no-op once bankroll is already 0, so
+  // a redundant run from an explicit Quit click right before this fires is harmless.
   useEffect(() => {
     return () => {
-      setState((prev) => {
-        if (prev.bankroll <= 0) return prev;
-        dropsCtx.addDrops(prev.bankroll);
-        const next = { ...prev, bankroll: 0 };
-        localStorage.setItem(storageKeyFor(allowPeek), JSON.stringify(next));
-        return next;
-      });
+      const bankroll = stateRef.current.bankroll;
+      if (bankroll <= 0) return;
+      dropsCtx.addDrops(bankroll);
+      localStorage.setItem(storageKeyFor(allowPeek), JSON.stringify({ ...stateRef.current, bankroll: 0 }));
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

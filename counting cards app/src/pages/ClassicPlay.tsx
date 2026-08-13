@@ -256,22 +256,21 @@ export function ClassicPlay({ allowPeek }: ClassicPlayProps) {
                   <MinusIcon size={13} strokeWidth={2.5} />
                 </button>
                 <input
-                  type="number"
+                  type="text"
                   inputMode="numeric"
-                  min={BET_MIN}
-                  max={BET_MAX}
-                  step={BET_STEP}
+                  pattern="[0-9]*"
+                  maxLength={4}
                   disabled={!game.handIsIdle()}
-                  value={betDraft ?? game.currentBet}
+                  value={betDraft ?? String(game.currentBet)}
                   onFocus={() => setBetDraft(String(game.currentBet))}
-                  onChange={(event) => setBetDraft(event.target.value)}
+                  onChange={(event) => setBetDraft(event.target.value.replace(/\D/g, ''))}
                   onBlur={() => {
                     if (betDraft !== null) game.setBet(Number(betDraft) || BET_MIN);
                     setBetDraft(null);
                   }}
                   onKeyDown={(event) => {if (event.key === 'Enter') (event.target as HTMLInputElement).blur();}}
                   aria-label="Custom bet amount"
-                  className="tabular w-16 rounded-lg bg-maroon-900/50 py-1 text-center font-serif text-lg font-semibold text-gold-soft disabled:opacity-60" />
+                  className="tabular w-[4.5rem] shrink-0 rounded-lg bg-maroon-900/50 py-1 text-center font-serif text-base font-semibold text-gold-soft disabled:opacity-60" />
 
                 <button
                   type="button"
@@ -342,15 +341,14 @@ export function ClassicPlay({ allowPeek }: ClassicPlayProps) {
               <label className="mt-2 flex items-center justify-center gap-2">
                 <span className="text-[10px] font-semibold uppercase tracking-[0.1em] text-charcoal-soft">Or type an amount</span>
                 <input
-                  type="number"
+                  type="text"
                   inputMode="numeric"
-                  min={BET_MIN}
-                  max={BET_MAX}
-                  step={BET_STEP}
-                  value={betInput}
-                  onChange={(event) => setBetInput(Number(event.target.value) || 0)}
+                  pattern="[0-9]*"
+                  maxLength={4}
+                  value={betInput === 0 ? '' : String(betInput)}
+                  onChange={(event) => setBetInput(Number(event.target.value.replace(/\D/g, '')) || 0)}
                   aria-label="Custom bet amount"
-                  className="tabular w-20 rounded-lg bg-white px-2 py-1.5 text-center text-sm font-bold text-charcoal shadow-card" />
+                  className="tabular w-20 shrink-0 rounded-lg bg-white px-2 py-1.5 text-center text-sm font-bold text-charcoal shadow-card" />
 
               </label>
               <button
