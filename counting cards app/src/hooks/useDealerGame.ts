@@ -231,6 +231,25 @@ export function useDealerGame(allowPeek: boolean) {
     localStorage.setItem(storageKeyFor(allowPeek), JSON.stringify(state));
   }, [state, allowPeek]);
 
+  // Safety net for leaving the table: the Quit controls already call cashOut() directly,
+  // but any other way off this page (browser back, a future nav link someone adds and
+  // forgets to wire up, etc.) would otherwise strand the bankroll sitting at the table
+  // instead of back in the account. Runs on every unmount, not just deliberate quits --
+  // cashOut() itself is a no-op once the bankroll is already 0, so a redundant call from
+  // an explicit Quit click right before this fires is harmless.
+  useEffect(() => {
+    return () => {
+      setState((prev) => {
+        if (prev.bankroll <= 0) return prev;
+        dropsCtx.addDrops(prev.bankroll);
+        const next = { ...prev, bankroll: 0 };
+        localStorage.setItem(storageKeyFor(allowPeek), JSON.stringify(next));
+        return next;
+      });
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const trueCountNow = calcTrueCount(state.runningCount, Math.max(0.5, state.shoe.length / 52));
 
   // ── Mid-hand quiz (Quiz mode only): pauses the given continuation behind the quiz

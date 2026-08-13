@@ -23,6 +23,11 @@ export function ClassicPlay({ allowPeek }: ClassicPlayProps) {
   const game = useDealerGame(allowPeek);
   const [betInput, setBetInput] = useState(25);
   const [buyInInput, setBuyInInput] = useState(500);
+  // Draft text for the between-hands bet field while it's focused -- keeps it decoupled
+  // from game.currentBet (which snaps to the nearest BET_STEP on every change) so typing
+  // a multi-digit amount doesn't get its digits reordered by a mid-type snap. null means
+  // "not editing," so the field just shows game.currentBet.
+  const [betDraft, setBetDraft] = useState<string | null>(null);
   const [quizAnswer, setQuizAnswer] = useState(0);
   const [reviewOpen, setReviewOpen] = useState(false);
 
@@ -241,22 +246,39 @@ export function ClassicPlay({ allowPeek }: ClassicPlayProps) {
                 Bet
                 <BloodDrop className="h-2.5 w-2.5 text-blood" />
               </p>
-              <p className="tabular font-serif text-lg font-semibold leading-tight text-gold-soft">{game.currentBet}</p>
-              <div className="mt-1.5 flex justify-center gap-1.5">
+              <div className="mt-1.5 flex items-center justify-center gap-1.5">
                 <button
                   type="button"
                   onClick={() => game.setBet(game.currentBet - BET_STEP)}
                   disabled={!game.handIsIdle() || game.currentBet <= BET_MIN}
                   aria-label="Lower bet"
-                  className="flex h-7 w-7 items-center justify-center rounded-full bg-maroon-600 text-gold disabled:opacity-40">
+                  className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-maroon-600 text-gold disabled:opacity-40">
                   <MinusIcon size={13} strokeWidth={2.5} />
                 </button>
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  min={BET_MIN}
+                  max={BET_MAX}
+                  step={BET_STEP}
+                  disabled={!game.handIsIdle()}
+                  value={betDraft ?? game.currentBet}
+                  onFocus={() => setBetDraft(String(game.currentBet))}
+                  onChange={(event) => setBetDraft(event.target.value)}
+                  onBlur={() => {
+                    if (betDraft !== null) game.setBet(Number(betDraft) || BET_MIN);
+                    setBetDraft(null);
+                  }}
+                  onKeyDown={(event) => {if (event.key === 'Enter') (event.target as HTMLInputElement).blur();}}
+                  aria-label="Custom bet amount"
+                  className="tabular w-16 rounded-lg bg-maroon-900/50 py-1 text-center font-serif text-lg font-semibold text-gold-soft disabled:opacity-60" />
+
                 <button
                   type="button"
                   onClick={() => game.setBet(game.currentBet + BET_STEP)}
                   disabled={!game.handIsIdle() || game.currentBet >= BET_MAX}
                   aria-label="Raise bet"
-                  className="flex h-7 w-7 items-center justify-center rounded-full bg-maroon-600 text-gold disabled:opacity-40">
+                  className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-maroon-600 text-gold disabled:opacity-40">
                   <PlusIcon size={13} strokeWidth={2.5} />
                 </button>
               </div>
@@ -317,6 +339,20 @@ export function ClassicPlay({ allowPeek }: ClassicPlayProps) {
                   </button>
               )}
               </div>
+              <label className="mt-2 flex items-center justify-center gap-2">
+                <span className="text-[10px] font-semibold uppercase tracking-[0.1em] text-charcoal-soft">Or type an amount</span>
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  min={BET_MIN}
+                  max={BET_MAX}
+                  step={BET_STEP}
+                  value={betInput}
+                  onChange={(event) => setBetInput(Number(event.target.value) || 0)}
+                  aria-label="Custom bet amount"
+                  className="tabular w-20 rounded-lg bg-white px-2 py-1.5 text-center text-sm font-bold text-charcoal shadow-card" />
+
+              </label>
               <button
               type="button"
               onClick={() => game.confirmBetSetup(betInput)}
