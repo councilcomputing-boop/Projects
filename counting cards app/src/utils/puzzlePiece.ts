@@ -79,6 +79,22 @@ export function puzzlePieceClipPath(index: number): string {
   return PIECE_POLYGONS[index % PUZZLE_PIECE_COUNT];
 }
 
+/** Recenters and rescales a point list to fill a fresh 0-100 box around (50,50), with
+    `padding` percentage points of margin on the tightest side. Used so a piece that
+    naturally sits off in a corner of the full 6-piece grid (which is where its raw
+    coordinates place it) still reads as centered when shown alone as an icon. */
+function normalizeToCenter(points: [number, number][], padding = 8): [number, number][] {
+  const xs = points.map(([x]) => x);
+  const ys = points.map(([, y]) => y);
+  const minX = Math.min(...xs), maxX = Math.max(...xs);
+  const minY = Math.min(...ys), maxY = Math.max(...ys);
+  const scale = (100 - padding * 2) / Math.max(maxX - minX, maxY - minY);
+  const cx = (minX + maxX) / 2, cy = (minY + maxY) / 2;
+  return points.map(([x, y]) => [50 + (x - cx) * scale, 50 + (y - cy) * scale]);
+}
+
 /** A single representative piece shape (tabs on three sides) for icons that need to
-    read as "one puzzle piece" without corresponding to a specific grid position. */
-export const FRAGMENT_ICON_CLIP_PATH = PIECE_POLYGONS[3];
+    read as "one puzzle piece" without corresponding to a specific grid position --
+    recentered so it sits in the middle of its own box instead of wherever piece 3
+    naturally falls within the full 6-piece grid. */
+export const FRAGMENT_ICON_CLIP_PATH = `polygon(${normalizeToCenter(buildPiecePoints(1, 1)).map(([x, y]) => `${x}% ${y}%`).join(', ')})`;

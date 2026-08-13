@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { CheckIcon, LockIcon } from 'lucide-react';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { Panel } from '../components/Panel';
@@ -16,6 +17,13 @@ export function CardBacks() {
   const { drops, addDrops } = useDrops();
 
   const ownedCount = owned.length;
+
+  const navigate = useNavigate();
+  const location = useLocation();
+  // The Skill Chest sends you here mid-hand (not a deliberate trip to the shop), so it
+  // asks to be sent back once the reveal finishes -- see useDealerGame's
+  // closeSkillChestReveal. Bought chests and the wheel (from the Store) don't set this.
+  const returnTo = (location.state as { returnTo?: string } | null)?.returnTo ?? null;
 
   const handleSellAll = () => {
     if (!window.confirm('Debug only: reset every owned card back (refunding their drops) so chests/wheel have fresh backs to target?')) return;
@@ -55,6 +63,15 @@ export function CardBacks() {
   }, [currentRevealId]);
 
   const targetRect = currentRevealId ? tileRefs.current[currentRevealId]?.getBoundingClientRect() ?? null : null;
+
+  // Once every queued reveal has finished, head back to whichever hand this
+  // interrupted -- only fires if the queue actually had something in it this visit,
+  // so it doesn't fire on a plain visit with nothing to reveal.
+  const hadQueueRef = useRef(revealQueue.length > 0);
+  useEffect(() => {
+    if (revealQueue.length > 0) { hadQueueRef.current = true; return; }
+    if (hadQueueRef.current && returnTo) navigate(returnTo, { replace: true });
+  }, [revealQueue, returnTo, navigate]);
 
   return (
     <div className="flex flex-col gap-4">

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { CheckIcon, EyeIcon, EyeOffIcon, MinusIcon, PlusIcon, LightbulbIcon } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { CheckIcon, EyeIcon, EyeOffIcon, MinusIcon, PlusIcon, LightbulbIcon, DoorOpenIcon } from 'lucide-react';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { Panel } from '../components/Panel';
 import { HandRow } from '../components/HandRow';
@@ -120,6 +121,13 @@ export function ClassicPlay({ allowPeek }: ClassicPlayProps) {
         backLabel="Quit" />
 
       <Panel ariaLabel="Blackjack table" className="p-4">
+        <Link
+          to="/"
+          className="mb-2 flex items-center justify-center gap-1.5 rounded-lg bg-blood-deep py-2 text-xs font-bold uppercase tracking-[0.1em] text-parch transition-colors hover:bg-blood-deep/80">
+          <DoorOpenIcon size={14} strokeWidth={2.5} aria-hidden="true" />
+          Quit Table
+        </Link>
+
         <div className="flex items-center justify-between gap-3">
           <p className="font-serif text-xs font-semibold uppercase tracking-[0.14em] text-gold-deep">
             {game.numDecks} deck shoe · {game.shoe.length} left

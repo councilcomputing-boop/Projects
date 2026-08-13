@@ -21,6 +21,8 @@ import {
   isBlackjack,
   basicStrategyAction,
   deviationAction,
+  strategyTipMessage,
+  ACTION_LABELS,
   pairKey,
   trueCount as calcTrueCount,
   recommendedUnits } from
@@ -553,16 +555,10 @@ export function useDealerGame(allowPeek: boolean) {
     const canSplit = canSplitNow(hand, cur);
     if (allowPeek) {
       const result = deviationAction(cur.cards, hand.dealerUp!.rank, trueCountNow, canDouble, canSplit);
-      setHintMessage(
-        !result.active ?
-        'The book says: ' + (result.base === 'H' ? 'Hit' : result.base === 'S' ? 'Stand' : result.base === 'D' ? 'Double' : 'Split') :
-        result.action === result.base ?
-        'The book and the count agree.' :
-        'The count disagrees with the book here.'
-      );
+      setHintMessage(strategyTipMessage(result));
     } else {
       const rec = basicStrategyAction(cur.cards, hand.dealerUp!.rank, canDouble, canSplit);
-      setHintMessage('The book says: ' + (rec === 'H' ? 'Hit' : rec === 'S' ? 'Stand' : rec === 'D' ? 'Double' : 'Split'));
+      setHintMessage('The book says: ' + ACTION_LABELS[rec]);
     }
   }
 
@@ -633,8 +629,10 @@ export function useDealerGame(allowPeek: boolean) {
   function closeSkillChestReveal() {
     setSkillChestReveal(null);
     // A skill chest always awards at least one fragment -- head to the shop to watch it
-    // fill in, same as the drops-bought chests and the wheel's card segments.
-    navigate('/card-backs');
+    // fill in, same as the drops-bought chests and the wheel's card segments. Tell the
+    // shop where to send you back once the reveal finishes, since this interrupted an
+    // actual hand in progress rather than a deliberate trip to the Store.
+    navigate('/card-backs', { state: { returnTo: allowPeek ? '/peek' : '/quiz' } });
   }
 
   /** Called after every graded strategy move and every count-quiz answer. A correct
