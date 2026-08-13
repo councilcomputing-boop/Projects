@@ -8,8 +8,8 @@ interface PhoneShellProps {
   children: React.ReactNode;
 }
 
-/** The tab bar only belongs to the four top-level destinations. */
-const NAV_ROUTES = ['/', '/store', '/card-backs', '/profile'];
+/** The tab bar only belongs to the four top-level destinations, plus Rules. */
+const NAV_ROUTES = ['/', '/store', '/card-backs', '/profile', '/rules'];
 
 export function PhoneShell({ children }: PhoneShellProps) {
   const { pathname } = useLocation();

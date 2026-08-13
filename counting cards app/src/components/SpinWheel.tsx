@@ -89,7 +89,13 @@ export function SpinWheel({ onClose }: SpinWheelProps) {
 
               {WHEEL_SEGMENTS.map((segment, i) => {
               const segAngle = i * WHEEL_SEGMENT_ANGLE + WHEEL_SEGMENT_ANGLE / 2;
-              const normalized = ((segAngle % 360) + 360) % 360;
+              // The conic-gradient places segment i's center at segAngle clockwise from
+              // the top (12 o'clock). This span uses origin-left + translate(radius, 0),
+              // whose own zero-rotation direction points at 3 o'clock (90deg clockwise
+              // from top) -- subtract that baseline or every label lands a quarter-turn
+              // off from its actual colored slice.
+              const outerRotate = segAngle - 90;
+              const normalized = ((outerRotate % 360) + 360) % 360;
               // Labels on the bottom/left half of the wheel would render upside-down at
               // their placement angle, so counter-rotate just the text in that zone.
               const upsideDown = normalized > 90 && normalized < 270;
@@ -97,7 +103,7 @@ export function SpinWheel({ onClose }: SpinWheelProps) {
                 <span
                   key={i}
                   className="absolute left-1/2 top-1/2 origin-left"
-                  style={{ transform: `rotate(${segAngle}deg) translate(46px, -6px)` }}>
+                  style={{ transform: `rotate(${outerRotate}deg) translate(46px, 0px)` }}>
                     <span
                     className="block font-serif text-[11px] font-bold uppercase tracking-[0.08em] text-gold-soft"
                     style={{ transform: upsideDown ? 'rotate(180deg)' : undefined }}>

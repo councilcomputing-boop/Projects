@@ -10,7 +10,9 @@ const items = [
 
 export function BottomNav() {
   return (
-    <nav aria-label="Primary" className="border-t border-maroon-600/70 bg-maroon-800 px-4">
+    <nav
+      aria-label="Primary"
+      className="border-t border-maroon-600/70 bg-maroon-800 px-4 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
       <ul className="grid grid-cols-4">
         {items.map(({ to, label, Icon }) =>
         <li key={to}>

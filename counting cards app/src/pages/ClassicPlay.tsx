@@ -157,7 +157,7 @@ export function ClassicPlay({ allowPeek }: ClassicPlayProps) {
         </div>
 
         <div className="mt-2">
-          <div className="flex items-center justify-between text-[9px] font-semibold uppercase tracking-[0.1em] text-gold-soft/70">
+          <div className="flex items-center justify-between text-[9px] font-semibold uppercase tracking-[0.1em] text-gold-soft">
             <span>Skill Chest Progress</span>
             {game.skillStreak >= 5 &&
             <span>🔥 x{skillMultiplierForStreak(game.skillStreak)}</span>
