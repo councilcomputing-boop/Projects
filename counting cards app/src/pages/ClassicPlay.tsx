@@ -279,6 +279,13 @@ export function ClassicPlay({ allowPeek }: ClassicPlayProps) {
                   <PlusIcon size={13} strokeWidth={2.5} />
                 </button>
               </div>
+              <button
+                type="button"
+                onClick={() => game.setBet(game.bankroll)}
+                disabled={!game.handIsIdle() || game.bankroll <= 0}
+                className="mt-1.5 w-full rounded-full bg-maroon-900/60 py-1 text-[9px] font-bold uppercase tracking-[0.08em] text-parch/80 hover:text-parch disabled:opacity-40">
+                All In
+              </button>
             </div>
           </aside>
         </div>
@@ -355,6 +362,13 @@ export function ClassicPlay({ allowPeek }: ClassicPlayProps) {
                     {amt}
                   </button>
               )}
+                <button
+                type="button"
+                onClick={() => handlePresetBet(Math.min(game.bankroll, BET_MAX))}
+                disabled={game.bankroll <= 0}
+                className={`rounded-lg py-2 text-xs font-bold disabled:opacity-40 ${betInput === Math.min(game.bankroll, BET_MAX) && game.bankroll > 0 ? 'bg-maroon-800 text-gold' : 'bg-white text-charcoal'}`}>
+                  All In
+                </button>
               </div>
               <label className="mt-2 flex items-center justify-center gap-2">
                 <span className="text-[10px] font-semibold uppercase tracking-[0.1em] text-charcoal-soft">Or type an amount</span>
