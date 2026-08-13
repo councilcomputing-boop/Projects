@@ -33,23 +33,32 @@ export function ChestOpening({ chest, quantity, onClose }: ChestOpeningProps) {
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
-      let owned = [...cardBacks.owned];
-      let fragments = { ...cardBacks.fragments };
-      const out: AwardResult[] = [];
-      for (let i = 0; i < quantity; i++) {
-        const target = rollFragmentTarget(chest.odds, owned, fragments);
-        const result = awardFragment(target);
-        out.push(result);
-        if (result.unlocked) {
-          owned = [...owned, target.id];
-          fragments = { ...fragments };
-          delete fragments[target.id];
-        } else if (!result.alreadyOwned) {
-          fragments = { ...fragments, [target.id]: result.have };
+      // If anything in the roll loop throws, still guarantee setOpened(true) fires --
+      // otherwise the modal is stuck on the "Unsealing..." animation forever with no
+      // way out, which looks exactly like the app has frozen.
+      try {
+        let owned = [...cardBacks.owned];
+        let fragments = { ...cardBacks.fragments };
+        const out: AwardResult[] = [];
+        for (let i = 0; i < quantity; i++) {
+          const target = rollFragmentTarget(chest.odds, owned, fragments);
+          const result = awardFragment(target);
+          out.push(result);
+          if (result.unlocked) {
+            owned = [...owned, target.id];
+            fragments = { ...fragments };
+            delete fragments[target.id];
+          } else if (!result.alreadyOwned) {
+            fragments = { ...fragments, [target.id]: result.have };
+          }
         }
+        setResults(out);
+      } catch (err) {
+        console.error('ChestOpening: failed to roll results', err);
+        setResults([]);
+      } finally {
+        setOpened(true);
       }
-      setResults(out);
-      setOpened(true);
     }, 1100);
     return () => window.clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -82,6 +91,13 @@ export function ChestOpening({ chest, quantity, onClose }: ChestOpeningProps) {
           </p>
         </motion.div> :
 
+      results.length === 0 ?
+      <div className="flex flex-col items-center gap-4">
+          <p className="font-serif text-sm text-parch/80">Something went wrong opening that. Your drops were spent -- contact support if nothing was credited.</p>
+          <button type="button" onClick={collect} className="rounded-xl bg-white px-8 py-3 text-sm font-bold text-charcoal shadow-card">
+            Close
+          </button>
+        </div> :
       quantity === 1 ?
       <RarityReveal
         back={results[0].back}
