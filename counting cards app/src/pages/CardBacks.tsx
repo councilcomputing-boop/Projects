@@ -49,9 +49,21 @@ export function CardBacks() {
             return (
               <li key={item.id} className="flex flex-col gap-1.5">
                 <div className={`rounded-xl ring-2 ${isEquipped ? 'ring-gold' : 'ring-transparent'}`}>
-                  <div className={isOwned ? '' : 'opacity-45 grayscale'}>
-                    <CardBackSprite back={item} />
-                  </div>
+                  {isOwned ?
+                  <CardBackSprite back={item} /> :
+
+                  <div className="relative">
+                      {/* Full-color art underneath; a dimmed/grayscale copy on top gets
+                          clipped away from the bottom up as fragments come in, so the
+                          real art visibly "fills in" instead of a flat progress number. */}
+                      <CardBackSprite back={item} />
+                      <div
+                      className="absolute inset-0 opacity-45 grayscale transition-[clip-path] duration-700 ease-out"
+                      style={{ clipPath: `inset(0 0 ${Math.min(1, have / need) * 100}% 0)` }}>
+                        <CardBackSprite back={item} />
+                      </div>
+                    </div>
+                  }
                 </div>
                 <p className="text-center text-[11px] font-bold leading-tight text-charcoal">{item.name}</p>
                 <p className={`text-center text-[10px] font-bold uppercase tracking-[0.1em] ${rarity.text}`}>

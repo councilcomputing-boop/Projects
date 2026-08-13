@@ -2,6 +2,18 @@ import { useEffect, useRef, useState } from 'react';
 import { PlayingCardData, Hand, SubHand, DealerGameState, Action, Rank, Outcome, HandOutcomeReason } from '../types/blackjack';
 import { buildShoe, hiLoValue } from '../utils/deck';
 import { useDrops } from '../contexts/DropsContext';
+import { useCardBack } from '../contexts/CardBackContext';
+import type { AwardResult } from './useCardBackStore';
+import {
+  Rarity,
+  rollFragmentTarget,
+  rollWeighted,
+  rollSkillChestFragmentCount,
+  skillMultiplierForStreak,
+  SKILL_BAR_THRESHOLD,
+  SKILL_CHEST_TIER_ODDS,
+  SKILL_CHEST_FRAGMENT_ODDS } from
+'../data/store';
 import {
   handTotal,
   softTotalInfo,
@@ -39,6 +51,8 @@ function defaultDealerState(numDecks = 6): DealerGameState {
     strategy: { correct: 0, total: 0 },
     coachingEnabled: true,
     bankroll: 0,
+    skillProgress: 0,
+    skillStreak: 0,
     currentBet: 25,
     betCoachingEnabled: true,
     stats: { hands: 0, win: 0, lose: 0, push: 0, blackjack: 0 },
@@ -184,7 +198,9 @@ let nextHandId = 1;
 
 export function useDealerGame(allowPeek: boolean) {
   const dropsCtx = useDrops();
+  const cardBackCtx = useCardBack();
   const [state, setState] = useState<DealerGameState>(loadState);
+  const [skillChestReveal, setSkillChestReveal] = useState<{tier: Rarity;results: AwardResult[];} | null>(null);
   const [isPeeking, setIsPeeking] = useState(false);
   const [betEstablished, setBetEstablished] = useState(false);
   const [showBetSetup, setShowBetSetup] = useState(false);
@@ -234,6 +250,7 @@ export function useDealerGame(allowPeek: boolean) {
         quizTrue: { correct: prev.quizTrue.correct + (correct ? 1 : 0), total: prev.quizTrue.total + 1 },
         bankroll: prev.bankroll + (correct ? QUIZ_REWARD : 0)
       }));
+      registerSkillEvent(correct);
       setQuizFeedback(
         (correct ? 'Exact.' : 'Off the count.') + ` True count is ${roundedCorrect}.` + (correct ? ` (+${QUIZ_REWARD} 🩸)` : '')
       );
@@ -244,6 +261,7 @@ export function useDealerGame(allowPeek: boolean) {
         quiz: { correct: prev.quiz.correct + (correct ? 1 : 0), total: prev.quiz.total + 1 },
         bankroll: prev.bankroll + (correct ? QUIZ_REWARD : 0)
       }));
+      registerSkillEvent(correct);
       setQuizFeedback(
         (correct ? 'Exact.' : 'Off the count.') + ` Running count is ${state.runningCount}.` + (correct ? ` (+${QUIZ_REWARD} 🩸)` : '')
       );
@@ -350,6 +368,7 @@ export function useDealerGame(allowPeek: boolean) {
     const correct = action === recommended;
     const decision = { playerTotal: total, soft, dealerUpRank, action, recommended, correct };
     setState((prev) => ({ ...prev, strategy: { correct: prev.strategy.correct + (correct ? 1 : 0), total: prev.strategy.total + 1 } }));
+    registerSkillEvent(correct);
     if (state.coachingEnabled) {
       setHintMessage(correct ? 'Correct — the book agrees.' : `Book says ${recommended === 'H' ? 'Hit' : recommended === 'S' ? 'Stand' : recommended === 'D' ? 'Double' : 'Split'}.`);
     }
@@ -575,6 +594,56 @@ export function useDealerGame(allowPeek: boolean) {
     setState((prev) => ({ ...prev, bankroll: 0 }));
   }
 
+  // ── Skill Chest: earned by playing well, not bought (see data/store.ts) ──
+
+  /** Rolls a chest tier, then 1-5 fragments within it, awarding each via the shared
+      card-back store. Tracks owned/fragments locally through the loop (rather than
+      re-reading cardBackCtx each iteration) so back-to-back fragment rolls in the same
+      chest correctly see each other instead of racing against React's batched state. */
+  function openSkillChest() {
+    const tier = rollWeighted(SKILL_CHEST_TIER_ODDS);
+    const fragCount = rollSkillChestFragmentCount();
+    const results: AwardResult[] = [];
+    let owned = [...cardBackCtx.cardBacks.owned];
+    let fragments = { ...cardBackCtx.cardBacks.fragments };
+    for (let i = 0; i < fragCount; i++) {
+      const target = rollFragmentTarget(SKILL_CHEST_FRAGMENT_ODDS[tier], owned, fragments);
+      const result = cardBackCtx.awardFragment(target);
+      results.push(result);
+      if (result.unlocked) {
+        owned = [...owned, target.id];
+        fragments = { ...fragments };
+        delete fragments[target.id];
+      } else {
+        fragments = { ...fragments, [target.id]: result.have };
+      }
+    }
+    setSkillChestReveal({ tier, results });
+  }
+
+  function closeSkillChestReveal() {
+    setSkillChestReveal(null);
+  }
+
+  /** Called after every graded strategy move and every count-quiz answer. A correct
+      one adds to the skill bar (scaled by the current streak multiplier) and opens a
+      chest on fillup; an incorrect one only resets the streak — already-earned bar
+      progress is never taken away. */
+  function registerSkillEvent(correct: boolean) {
+    if (!correct) {
+      setState((prev) => prev.skillStreak === 0 ? prev : { ...prev, skillStreak: 0 });
+      return;
+    }
+    const streak = state.skillStreak + 1;
+    const nextProgress = state.skillProgress + skillMultiplierForStreak(streak);
+    if (nextProgress >= SKILL_BAR_THRESHOLD) {
+      setState((prev) => ({ ...prev, skillStreak: streak, skillProgress: nextProgress - SKILL_BAR_THRESHOLD }));
+      openSkillChest();
+    } else {
+      setState((prev) => ({ ...prev, skillStreak: streak, skillProgress: nextProgress }));
+    }
+  }
+
   return {
     ...state,
     trueCount: trueCountNow,
@@ -613,6 +682,8 @@ export function useDealerGame(allowPeek: boolean) {
     needsBuyIn: state.bankroll <= 0,
     buyIn,
     cashOut,
+    skillChestReveal,
+    closeSkillChestReveal,
     ...dropsCtx,
     describeOutcome
   };

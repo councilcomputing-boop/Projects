@@ -5,9 +5,11 @@ import { Panel } from '../components/Panel';
 import { HandRow } from '../components/HandRow';
 import { DealerSpeech } from '../components/DealerSpeech';
 import { BloodDrop } from '../components/BloodDrop';
+import { SkillChestReveal } from '../components/SkillChestReveal';
 import { useDealerGame, BET_MIN, BET_MAX, BET_STEP, PEEK_COST, STRATEGY_TIP_COST } from '../hooks/useDealerGame';
 import { handTotal } from '../utils/blackjackMath';
 import { formatCount } from '../utils/deck';
+import { SKILL_BAR_THRESHOLD, skillMultiplierForStreak } from '../data/store';
 
 interface ClassicPlayProps {
   allowPeek: boolean;
@@ -121,6 +123,20 @@ export function ClassicPlay({ allowPeek }: ClassicPlayProps) {
               Cash Out
             </button>
           }
+        </div>
+
+        <div className="mt-2">
+          <div className="flex items-center justify-between text-[9px] font-semibold uppercase tracking-[0.1em] text-gold-soft/70">
+            <span>Skill Chest Progress</span>
+            {game.skillStreak >= 5 &&
+            <span>🔥 x{skillMultiplierForStreak(game.skillStreak)}</span>
+            }
+          </div>
+          <div className="mt-1 h-2 overflow-hidden rounded-full bg-maroon-900">
+            <div
+              className="h-full rounded-full bg-gold transition-[width] duration-500 ease-out"
+              style={{ width: `${Math.min(100, game.skillProgress / SKILL_BAR_THRESHOLD * 100)}%` }} />
+          </div>
         </div>
 
         <div className="mt-3 grid grid-cols-[1fr_112px] gap-3 rounded-2xl bg-felt p-3">
@@ -372,6 +388,14 @@ export function ClassicPlay({ allowPeek }: ClassicPlayProps) {
             </button>
           </div>
         </div>
+      }
+
+      {game.skillChestReveal &&
+      <SkillChestReveal
+        tier={game.skillChestReveal.tier}
+        results={game.skillChestReveal.results}
+        onClose={game.closeSkillChestReveal} />
+
       }
     </div>);
 

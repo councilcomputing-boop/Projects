@@ -79,6 +79,55 @@ export function findChest(id: string): ChestItem | undefined {
   return chestItems.find((c) => c.id === id);
 }
 
+// ── Skill Chest: earned by playing well, not bought. Correct strategy moves and correct
+// count answers fill a bar (see SKILL_BAR_THRESHOLD); filling it rolls a chest TIER (this
+// table), which then rolls 1-5 fragments (SKILL_CHEST_FRAGMENT_COUNT_ODDS), each landing
+// on a back via that tier's own fragment-target odds (SKILL_CHEST_FRAGMENT_ODDS) — richer
+// tiers are both more likely to roll and more generous about which backs they favor. ──
+export const SKILL_BAR_THRESHOLD = 20;
+
+export const SKILL_CHEST_TIER_ODDS: Record<Rarity, number> = {
+  common: 50,
+  rare: 30,
+  epic: 14,
+  legendary: 5,
+  mythic: 1
+};
+
+export const SKILL_CHEST_FRAGMENT_ODDS: Record<Rarity, Record<Rarity, number>> = {
+  common: { common: 70, rare: 25, epic: 5, legendary: 0, mythic: 0 },
+  rare: { common: 40, rare: 40, epic: 18, legendary: 2, mythic: 0 },
+  epic: { common: 15, rare: 35, epic: 35, legendary: 14, mythic: 1 },
+  legendary: { common: 5, rare: 20, epic: 35, legendary: 35, mythic: 5 },
+  mythic: { common: 0, rare: 10, epic: 25, legendary: 40, mythic: 25 }
+};
+
+const SKILL_CHEST_FRAGMENT_COUNT_ODDS: Record<string, number> = { '1': 35, '2': 30, '3': 20, '4': 10, '5': 5 };
+
+/** Generic weighted pick — used for the skill-chest tier roll and its fragment count. */
+export function rollWeighted<T extends string>(weights: Record<T, number>): T {
+  const entries = Object.entries(weights) as [T, number][];
+  const total = entries.reduce((sum, [, w]) => sum + w, 0);
+  let r = Math.random() * total;
+  for (const [key, w] of entries) {
+    if (r < w) return key;
+    r -= w;
+  }
+  return entries[entries.length - 1][0];
+}
+
+export function rollSkillChestFragmentCount(): number {
+  return Number(rollWeighted(SKILL_CHEST_FRAGMENT_COUNT_ODDS));
+}
+
+/** 1x normally, 1.5x on a 5+ streak of correct moves/count answers, 2x on 10+. A miss
+    resets the streak (and this multiplier) but never removes bar progress already earned. */
+export function skillMultiplierForStreak(streak: number): number {
+  if (streak >= 10) return 2;
+  if (streak >= 5) return 1.5;
+  return 1;
+}
+
 // ── Spin Wheel (1 free spin/day) ──
 export type WheelSegment = { type: 'drops'; value: number } | { type: 'card' };
 export const WHEEL_SEGMENTS: WheelSegment[] = [

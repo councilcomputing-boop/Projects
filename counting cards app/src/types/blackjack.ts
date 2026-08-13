@@ -84,6 +84,11 @@ export interface DealerGameState {
       draw from and win into, separate from the player's total Blood Drops balance until
       they buy in or cash out. */
   bankroll: number;
+  /** Fills toward SKILL_BAR_THRESHOLD from correct moves/count answers; skillStreak
+      drives the streak multiplier (see skillMultiplierForStreak) and resets on a miss
+      without touching skillProgress itself. */
+  skillProgress: number;
+  skillStreak: number;
   currentBet: number;
   betCoachingEnabled: boolean;
   stats: { hands: number; win: number; lose: number; push: number; blackjack: number };
