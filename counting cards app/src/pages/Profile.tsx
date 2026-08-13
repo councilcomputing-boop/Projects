@@ -30,10 +30,10 @@ export function Profile() {
     if (!codeInput.trim()) return;
     const promo = findPromoCode(codeInput);
     if (!promo) { setCodeIsError(true); setCodeMessage("That code isn't valid."); return; }
-    if (hasRedeemed(promo.code)) { setCodeIsError(true); setCodeMessage('Already redeemed on this device.'); return; }
+    if (!promo.reusable && hasRedeemed(promo.code)) { setCodeIsError(true); setCodeMessage('Already redeemed on this device.'); return; }
     if (promo.drops) gamePeek.addDrops(promo.drops);
     if (promo.cardBackId) buyOrEquipCardBack(promo.cardBackId);
-    markCodeRedeemed(promo.code);
+    if (!promo.reusable) markCodeRedeemed(promo.code);
     setCodeIsError(false);
     setCodeMessage(`Redeemed: ${promo.description}`);
     setCodeInput('');
