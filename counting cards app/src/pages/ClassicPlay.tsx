@@ -172,6 +172,12 @@ export function ClassicPlay({ allowPeek }: ClassicPlayProps) {
 
         <div className="mt-3 grid grid-cols-[1fr_112px] gap-3 rounded-2xl bg-felt p-3">
           <div className="flex min-w-0 flex-col gap-2">
+            {dealt &&
+            <div ref={betRef} className="flex items-center justify-center gap-1.5 self-center rounded-full bg-maroon-900/80 px-3 py-1 text-gold-soft ring-1 ring-gold/40">
+                <BloodDrop className="h-3 w-3 text-blood" />
+                <span className="tabular font-serif text-xs font-semibold">Pot: {hand?.hands[0].bet ?? game.currentBet}</span>
+              </div>
+            }
             <HandRow title="Dealer" cards={dealerCards} total={dealerTotalLabel} hideSecond={!hand?.holeRevealed} hasHole />
             {hand?.hands.map((h, i) =>
             <HandRow
@@ -227,7 +233,7 @@ export function ClassicPlay({ allowPeek }: ClassicPlayProps) {
               </div>
             }
 
-            <div ref={betRef} className="rounded-lg bg-maroon-800 px-2 py-2 text-center">
+            <div className="rounded-lg bg-maroon-800 px-2 py-2 text-center">
               <p className="flex items-center justify-center gap-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-parch/60">
                 Bet
                 <BloodDrop className="h-2.5 w-2.5 text-blood" />
