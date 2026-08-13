@@ -33,7 +33,10 @@ import {
 function storageKeyFor(allowPeek: boolean) {
   return allowPeek ? 'cardCountingTrainerDealerState_peek' : 'cardCountingTrainerDealerState_quiz';
 }
-export const BET_MIN = 5, BET_MAX = 1000, BET_STEP = 5;
+// BET_MAX is a sanity ceiling, not a meaningful table limit -- the real cap on what you
+// can actually bet is your bankroll (checked separately at deal time), so this just
+// needs to be comfortably above anything a real balance would reach.
+export const BET_MIN = 5, BET_MAX = 10000000, BET_STEP = 5;
 export const PEEK_COST = 10, PEEK_REVEAL_MS = 3000;
 export const STRATEGY_TIP_COST = 15, BET_TIP_COST = 15, QUIZ_REWARD = 15;
 const DEALER_DRAW_DELAY_MS = 650;

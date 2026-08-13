@@ -248,7 +248,7 @@ export function ClassicPlay({ allowPeek }: ClassicPlayProps) {
                 type="text"
                 inputMode="numeric"
                 pattern="[0-9]*"
-                maxLength={4}
+                maxLength={9}
                 disabled={!game.handIsIdle()}
                 value={betDraft ?? String(game.currentBet)}
                 onFocus={() => setBetDraft(String(game.currentBet))}
@@ -376,7 +376,7 @@ export function ClassicPlay({ allowPeek }: ClassicPlayProps) {
                   type="text"
                   inputMode="numeric"
                   pattern="[0-9]*"
-                  maxLength={4}
+                  maxLength={9}
                   value={betInput === 0 ? '' : String(betInput)}
                   onChange={(event) => setBetInput(Number(event.target.value.replace(/\D/g, '')) || 0)}
                   aria-label="Custom bet amount"
