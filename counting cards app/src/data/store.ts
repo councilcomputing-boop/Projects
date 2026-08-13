@@ -73,7 +73,9 @@ export interface ChestItem {
 export const chestItems: ChestItem[] = [
 { id: 'crypt', name: 'Crypt Chest', icon: '🪦', dropCost: 5000, odds: { common: 70, rare: 25, epic: 5, legendary: 0, mythic: 0 } },
 { id: 'royal', name: 'Blood Royal Chest', icon: '👑', dropCost: 20000, odds: { common: 30, rare: 45, epic: 20, legendary: 5, mythic: 0 } },
-{ id: 'vault', name: 'Ancient Vault Chest', icon: '🏺', dropCost: 50000, odds: { common: 0, rare: 25, epic: 45, legendary: 29, mythic: 1 } }];
+{ id: 'vault', name: 'Ancient Vault Chest', icon: '🏺', dropCost: 50000, odds: { common: 0, rare: 25, epic: 45, legendary: 29, mythic: 1 } },
+{ id: 'reliquary', name: 'Reliquary Chest', icon: '⚱️', dropCost: 120000, odds: { common: 0, rare: 10, epic: 30, legendary: 45, mythic: 15 } },
+{ id: 'sovereign', name: "Sovereign's Hoard", icon: '👁️', dropCost: 250000, odds: { common: 0, rare: 0, epic: 20, legendary: 50, mythic: 30 } }];
 
 export function findChest(id: string): ChestItem | undefined {
   return chestItems.find((c) => c.id === id);

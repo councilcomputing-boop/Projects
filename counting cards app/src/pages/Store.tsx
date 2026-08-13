@@ -15,6 +15,7 @@ import { useCardBack } from '../contexts/CardBackContext';
 
 const AD_REWARD = 150;
 const AD_CAP = 5;
+const CHEST_QUANTITY_OPTIONS = [1, 5, 10];
 
 /** Rolls a displayed number up (or down) to its new value. */
 function useCountUp(target: number) {
@@ -56,7 +57,8 @@ export function Store() {
   const display = useCountUp(game.drops);
 
   const [celebratingVial, setCelebratingVial] = useState<{ name: string; amount: number } | null>(null);
-  const [openingChest, setOpeningChest] = useState<ChestItem | null>(null);
+  const [openingChest, setOpeningChest] = useState<{ chest: ChestItem; quantity: number } | null>(null);
+  const [chestQty, setChestQty] = useState<Record<string, number>>({});
   const [wheelOpen, setWheelOpen] = useState(false);
   const [pendingVial, setPendingVial] = useState<VialItem | null>(null);
   const [showDisclaimer, setShowDisclaimer] = useState(false);
@@ -113,8 +115,9 @@ export function Store() {
   };
 
   const openChest = (chest: ChestItem) => {
-    if (!game.spendDrops(chest.dropCost)) return;
-    setOpeningChest(chest);
+    const quantity = chestQty[chest.id] ?? 1;
+    if (!game.spendDrops(chest.dropCost * quantity)) return;
+    setOpeningChest({ chest, quantity });
   };
 
   const watchAd = () => {
@@ -225,20 +228,15 @@ export function Store() {
 
         <ul className="mt-3 flex flex-col gap-2">
           {chestItems.map((chest) => {
-            const cost = chest.dropCost;
+            const qty = chestQty[chest.id] ?? 1;
+            const cost = chest.dropCost * qty;
             const affordable = game.drops >= cost;
             const progress = Math.min(100, Math.round(game.drops / cost * 100));
+            const topOdds = chest.odds.mythic > 0 ? 'mythic' : chest.odds.legendary > 0 ? 'legendary' : chest.odds.epic > 0 ? 'epic' : 'common';
 
             return (
-              <li key={chest.id}>
-                <motion.button
-                  type="button"
-                  onClick={() => openChest(chest)}
-                  disabled={!affordable}
-                  whileTap={affordable ? { scale: 0.97 } : undefined}
-                  className={`flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left transition-colors ${
-                  affordable ? 'bg-parch-mute hover:bg-white' : 'bg-parch-mute/60'}`
-                  }>
+              <li key={chest.id} className={`rounded-xl px-3 py-3 transition-colors ${affordable ? 'bg-parch-mute' : 'bg-parch-mute/60'}`}>
+                <div className="flex items-center gap-3">
                   <span className="relative shrink-0">
                     <span className={`flex h-14 w-14 items-center justify-center rounded-lg bg-maroon-800 text-2xl ${affordable ? '' : 'opacity-50 grayscale'}`}>
                       {chest.icon}
@@ -249,31 +247,52 @@ export function Store() {
                       </span>
                     }
                   </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="flex items-center justify-between gap-2">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center justify-between gap-2">
                       <span className="text-sm font-bold text-charcoal">{chest.name}</span>
                       <span className="flex items-center gap-1">
                         <span className="tabular font-serif text-base font-semibold text-gold-deep">
-                          {chest.dropCost.toLocaleString()}
+                          {cost.toLocaleString()}
                         </span>
                         <BloodDrop className="h-3 w-3 text-blood" />
                       </span>
-                    </span>
-                    <span className="mt-0.5 block text-[11px] text-charcoal-soft">
-                      1 card back fragment · {chest.odds.legendary > 0 ? 'legendary' : chest.odds.epic > 0 ? 'epic' : 'common'} odds
-                    </span>
-                    <span className="mt-2 block h-1.5 w-full rounded-full bg-parch-line">
-                      <span
-                        className={`block h-1.5 rounded-full ${affordable ? 'bg-gold' : 'bg-blood-deep/60'}`}
+                    </div>
+                    <p className="mt-0.5 text-[11px] text-charcoal-soft">
+                      {qty} fragment{qty > 1 ? 's' : ''} · {topOdds} odds
+                    </p>
+                    <div className="mt-2 h-1.5 w-full rounded-full bg-parch-line">
+                      <div
+                        className={`h-1.5 rounded-full ${affordable ? 'bg-gold' : 'bg-blood-deep/60'}`}
                         style={{ width: `${progress}%` }} />
-                    </span>
-                    <span className="tabular mt-1 block text-[10px] font-semibold text-charcoal-soft">
+                    </div>
+                    <p className="tabular mt-1 text-[10px] font-semibold text-charcoal-soft">
                       {affordable ?
                       'Ready to open' :
                       `Collect ${(cost - game.drops).toLocaleString()} more drops to unlock`}
-                    </span>
-                  </span>
-                </motion.button>
+                    </p>
+                  </div>
+                </div>
+                <div className="mt-2 flex items-center gap-1.5">
+                  {CHEST_QUANTITY_OPTIONS.map((n) =>
+                  <button
+                    key={n}
+                    type="button"
+                    onClick={() => setChestQty((prev) => ({ ...prev, [chest.id]: n }))}
+                    className={`rounded-lg px-2.5 py-1.5 text-[11px] font-bold transition-colors ${
+                    qty === n ? 'bg-maroon-800 text-gold' : 'bg-white text-charcoal hover:bg-parch-light'}`
+                    }>
+                      x{n}
+                    </button>
+                  )}
+                  <motion.button
+                    type="button"
+                    onClick={() => openChest(chest)}
+                    disabled={!affordable}
+                    whileTap={affordable ? { scale: 0.97 } : undefined}
+                    className="flex-1 rounded-lg bg-white py-1.5 text-xs font-bold text-charcoal transition-colors hover:bg-parch-light disabled:opacity-50 disabled:hover:bg-white">
+                    Open
+                  </motion.button>
+                </div>
               </li>);
 
           })}
@@ -315,7 +334,8 @@ export function Store() {
       <AnimatePresence>
         {openingChest &&
         <ChestOpening
-          chest={openingChest}
+          chest={openingChest.chest}
+          quantity={openingChest.quantity}
           onClose={(refund) => {
             if (refund > 0) game.addDrops(refund);
             setOpeningChest(null);
