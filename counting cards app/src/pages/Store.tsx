@@ -8,7 +8,7 @@ import { BloodDrop } from '../components/BloodDrop';
 import { PurchaseBurst } from '../components/PurchaseBurst';
 import { ChestOpening } from '../components/ChestOpening';
 import { SpinWheel } from '../components/SpinWheel';
-import { vialItems, chestItems, VialItem, ChestItem } from '../data/store';
+import { vialItems, chestItems, chestBundleCost, CHEST_QUANTITY_DISCOUNT, VialItem, ChestItem } from '../data/store';
 import { useDealerGame } from '../hooks/useDealerGame';
 import { useAuth } from '../hooks/useAuth';
 import { useCardBack } from '../contexts/CardBackContext';
@@ -116,7 +116,7 @@ export function Store() {
 
   const openChest = (chest: ChestItem) => {
     const quantity = chestQty[chest.id] ?? 1;
-    if (!game.spendDrops(chest.dropCost * quantity)) return;
+    if (!game.spendDrops(chestBundleCost(chest.dropCost, quantity))) return;
     setOpeningChest({ chest, quantity });
   };
 
@@ -229,7 +229,8 @@ export function Store() {
         <ul className="mt-3 flex flex-col gap-2">
           {chestItems.map((chest) => {
             const qty = chestQty[chest.id] ?? 1;
-            const cost = chest.dropCost * qty;
+            const cost = chestBundleCost(chest.dropCost, qty);
+            const discount = CHEST_QUANTITY_DISCOUNT[qty] ?? 0;
             const affordable = game.drops >= cost;
             const progress = Math.min(100, Math.round(game.drops / cost * 100));
             const topOdds = chest.odds.mythic > 0 ? 'mythic' : chest.odds.legendary > 0 ? 'legendary' : chest.odds.epic > 0 ? 'epic' : 'common';
@@ -251,6 +252,11 @@ export function Store() {
                     <div className="flex items-center justify-between gap-2">
                       <span className="text-sm font-bold text-charcoal">{chest.name}</span>
                       <span className="flex items-center gap-1">
+                        {discount > 0 &&
+                        <span className="rounded-full bg-gold/30 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-[0.05em] text-gold-deep">
+                            -{Math.round(discount * 100)}%
+                          </span>
+                        }
                         <span className="tabular font-serif text-base font-semibold text-gold-deep">
                           {cost.toLocaleString()}
                         </span>
@@ -281,7 +287,7 @@ export function Store() {
                     className={`rounded-lg px-2.5 py-1.5 text-[11px] font-bold transition-colors ${
                     qty === n ? 'bg-maroon-800 text-gold' : 'bg-white text-charcoal hover:bg-parch-light'}`
                     }>
-                      x{n}
+                      x{n}{CHEST_QUANTITY_DISCOUNT[n] ? ` -${Math.round(CHEST_QUANTITY_DISCOUNT[n] * 100)}%` : ''}
                     </button>
                   )}
                   <motion.button
