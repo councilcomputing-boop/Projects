@@ -43,7 +43,7 @@ export function ChestOpening({ chest, quantity, onClose }: ChestOpeningProps) {
         let fragments = { ...cardBacks.fragments };
         const out: AwardResult[] = [];
         for (let i = 0; i < quantity; i++) {
-          const target = rollFragmentTarget(chest.odds, owned, fragments);
+          const target = rollFragmentTarget(chest.odds, owned);
           const result = previewAward(target, owned, fragments);
           out.push(result);
           if (result.unlocked) {

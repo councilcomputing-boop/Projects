@@ -246,38 +246,38 @@ export function ClassicPlay({ allowPeek }: ClassicPlayProps) {
                 Bet
                 <BloodDrop className="h-2.5 w-2.5 text-blood" />
               </p>
-              <div className="mt-1.5 flex items-center justify-center gap-1.5">
+              <input
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                maxLength={4}
+                disabled={!game.handIsIdle()}
+                value={betDraft ?? String(game.currentBet)}
+                onFocus={() => setBetDraft(String(game.currentBet))}
+                onChange={(event) => setBetDraft(event.target.value.replace(/\D/g, ''))}
+                onBlur={() => {
+                  if (betDraft !== null) game.setBet(Number(betDraft) || BET_MIN);
+                  setBetDraft(null);
+                }}
+                onKeyDown={(event) => {if (event.key === 'Enter') (event.target as HTMLInputElement).blur();}}
+                aria-label="Custom bet amount"
+                className="tabular mt-1 w-full rounded-lg bg-maroon-900/50 py-1 text-center font-serif text-lg font-semibold text-gold-soft disabled:opacity-60" />
+
+              <div className="mt-1.5 flex items-center justify-center gap-2">
                 <button
                   type="button"
                   onClick={() => game.setBet(game.currentBet - BET_STEP)}
                   disabled={!game.handIsIdle() || game.currentBet <= BET_MIN}
                   aria-label="Lower bet"
-                  className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-maroon-600 text-gold disabled:opacity-40">
+                  className="flex h-7 w-7 items-center justify-center rounded-full bg-maroon-600 text-gold disabled:opacity-40">
                   <MinusIcon size={13} strokeWidth={2.5} />
                 </button>
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  pattern="[0-9]*"
-                  maxLength={4}
-                  disabled={!game.handIsIdle()}
-                  value={betDraft ?? String(game.currentBet)}
-                  onFocus={() => setBetDraft(String(game.currentBet))}
-                  onChange={(event) => setBetDraft(event.target.value.replace(/\D/g, ''))}
-                  onBlur={() => {
-                    if (betDraft !== null) game.setBet(Number(betDraft) || BET_MIN);
-                    setBetDraft(null);
-                  }}
-                  onKeyDown={(event) => {if (event.key === 'Enter') (event.target as HTMLInputElement).blur();}}
-                  aria-label="Custom bet amount"
-                  className="tabular w-[4.5rem] shrink-0 rounded-lg bg-maroon-900/50 py-1 text-center font-serif text-base font-semibold text-gold-soft disabled:opacity-60" />
-
                 <button
                   type="button"
                   onClick={() => game.setBet(game.currentBet + BET_STEP)}
                   disabled={!game.handIsIdle() || game.currentBet >= BET_MAX}
                   aria-label="Raise bet"
-                  className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-maroon-600 text-gold disabled:opacity-40">
+                  className="flex h-7 w-7 items-center justify-center rounded-full bg-maroon-600 text-gold disabled:opacity-40">
                   <PlusIcon size={13} strokeWidth={2.5} />
                 </button>
               </div>

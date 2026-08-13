@@ -639,7 +639,7 @@ export function useDealerGame(allowPeek: boolean) {
     let owned = [...cardBackCtx.cardBacks.owned];
     let fragments = { ...cardBackCtx.cardBacks.fragments };
     for (let i = 0; i < fragCount; i++) {
-      const target = rollFragmentTarget(SKILL_CHEST_FRAGMENT_ODDS[tier], owned, fragments);
+      const target = rollFragmentTarget(SKILL_CHEST_FRAGMENT_ODDS[tier], owned);
       const result = cardBackCtx.previewAward(target, owned, fragments);
       results.push(result);
       if (result.unlocked) {

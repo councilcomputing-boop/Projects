@@ -73,9 +73,9 @@ export interface ChestItem {
 export const chestItems: ChestItem[] = [
 { id: 'crypt', name: 'Crypt Chest', icon: '🪦', dropCost: 1500, odds: { common: 70, rare: 25, epic: 5, legendary: 0, mythic: 0 } },
 { id: 'royal', name: 'Blood Royal Chest', icon: '👑', dropCost: 6000, odds: { common: 30, rare: 45, epic: 20, legendary: 5, mythic: 0 } },
-{ id: 'vault', name: 'Ancient Vault Chest', icon: '🏺', dropCost: 15000, odds: { common: 0, rare: 25, epic: 45, legendary: 29, mythic: 1 } },
-{ id: 'reliquary', name: 'Reliquary Chest', icon: '⚱️', dropCost: 35000, odds: { common: 0, rare: 10, epic: 30, legendary: 45, mythic: 15 } },
-{ id: 'sovereign', name: "Sovereign's Hoard", icon: '👁️', dropCost: 75000, odds: { common: 0, rare: 0, epic: 20, legendary: 50, mythic: 30 } }];
+{ id: 'vault', name: 'Ancient Vault Chest', icon: '🏺', dropCost: 15000, odds: { common: 0, rare: 25, epic: 45, legendary: 30, mythic: 0 } },
+{ id: 'reliquary', name: 'Reliquary Chest', icon: '⚱️', dropCost: 35000, odds: { common: 0, rare: 12, epic: 32, legendary: 50, mythic: 6 } },
+{ id: 'sovereign', name: "Sovereign's Hoard", icon: '👁️', dropCost: 75000, odds: { common: 0, rare: 0, epic: 24, legendary: 64, mythic: 12 } }];
 
 /** Bulk-buy discount by quantity -- rewards spending saved-up drops in one purchase
     instead of clicking Open ten times. */
@@ -217,13 +217,14 @@ export function backsByRarity(rarity: Rarity): CardBackItem[] {
 
 /**
  * Rolls a rarity from a chest/wheel's odds, then a target back within that rarity to
- * award a fragment toward — preferring a back already in progress, then any unfinished
- * back of that rarity, falling back to an owned one only if the whole rarity is done.
+ * award a fragment toward — uniformly random across every unfinished back of that
+ * rarity (falling back to the full rarity pool only once every back in it is owned),
+ * so opening several chests spreads fragments across different backs instead of
+ * dumping them all into whichever one happened to get the first fragment.
  */
 export function rollFragmentTarget(
 odds: Record<Rarity, number>,
-owned: string[],
-fragments: Record<string, number>)
+owned: string[])
 : CardBackItem {
   const total = (Object.values(odds) as number[]).reduce((a, b) => a + b, 0);
   let r = Math.random() * total;
@@ -235,8 +236,7 @@ fragments: Record<string, number>)
   }
   const pool = backsByRarity(rarity);
   const unfinished = pool.filter((b) => !owned.includes(b.id));
-  const inProgress = unfinished.filter((b) => (fragments[b.id] || 0) > 0);
-  const choices = inProgress.length ? inProgress : unfinished.length ? unfinished : pool;
+  const choices = unfinished.length ? unfinished : pool;
   return choices[Math.floor(Math.random() * choices.length)];
 }
 
