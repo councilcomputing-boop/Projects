@@ -1,6 +1,7 @@
 import { useLocation } from 'react-router-dom';
 import { AppHeader } from './AppHeader';
 import { BottomNav } from './BottomNav';
+import { FlyingDropsLayer } from './FlyingDrops';
 import { useDrops } from '../contexts/DropsContext';
 
 interface PhoneShellProps {
@@ -22,6 +23,7 @@ export function PhoneShell({ children }: PhoneShellProps) {
         <main className="min-h-0 flex-1 overflow-y-auto px-5 py-5">{children}</main>
         {showNav && <BottomNav />}
       </div>
+      <FlyingDropsLayer />
     </div>);
 
 }

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { CheckIcon, EyeIcon, EyeOffIcon, MinusIcon, PlusIcon, LightbulbIcon } from 'lucide-react';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { Panel } from '../components/Panel';
@@ -6,6 +6,7 @@ import { HandRow } from '../components/HandRow';
 import { DealerSpeech } from '../components/DealerSpeech';
 import { BloodDrop } from '../components/BloodDrop';
 import { SkillChestReveal } from '../components/SkillChestReveal';
+import { emitDropsFly } from '../components/FlyingDrops';
 import { useDealerGame, BET_MIN, BET_MAX, BET_STEP, PEEK_COST, STRATEGY_TIP_COST } from '../hooks/useDealerGame';
 import { handTotal } from '../utils/blackjackMath';
 import { formatCount } from '../utils/deck';
@@ -29,6 +30,36 @@ export function ClassicPlay({ allowPeek }: ClassicPlayProps) {
   const settled = hand?.stage === 'done';
   const cur = hand ? hand.hands[hand.activeIndex] : null;
   const dealerCards = hand ? [hand.dealerUp, hand.dealerHole, ...hand.dealerExtra].filter(Boolean) as typeof hand.dealerExtra : [];
+
+  const bankrollRef = useRef<HTMLDivElement>(null);
+  const betRef = useRef<HTMLDivElement>(null);
+  const dealerRef = useRef<HTMLDivElement>(null);
+
+  // Bankroll -> pot when a bet is placed. Seeded to the current hand id at mount so an
+  // already-in-progress hand loaded from storage doesn't replay the animation.
+  const dealtFlyRef = useRef<number | null>(hand?.id ?? null);
+  useEffect(() => {
+    if (!hand || dealtFlyRef.current === hand.id) return;
+    dealtFlyRef.current = hand.id;
+    if (bankrollRef.current && betRef.current) {
+      emitDropsFly(bankrollRef.current.getBoundingClientRect(), betRef.current.getBoundingClientRect());
+    }
+  }, [hand?.id]);
+
+  // Pot -> bankroll on a win/push, pot -> Dracula on a loss.
+  const settledFlyRef = useRef<number | null>(hand && hand.stage === 'done' ? hand.id : null);
+  useEffect(() => {
+    if (!hand || hand.stage !== 'done' || settledFlyRef.current === hand.id) return;
+    settledFlyRef.current = hand.id;
+    if (!betRef.current) return;
+    const betRect = betRef.current.getBoundingClientRect();
+    const lost = hand.hands[0].result === 'lose';
+    if (lost) {
+      if (dealerRef.current) emitDropsFly(betRect, dealerRef.current.getBoundingClientRect());
+    } else if (bankrollRef.current) {
+      emitDropsFly(betRect, bankrollRef.current.getBoundingClientRect());
+    }
+  }, [hand?.stage, hand?.id]);
 
   // Real app's shortcuts: H/S/D/P for Hit/Stand/Double/Split, Space/Enter to deal a new
   // hand when idle — ignored while an input is focused or the quiz modal is open.
@@ -112,7 +143,7 @@ export function ClassicPlay({ allowPeek }: ClassicPlayProps) {
           </label>
         </div>
 
-        <div className="mt-2 flex items-center justify-center gap-2 rounded-lg bg-maroon-700 px-3 py-1.5 text-gold-soft shadow-gold">
+        <div ref={bankrollRef} className="mt-2 flex items-center justify-center gap-2 rounded-lg bg-maroon-700 px-3 py-1.5 text-gold-soft shadow-gold">
           <BloodDrop className="h-3.5 w-3.5 text-blood" />
           <span className="tabular font-serif text-sm font-semibold">{game.bankroll.toLocaleString()} at the table</span>
           {game.bankroll > 0 && game.handIsIdle() &&
@@ -167,7 +198,9 @@ export function ClassicPlay({ allowPeek }: ClassicPlayProps) {
           </div>
 
           <aside className="flex flex-col gap-2">
-            <DealerSpeech message={dealerLine} tone={!settled ? 'neutral' : bannerTone === 'good' ? 'good' : bannerTone === 'bad' ? 'bad' : 'neutral'} />
+            <div ref={dealerRef}>
+              <DealerSpeech message={dealerLine} tone={!settled ? 'neutral' : bannerTone === 'good' ? 'good' : bannerTone === 'bad' ? 'bad' : 'neutral'} />
+            </div>
 
             {allowPeek ?
             <>
@@ -194,7 +227,7 @@ export function ClassicPlay({ allowPeek }: ClassicPlayProps) {
               </div>
             }
 
-            <div className="rounded-lg bg-maroon-800 px-2 py-2 text-center">
+            <div ref={betRef} className="rounded-lg bg-maroon-800 px-2 py-2 text-center">
               <p className="flex items-center justify-center gap-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-parch/60">
                 Bet
                 <BloodDrop className="h-2.5 w-2.5 text-blood" />

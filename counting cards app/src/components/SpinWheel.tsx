@@ -6,7 +6,10 @@ import { RarityReveal } from './RarityReveal';
 import { BloodDrop } from './BloodDrop';
 
 interface SpinWheelProps {
-  onClose: (dropsWon: number) => void;
+  /** wasFragment tells the caller whether a card-back fragment was awarded (vs. a plain
+      drops prize), so it can decide whether to route to the Card Backs shop to watch it
+      fill in. */
+  onClose: (dropsWon: number, wasFragment: boolean) => void;
 }
 
 export function SpinWheel({ onClose }: SpinWheelProps) {
@@ -39,9 +42,9 @@ export function SpinWheel({ onClose }: SpinWheelProps) {
   const finish = () => {
     if (segmentIndex === null) return;
     const segment = WHEEL_SEGMENTS[segmentIndex];
-    if (segment.type === 'drops') { onClose(segment.value); return; }
+    if (segment.type === 'drops') { onClose(segment.value, false); return; }
     // Card segment: refund only if the fragment landed on an already-owned back.
-    onClose(fragmentResult?.alreadyOwned ? WHEEL_CARD_DUPLICATE_REFUND : 0);
+    onClose(fragmentResult?.alreadyOwned ? WHEEL_CARD_DUPLICATE_REFUND : 0, true);
   };
 
   const activeSegment = segmentIndex !== null ? WHEEL_SEGMENTS[segmentIndex] : null;
@@ -130,7 +133,7 @@ export function SpinWheel({ onClose }: SpinWheelProps) {
             </button>
         }
 
-          <button type="button" onClick={() => onClose(0)} className="text-xs font-semibold text-parch/50 underline">
+          <button type="button" onClick={() => onClose(0, false)} className="text-xs font-semibold text-parch/50 underline">
             Close
           </button>
         </div>

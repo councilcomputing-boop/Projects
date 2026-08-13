@@ -46,6 +46,9 @@ export function CardBacks() {
             const rarity = RARITY_META[item.rarity];
             const have = fragments[item.id] || 0;
             const need = rarity.fragmentsNeeded;
+            // Fragments you already have count toward a buyout too -- paying full price
+            // regardless would waste them, so the price scales down with progress.
+            const buyPrice = have > 0 ? Math.max(1, Math.round(item.price * (1 - have / need))) : item.price;
 
             return (
               <li key={item.id} className="flex flex-col gap-1.5">
@@ -78,10 +81,11 @@ export function CardBacks() {
 
                 <button
                   type="button"
-                  onClick={() => handleTileAction(item.id, item.price)}
-                  disabled={drops < item.price}
+                  onClick={() => handleTileAction(item.id, buyPrice)}
+                  disabled={drops < buyPrice}
                   className="flex items-center justify-center gap-1 rounded-lg bg-parch-mute py-1.5 text-[11px] font-bold text-charcoal-soft transition-colors hover:bg-white disabled:opacity-50 disabled:hover:bg-parch-mute">
-                    <span className="tabular">{item.price.toLocaleString()}</span>
+                    {have > 0 && <span className="mr-0.5">Finish</span>}
+                    <span className="tabular">{buyPrice.toLocaleString()}</span>
                     <BloodDrop className="h-2.5 w-2.5 text-blood" />
                   </button>
                 }

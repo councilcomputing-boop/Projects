@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { PlayingCardData, Hand, SubHand, DealerGameState, Action, Rank, Outcome, HandOutcomeReason } from '../types/blackjack';
 import { buildShoe, hiLoValue } from '../utils/deck';
 import { useDrops } from '../contexts/DropsContext';
@@ -199,6 +200,7 @@ let nextHandId = 1;
 export function useDealerGame(allowPeek: boolean) {
   const dropsCtx = useDrops();
   const cardBackCtx = useCardBack();
+  const navigate = useNavigate();
   const [state, setState] = useState<DealerGameState>(loadState);
   const [skillChestReveal, setSkillChestReveal] = useState<{tier: Rarity;results: AwardResult[];} | null>(null);
   const [isPeeking, setIsPeeking] = useState(false);
@@ -429,8 +431,11 @@ export function useDealerGame(allowPeek: boolean) {
       const h = s.hand!;
       const c = h.hands[h.activeIndex];
       const cards = [...c.cards, card];
-      const bust = handTotal(cards) > 21;
-      const updated: SubHand = { ...c, cards, stage: bust ? 'bust' : 'active', movesCorrect: c.movesCorrect + (decision.correct ? 1 : 0), movesTotal: c.movesTotal + 1, decisions: [...c.decisions, decision] };
+      const total = handTotal(cards);
+      const bust = total > 21;
+      // 21 can only push or win from here -- hitting again can only hurt, so auto-stand
+      // instead of leaving it sitting active for a stray extra tap to bust.
+      const updated: SubHand = { ...c, cards, stage: bust ? 'bust' : total === 21 ? 'stood' : 'active', movesCorrect: c.movesCorrect + (decision.correct ? 1 : 0), movesTotal: c.movesTotal + 1, decisions: [...c.decisions, decision] };
       const nextHands = h.hands.map((x, i) => i === h.activeIndex ? updated : x);
       const handAfter = { ...h, hands: nextHands };
       window.setTimeout(() => advanceOrFinish(handAfter), 0);
@@ -623,6 +628,9 @@ export function useDealerGame(allowPeek: boolean) {
 
   function closeSkillChestReveal() {
     setSkillChestReveal(null);
+    // A skill chest always awards at least one fragment -- head to the shop to watch it
+    // fill in, same as the drops-bought chests and the wheel's card segments.
+    navigate('/card-backs');
   }
 
   /** Called after every graded strategy move and every count-quiz answer. A correct

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { FilmIcon, LockIcon } from 'lucide-react';
 import { ScreenHeader } from '../components/ScreenHeader';
@@ -51,6 +52,7 @@ export function Store() {
   const { user } = useAuth();
   const game = useDealerGame(true);
   const cardBack = useCardBack();
+  const navigate = useNavigate();
   const display = useCountUp(game.drops);
 
   const [celebratingVial, setCelebratingVial] = useState<{ name: string; amount: number } | null>(null);
@@ -317,15 +319,18 @@ export function Store() {
           onClose={(refund) => {
             if (refund > 0) game.addDrops(refund);
             setOpeningChest(null);
+            // Chests always attempt a fragment -- head to the shop to watch it fill in.
+            navigate('/card-backs');
           }} />
 
         }
         {wheelOpen &&
         <SpinWheel
-          onClose={(won) => {
+          onClose={(won, wasFragment) => {
             if (won > 0) game.addDrops(won);
             cardBack.markSpinUsed();
             setWheelOpen(false);
+            if (wasFragment) navigate('/card-backs');
           }} />
 
         }
