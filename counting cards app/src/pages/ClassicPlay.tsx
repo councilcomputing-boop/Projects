@@ -32,32 +32,30 @@ export function ClassicPlay({ allowPeek }: ClassicPlayProps) {
   const dealerCards = hand ? [hand.dealerUp, hand.dealerHole, ...hand.dealerExtra].filter(Boolean) as typeof hand.dealerExtra : [];
 
   const bankrollRef = useRef<HTMLDivElement>(null);
-  const betRef = useRef<HTMLDivElement>(null);
   const dealerRef = useRef<HTMLDivElement>(null);
 
-  // Bankroll -> pot when a bet is placed. Seeded to the current hand id at mount so an
-  // already-in-progress hand loaded from storage doesn't replay the animation.
+  // The bankroll badge is both endpoints -- it flies out from there when a bet is
+  // placed (it visibly subtracts) and flies back into it on a win/push (it visibly
+  // adds), with Dracula's portrait as the other side of the transaction. A clean loss
+  // needs no second animation: the bankroll already dropped by the bet at deal time and
+  // doesn't change again. Seeded to the current hand id/stage at mount so an
+  // already-in-progress or already-settled hand loaded from storage doesn't replay.
   const dealtFlyRef = useRef<number | null>(hand?.id ?? null);
   useEffect(() => {
     if (!hand || dealtFlyRef.current === hand.id) return;
     dealtFlyRef.current = hand.id;
-    if (bankrollRef.current && betRef.current) {
-      emitDropsFly(bankrollRef.current.getBoundingClientRect(), betRef.current.getBoundingClientRect());
+    if (bankrollRef.current && dealerRef.current) {
+      emitDropsFly(bankrollRef.current.getBoundingClientRect(), dealerRef.current.getBoundingClientRect());
     }
   }, [hand?.id]);
 
-  // Pot -> bankroll on a win/push, pot -> Dracula on a loss.
   const settledFlyRef = useRef<number | null>(hand && hand.stage === 'done' ? hand.id : null);
   useEffect(() => {
     if (!hand || hand.stage !== 'done' || settledFlyRef.current === hand.id) return;
     settledFlyRef.current = hand.id;
-    if (!betRef.current) return;
-    const betRect = betRef.current.getBoundingClientRect();
     const lost = hand.hands[0].result === 'lose';
-    if (lost) {
-      if (dealerRef.current) emitDropsFly(betRect, dealerRef.current.getBoundingClientRect());
-    } else if (bankrollRef.current) {
-      emitDropsFly(betRect, bankrollRef.current.getBoundingClientRect());
+    if (!lost && dealerRef.current && bankrollRef.current) {
+      emitDropsFly(dealerRef.current.getBoundingClientRect(), bankrollRef.current.getBoundingClientRect());
     }
   }, [hand?.stage, hand?.id]);
 
@@ -118,7 +116,8 @@ export function ClassicPlay({ allowPeek }: ClassicPlayProps) {
       <ScreenHeader
         title={allowPeek ? 'Classic / Peek' : 'Quiz Practice'}
         subtitle={allowPeek ? 'Play hands, peek allowed' : 'Count stays hidden'}
-        backTo="/" />
+        backTo="/"
+        backLabel="Quit" />
 
       <Panel ariaLabel="Blackjack table" className="p-4">
         <div className="flex items-center justify-between gap-3">
@@ -157,7 +156,7 @@ export function ClassicPlay({ allowPeek }: ClassicPlayProps) {
         </div>
 
         <div className="mt-2">
-          <div className="flex items-center justify-between text-[9px] font-semibold uppercase tracking-[0.1em] text-gold-soft">
+          <div className="flex items-center justify-between text-[9px] font-bold uppercase tracking-[0.1em] text-gold">
             <span>Skill Chest Progress</span>
             {game.skillStreak >= 5 &&
             <span>🔥 x{skillMultiplierForStreak(game.skillStreak)}</span>
@@ -172,12 +171,6 @@ export function ClassicPlay({ allowPeek }: ClassicPlayProps) {
 
         <div className="mt-3 grid grid-cols-[1fr_112px] gap-3 rounded-2xl bg-felt p-3">
           <div className="flex min-w-0 flex-col gap-2">
-            {dealt &&
-            <div ref={betRef} className="flex items-center justify-center gap-1.5 self-center rounded-full bg-maroon-900/80 px-3 py-1 text-gold-soft ring-1 ring-gold/40">
-                <BloodDrop className="h-3 w-3 text-blood" />
-                <span className="tabular font-serif text-xs font-semibold">Pot: {hand?.hands[0].bet ?? game.currentBet}</span>
-              </div>
-            }
             <HandRow title="Dealer" cards={dealerCards} total={dealerTotalLabel} hideSecond={!hand?.holeRevealed} hasHole />
             {hand?.hands.map((h, i) =>
             <HandRow

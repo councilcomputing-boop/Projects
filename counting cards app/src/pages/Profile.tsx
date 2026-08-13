@@ -8,7 +8,11 @@ import { findPromoCode } from '../data/promoCodes';
 
 export function Profile() {
   const { user, signIn, signUp, signOut, resetPassword } = useAuth();
-  const game = useDealerGame(true);
+  // Peek and Quiz Practice are separate tables now (own shoe/hand/bankroll/stats), so
+  // "overall" stats here mean both, added together -- not just whichever one this page
+  // happens to read first.
+  const gamePeek = useDealerGame(true);
+  const gameQuiz = useDealerGame(false);
   const { autoEquipNewBacks, setAutoEquip, hasRedeemed, markCodeRedeemed, buyOrEquipCardBack } = useCardBack();
 
   const [mode, setMode] = useState<'signin' | 'signup'>('signin');
@@ -27,7 +31,7 @@ export function Profile() {
     const promo = findPromoCode(codeInput);
     if (!promo) { setCodeIsError(true); setCodeMessage("That code isn't valid."); return; }
     if (hasRedeemed(promo.code)) { setCodeIsError(true); setCodeMessage('Already redeemed on this device.'); return; }
-    if (promo.drops) game.addDrops(promo.drops);
+    if (promo.drops) gamePeek.addDrops(promo.drops);
     if (promo.cardBackId) buyOrEquipCardBack(promo.cardBackId);
     markCodeRedeemed(promo.code);
     setCodeIsError(false);
@@ -35,13 +39,33 @@ export function Profile() {
     setCodeInput('');
   }
 
-  const totalHands = game.stats.hands;
-  const accuracy = game.strategy.total > 0 ? Math.round(game.strategy.correct / game.strategy.total * 100) : 0;
+  const totalHands = gamePeek.stats.hands + gameQuiz.stats.hands;
+  const strategyCorrect = gamePeek.strategy.correct + gameQuiz.strategy.correct;
+  const strategyTotal = gamePeek.strategy.total + gameQuiz.strategy.total;
+  const accuracy = strategyTotal > 0 ? Math.round(strategyCorrect / strategyTotal * 100) : 0;
 
+  // Both games' copies of these preference fields are kept in sync by toggling both at
+  // once here, so "Strategy coaching" (for example) means the same thing everywhere
+  // even though each table stores its own copy.
   const settings = [
-  { id: 'strategy', label: 'Strategy coaching', on: game.coachingEnabled, toggle: game.setCoachingEnabled },
-  { id: 'bet', label: 'Bet coaching', on: game.betCoachingEnabled, toggle: game.setBetCoachingEnabled },
-  { id: 'own-count', label: 'Keep my own count', on: game.trackOwnCount, toggle: game.setTrackOwnCount },
+  {
+    id: 'strategy',
+    label: 'Strategy coaching',
+    on: gamePeek.coachingEnabled,
+    toggle: (v: boolean) => { gamePeek.setCoachingEnabled(v); gameQuiz.setCoachingEnabled(v); }
+  },
+  {
+    id: 'bet',
+    label: 'Bet coaching',
+    on: gamePeek.betCoachingEnabled,
+    toggle: (v: boolean) => { gamePeek.setBetCoachingEnabled(v); gameQuiz.setBetCoachingEnabled(v); }
+  },
+  {
+    id: 'own-count',
+    label: 'Keep my own count',
+    on: gamePeek.trackOwnCount,
+    toggle: (v: boolean) => { gamePeek.setTrackOwnCount(v); gameQuiz.setTrackOwnCount(v); }
+  },
   { id: 'auto-equip', label: 'Auto-equip new card backs', on: autoEquipNewBacks, toggle: setAutoEquip }];
 
   async function handleSubmit() {
@@ -188,34 +212,34 @@ export function Profile() {
           <div className="rounded-xl bg-parch-mute px-4 py-3">
             <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-charcoal-soft">Win / Loss / Push</p>
             <p className="tabular mt-1 font-serif text-xl font-semibold leading-none text-charcoal">
-              {game.stats.win} / {game.stats.lose} / {game.stats.push}
+              {gamePeek.stats.win + gameQuiz.stats.win} / {gamePeek.stats.lose + gameQuiz.stats.lose} / {gamePeek.stats.push + gameQuiz.stats.push}
             </p>
           </div>
           <div className="rounded-xl bg-parch-mute px-4 py-3">
             <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-charcoal-soft">Blackjacks</p>
-            <p className="tabular mt-1 font-serif text-3xl font-semibold leading-none text-charcoal">{game.stats.blackjack}</p>
+            <p className="tabular mt-1 font-serif text-3xl font-semibold leading-none text-charcoal">{gamePeek.stats.blackjack + gameQuiz.stats.blackjack}</p>
           </div>
           <div className="rounded-xl bg-parch-mute px-4 py-3">
             <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-charcoal-soft">Quiz Accuracy</p>
             <p className="tabular mt-1 font-serif text-xl font-semibold leading-none text-charcoal">
-              RC {game.quiz.total ? Math.round(game.quiz.correct / game.quiz.total * 100) : 0}% · TC {game.quizTrue.total ? Math.round(game.quizTrue.correct / game.quizTrue.total * 100) : 0}%
+              RC {gameQuiz.quiz.total ? Math.round(gameQuiz.quiz.correct / gameQuiz.quiz.total * 100) : 0}% · TC {gameQuiz.quizTrue.total ? Math.round(gameQuiz.quizTrue.correct / gameQuiz.quizTrue.total * 100) : 0}%
             </p>
           </div>
           <div className="rounded-xl bg-parch-mute px-4 py-3">
             <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-charcoal-soft">Blood Drops</p>
             <p className="tabular mt-1 font-serif text-xl font-semibold leading-none text-charcoal">
-              {game.drops.toLocaleString()} / {game.dropsHigh.toLocaleString()}
+              {gamePeek.drops.toLocaleString()} / {gamePeek.dropsHigh.toLocaleString()}
             </p>
           </div>
         </div>
       </Panel>
 
       <Panel label="Recent Hands">
-        {game.handHistory.length === 0 ?
+        {gamePeek.handHistory.length === 0 && gameQuiz.handHistory.length === 0 ?
         <p className="text-sm text-charcoal-soft">No hands played yet.</p> :
 
         <ul>
-            {game.handHistory.slice(0, 10).map((h, i) =>
+            {[...gamePeek.handHistory, ...gameQuiz.handHistory].slice(0, 10).map((h, i) =>
           <li key={i} className={`flex items-center gap-4 py-3 ${i > 0 ? 'border-t border-parch-line' : ''}`}>
                 <span className="flex-1 font-serif text-base font-semibold capitalize text-charcoal">
                   {h.result ?? 'Unknown'}

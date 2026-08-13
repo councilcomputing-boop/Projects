@@ -26,7 +26,11 @@ import {
   recommendedUnits } from
 '../utils/blackjackMath';
 
-const DEALER_KEY = 'cardCountingTrainerDealerState';
+// Peek and Quiz Practice each get their own independent table -- separate shoe, hand,
+// bankroll, bet, and stats -- rather than sharing one save under a single key.
+function storageKeyFor(allowPeek: boolean) {
+  return allowPeek ? 'cardCountingTrainerDealerState_peek' : 'cardCountingTrainerDealerState_quiz';
+}
 export const BET_MIN = 5, BET_MAX = 1000, BET_STEP = 5;
 export const PEEK_COST = 10, PEEK_REVEAL_MS = 3000;
 export const STRATEGY_TIP_COST = 15, BET_TIP_COST = 15, QUIZ_REWARD = 15;
@@ -61,9 +65,9 @@ function defaultDealerState(numDecks = 6): DealerGameState {
   };
 }
 
-function loadState(): DealerGameState {
+function loadState(allowPeek: boolean): DealerGameState {
   try {
-    const raw = localStorage.getItem(DEALER_KEY);
+    const raw = localStorage.getItem(storageKeyFor(allowPeek));
     if (!raw) return defaultDealerState();
     const parsed = JSON.parse(raw);
     const base = defaultDealerState(parsed.numDecks || 6);
@@ -201,7 +205,7 @@ export function useDealerGame(allowPeek: boolean) {
   const dropsCtx = useDrops();
   const cardBackCtx = useCardBack();
   const navigate = useNavigate();
-  const [state, setState] = useState<DealerGameState>(loadState);
+  const [state, setState] = useState<DealerGameState>(() => loadState(allowPeek));
   const [skillChestReveal, setSkillChestReveal] = useState<{tier: Rarity;results: AwardResult[];} | null>(null);
   const [isPeeking, setIsPeeking] = useState(false);
   const [betEstablished, setBetEstablished] = useState(false);
@@ -222,8 +226,8 @@ export function useDealerGame(allowPeek: boolean) {
   const trueCountAtBet = useRef(0);
 
   useEffect(() => {
-    localStorage.setItem(DEALER_KEY, JSON.stringify(state));
-  }, [state]);
+    localStorage.setItem(storageKeyFor(allowPeek), JSON.stringify(state));
+  }, [state, allowPeek]);
 
   const trueCountNow = calcTrueCount(state.runningCount, Math.max(0.5, state.shoe.length / 52));
 
