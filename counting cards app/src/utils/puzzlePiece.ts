@@ -79,22 +79,13 @@ export function puzzlePieceClipPath(index: number): string {
   return PIECE_POLYGONS[index % PUZZLE_PIECE_COUNT];
 }
 
-/** Recenters and rescales a point list to fill a fresh 0-100 box around (50,50), with
-    `padding` percentage points of margin on the tightest side. Used so a piece that
-    naturally sits off in a corner of the full 6-piece grid (which is where its raw
-    coordinates place it) still reads as centered when shown alone as an icon. */
-function normalizeToCenter(points: [number, number][], padding = 8): [number, number][] {
-  const xs = points.map(([x]) => x);
-  const ys = points.map(([, y]) => y);
-  const minX = Math.min(...xs), maxX = Math.max(...xs);
-  const minY = Math.min(...ys), maxY = Math.max(...ys);
-  const scale = (100 - padding * 2) / Math.max(maxX - minX, maxY - minY);
-  const cx = (minX + maxX) / 2, cy = (minY + maxY) / 2;
-  return points.map(([x, y]) => [50 + (x - cx) * scale, 50 + (y - cy) * scale]);
-}
-
-/** A single representative piece shape (tabs on three sides) for icons that need to
-    read as "one puzzle piece" without corresponding to a specific grid position --
-    recentered so it sits in the middle of its own box instead of wherever piece 3
-    naturally falls within the full 6-piece grid. */
-export const FRAGMENT_ICON_CLIP_PATH = `polygon(${normalizeToCenter(buildPiecePoints(1, 1)).map(([x, y]) => `${x}% ${y}%`).join(', ')})`;
+// An irregular, angular "broken shard" outline -- built by walking around a center
+// point at increasing angles with a hand-varied radius per step, so it reads as a
+// jagged chunk of glass/stone rather than a symmetric jigsaw tab. The x values are
+// pre-stretched (radius scaled ~1.3x horizontally) because every caller clips this
+// inside a 5:7 (taller-than-wide) card box, where identical x/y percentages would
+// otherwise land a shape drawn for a square box looking squashed and undersized.
+// Points intentionally run slightly outside 0-100 in a couple of spots -- the box's
+// own overflow-hidden trims them into a flat jagged edge right at the frame, which
+// reads as the shard being cut off rather than as a bug.
+export const FRAGMENT_ICON_CLIP_PATH = 'polygon(50% 4%, 72% 25%, 103% 35%, 83% 54%, 85% 82%, 55% 70%, 29% 84%, -1% 78%, 19% 50%, 5% 30%, 32% 26%)';
