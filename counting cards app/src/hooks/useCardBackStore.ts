@@ -25,6 +25,8 @@ interface StoreState {
   spinWheel: SpinWheelState;
   cardBacks: CardBacksState;
   autoEquipNewBacks: boolean;
+  /** Normalized (uppercase) promo codes already redeemed on this device. */
+  redeemedCodes: string[];
 }
 
 function defaultState(): StoreState {
@@ -33,7 +35,8 @@ function defaultState(): StoreState {
     adWatch: { count: 0, date: null },
     spinWheel: { lastSpinDate: null },
     cardBacks: { owned: ['classic'], equipped: 'classic', fragments: {} },
-    autoEquipNewBacks: false
+    autoEquipNewBacks: false,
+    redeemedCodes: []
   };
 }
 
@@ -48,7 +51,8 @@ function loadState(): StoreState {
       adWatch: { ...base.adWatch, ...parsed.adWatch },
       spinWheel: { ...base.spinWheel, ...parsed.spinWheel },
       cardBacks: { ...base.cardBacks, ...parsed.cardBacks },
-      autoEquipNewBacks: Boolean(parsed.autoEquipNewBacks)
+      autoEquipNewBacks: Boolean(parsed.autoEquipNewBacks),
+      redeemedCodes: Array.isArray(parsed.redeemedCodes) ? parsed.redeemedCodes : []
     };
   } catch {
     return defaultState();
@@ -144,6 +148,13 @@ export function useCardBackStore() {
     setState((prev) => ({ ...prev, spinWheel: { lastSpinDate: todayStr() } }));
   };
 
+  const hasRedeemed = (code: string) => state.redeemedCodes.includes(code.trim().toUpperCase());
+
+  const markCodeRedeemed = (code: string) => {
+    const normalized = code.trim().toUpperCase();
+    setState((prev) => prev.redeemedCodes.includes(normalized) ? prev : { ...prev, redeemedCodes: [...prev.redeemedCodes, normalized] });
+  };
+
   const claimDailyBonus = () => {
     const today = todayStr();
     setState((prev) => {
@@ -179,6 +190,8 @@ export function useCardBackStore() {
     setAutoEquip,
     markAdWatched,
     markSpinUsed,
-    claimDailyBonus
+    claimDailyBonus,
+    hasRedeemed,
+    markCodeRedeemed
   };
 }

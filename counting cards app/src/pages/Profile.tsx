@@ -4,11 +4,12 @@ import { Panel } from '../components/Panel';
 import { useAuth } from '../hooks/useAuth';
 import { useDealerGame } from '../hooks/useDealerGame';
 import { useCardBack } from '../contexts/CardBackContext';
+import { findPromoCode } from '../data/promoCodes';
 
 export function Profile() {
   const { user, signIn, signUp, signOut, resetPassword } = useAuth();
   const game = useDealerGame(true);
-  const { autoEquipNewBacks, setAutoEquip } = useCardBack();
+  const { autoEquipNewBacks, setAutoEquip, hasRedeemed, markCodeRedeemed, buyOrEquipCardBack } = useCardBack();
 
   const [mode, setMode] = useState<'signin' | 'signup'>('signin');
   const [email, setEmail] = useState('');
@@ -16,6 +17,23 @@ export function Profile() {
   const [busy, setBusy] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
   const [authMessage, setAuthMessage] = useState<string | null>(null);
+
+  const [codeInput, setCodeInput] = useState('');
+  const [codeMessage, setCodeMessage] = useState<string | null>(null);
+  const [codeIsError, setCodeIsError] = useState(false);
+
+  function handleRedeem() {
+    if (!codeInput.trim()) return;
+    const promo = findPromoCode(codeInput);
+    if (!promo) { setCodeIsError(true); setCodeMessage("That code isn't valid."); return; }
+    if (hasRedeemed(promo.code)) { setCodeIsError(true); setCodeMessage('Already redeemed on this device.'); return; }
+    if (promo.drops) game.addDrops(promo.drops);
+    if (promo.cardBackId) buyOrEquipCardBack(promo.cardBackId);
+    markCodeRedeemed(promo.code);
+    setCodeIsError(false);
+    setCodeMessage(`Redeemed: ${promo.description}`);
+    setCodeInput('');
+  }
 
   const totalHands = game.stats.hands;
   const accuracy = game.strategy.total > 0 ? Math.round(game.strategy.correct / game.strategy.total * 100) : 0;
@@ -104,6 +122,30 @@ export function Profile() {
               </button>
           }
           </>
+        }
+      </Panel>
+
+      <Panel label="Redeem Code">
+        <div className="flex gap-2">
+          <input
+            type="text"
+            value={codeInput}
+            onChange={(e) => { setCodeInput(e.target.value); setCodeMessage(null); }}
+            onKeyDown={(e) => { if (e.key === 'Enter') handleRedeem(); }}
+            placeholder="Enter a code"
+            autoCapitalize="characters"
+            className="min-w-0 flex-1 rounded-xl bg-white px-4 py-3 text-sm text-charcoal shadow-card" />
+          <button
+            type="button"
+            onClick={handleRedeem}
+            className="shrink-0 rounded-xl bg-maroon-800 px-5 py-3 text-sm font-bold text-gold shadow-card transition-colors hover:bg-maroon-700">
+            Redeem
+          </button>
+        </div>
+        {codeMessage &&
+        <p className={`mt-2 text-center text-xs font-semibold ${codeIsError ? 'text-blood-deep' : 'text-felt'}`}>
+            {codeMessage}
+          </p>
         }
       </Panel>
 
