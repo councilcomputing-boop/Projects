@@ -1,10 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { CheckIcon, LockIcon } from 'lucide-react';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { Panel } from '../components/Panel';
 import { BloodDrop } from '../components/BloodDrop';
 import { CardBackSprite } from '../components/CardBackSprite';
 import { ShardRevealCardBack } from '../components/ShardRevealCardBack';
+import { FragmentRevealOverlay } from '../components/FragmentRevealOverlay';
 import { RARITY_META, CARD_BACKS } from '../data/store';
 import { useCardBack } from '../contexts/CardBackContext';
 import { useDrops } from '../contexts/DropsContext';
@@ -22,9 +23,16 @@ export function CardBacks() {
     if (refund > 0) addDrops(refund);
   };
 
-  // Freeze what was already seen as of page load, so this visit's shard animations are
-  // based on a stable snapshot rather than a moving target as fragments update mid-visit.
+  // Frozen as of page load: which backs earned fragments since the last visit, and what
+  // they had before. The grid itself just shows the current (final) state statically --
+  // the dramatic reveal happens in the centered overlay below, one at a time, so nothing
+  // double-animates.
   const [seenSnapshot] = useState(() => lastSeenFragments);
+  const [revealQueue, setRevealQueue] = useState<string[]>(() =>
+  CARD_BACKS.
+  filter((item) => (fragments[item.id] || 0) > (seenSnapshot[item.id] || 0)).
+  map((item) => item.id));
+
 
   useEffect(() => {
     CARD_BACKS.forEach((item) => {
@@ -33,6 +41,11 @@ export function CardBacks() {
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const tileRefs = useRef<Record<string, HTMLLIElement | null>>({});
+  const currentRevealId = revealQueue[0] ?? null;
+  const currentRevealItem = currentRevealId ? CARD_BACKS.find((c) => c.id === currentRevealId) ?? null : null;
+  const targetRect = currentRevealId ? tileRefs.current[currentRevealId]?.getBoundingClientRect() ?? null : null;
 
   return (
     <div className="flex flex-col gap-4">
@@ -58,11 +71,15 @@ export function CardBacks() {
             const need = rarity.fragmentsNeeded;
 
             return (
-              <li key={item.id} className="flex flex-col gap-1.5">
+              <li
+                key={item.id}
+                ref={(el) => {tileRefs.current[item.id] = el;}}
+                className="flex flex-col gap-1.5">
                 <div className={`rounded-xl ring-2 ${isEquipped ? 'ring-gold' : 'ring-transparent'}`}>
                   {isOwned ?
                   <CardBackSprite back={item} /> :
-                  <ShardRevealCardBack back={item} have={have} need={need} previouslySeen={seenSnapshot[item.id] || 0} />
+
+                  <ShardRevealCardBack back={item} have={have} need={need} previouslySeen={have} />
                   }
                 </div>
                 <p className="text-center text-[11px] font-bold leading-tight text-charcoal">{item.name}</p>
@@ -106,6 +123,17 @@ export function CardBacks() {
           Sell All Card Backs
         </button>
       </Panel>
+
+      {currentRevealItem &&
+      <FragmentRevealOverlay
+        item={currentRevealItem}
+        have={fragments[currentRevealItem.id] || 0}
+        need={RARITY_META[currentRevealItem.rarity].fragmentsNeeded}
+        previouslySeen={seenSnapshot[currentRevealItem.id] || 0}
+        targetRect={targetRect}
+        onDone={() => setRevealQueue((q) => q.slice(1))} />
+
+      }
     </div>);
 
 }

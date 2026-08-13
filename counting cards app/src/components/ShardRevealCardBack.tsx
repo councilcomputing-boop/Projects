@@ -12,6 +12,10 @@ interface ShardRevealCardBackProps {
       animation; only newly-earned ones fly in, instead of the whole set replaying every
       visit regardless of what actually changed. */
   previouslySeen: number;
+  /** Extra delay (seconds) before newly-earned shards start flying in, so the card can
+      sit showing its current state for a beat first. Defaults to 0 for the shop grid's
+      own instant-settle usage. */
+  startDelay?: number;
 }
 
 const SHARD_COUNT = PUZZLE_PIECE_COUNT;
@@ -31,7 +35,7 @@ function shardOrigin(index: number) {
  * you've already earned play their fly-in again, so landing on the shop after winning
  * a fragment actually shows it filling in rather than just appearing already-done.
  */
-export function ShardRevealCardBack({ back, have, need, previouslySeen }: ShardRevealCardBackProps) {
+export function ShardRevealCardBack({ back, have, need, previouslySeen, startDelay = 0 }: ShardRevealCardBackProps) {
   const revealedCount = Math.min(SHARD_COUNT, Math.floor(have / need * SHARD_COUNT));
   const priorRevealedCount = Math.min(SHARD_COUNT, Math.floor(previouslySeen / need * SHARD_COUNT));
 
@@ -57,7 +61,7 @@ export function ShardRevealCardBack({ back, have, need, previouslySeen }: ShardR
               type: 'spring',
               stiffness: 260,
               damping: 20,
-              delay: revealed && !alreadySeen ? (i - priorRevealedCount) * 0.08 : 0
+              delay: revealed && !alreadySeen ? startDelay + (i - priorRevealedCount) * 0.08 : 0
             }}>
 
             <CardBackImage back={back} />
