@@ -4,7 +4,7 @@ import { ChestItem, rollFragmentTarget } from '../data/store';
 import { useCardBack } from '../contexts/CardBackContext';
 import { RarityReveal } from './RarityReveal';
 import { CardBackSprite, CardBackImage } from './CardBackSprite';
-import { FRAGMENT_ICON_CLIP_PATH } from '../utils/puzzlePiece';
+import { fragmentIconClipPath } from '../utils/puzzlePiece';
 import type { AwardResult } from '../hooks/useCardBackStore';
 
 interface ChestOpeningProps {
@@ -106,7 +106,8 @@ export function ChestOpening({ chest, quantity, onClose }: ChestOpeningProps) {
         back={results[0].back}
         resultLabel={resultLabel(results[0], chest)}
         onCollect={collect}
-        unlocked={results[0].unlocked || !!results[0].alreadyOwned} /> :
+        unlocked={results[0].unlocked || !!results[0].alreadyOwned}
+        have={results[0].have} /> :
 
 
       <div className="flex max-h-[80vh] max-w-xs flex-col items-center gap-4">
@@ -125,12 +126,13 @@ export function ChestOpening({ chest, quantity, onClose }: ChestOpeningProps) {
             <CardBackSprite back={result.back} width={70} /> :
 
             <div className="relative aspect-[5/7] overflow-hidden rounded-xl bg-ink shadow-card" style={{ width: 70 }}>
-                    <div className="absolute inset-0" style={{ clipPath: FRAGMENT_ICON_CLIP_PATH }}>
+                    <div className="absolute inset-0" style={{ clipPath: fragmentIconClipPath(result.have) }}>
                       <CardBackImage back={result.back} />
                     </div>
                   </div>
             }
                 <p className="text-center text-[9px] font-semibold leading-tight text-parch/80">{result.back.name}</p>
+                <p className="text-center text-[9px] text-gold-soft">{resultLabel(result, chest)}</p>
               </motion.div>
           )}
           </div>

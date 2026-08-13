@@ -8,10 +8,11 @@ function lerp(a: number, b: number, t: number) {
   return a + (b - a) * t;
 }
 
-// A jagged (straight-segment, not curved) tab: flat run, angle out to a point, angle
-// back in, flat run — reads as an angular puzzle knob rather than a smooth jigsaw curve.
-const TAB_T = [0, 0.32, 0.42, 0.5, 0.58, 0.68, 1];
-const TAB_PROFILE = [0, 0, 1.6, 2, 1.6, 0, 0];
+// A jagged fracture line: flat run, then a zigzag of alternating in/out kinks building
+// to a sharp central point and back down -- reads as a broken/cracked edge rather than
+// a smooth, symmetric jigsaw knob.
+const TAB_T = [0, 0.18, 0.3, 0.4, 0.5, 0.6, 0.7, 0.82, 1];
+const TAB_PROFILE = [0, 0.5, -0.4, 1.1, 2.1, 1.1, -0.4, 0.5, 0];
 
 /** Points for a horizontal internal edge from (x0,y) to (x1,y), left to right, bulging
     by sign*TAB_DEPTH in y. The piece on the other side of this edge must trace these
@@ -79,13 +80,12 @@ export function puzzlePieceClipPath(index: number): string {
   return PIECE_POLYGONS[index % PUZZLE_PIECE_COUNT];
 }
 
-// An irregular, angular "broken shard" outline -- built by walking around a center
-// point at increasing angles with a hand-varied radius per step, so it reads as a
-// jagged chunk of glass/stone rather than a symmetric jigsaw tab. The x values are
-// pre-stretched (radius scaled ~1.3x horizontally) because every caller clips this
-// inside a 5:7 (taller-than-wide) card box, where identical x/y percentages would
-// otherwise land a shape drawn for a square box looking squashed and undersized.
-// Points intentionally run slightly outside 0-100 in a couple of spots -- the box's
-// own overflow-hidden trims them into a flat jagged edge right at the frame, which
-// reads as the shard being cut off rather than as a bug.
-export const FRAGMENT_ICON_CLIP_PATH = 'polygon(50% 4%, 72% 25%, 103% 35%, 83% 54%, 85% 82%, 55% 70%, 29% 84%, -1% 78%, 19% 50%, 5% 30%, 32% 26%)';
+/** Which grid piece a given fragment count represents, for the "you got a fragment"
+    reveal icon -- cycles through the real 6 card-grid positions (1st fragment = piece
+    0, 2nd = piece 1, ... 7th wraps back to piece 0) so every reveal actually shows a
+    slice of that back's real artwork at a real position, not a generic placeholder
+    shape. This is what makes the reveal read as "a piece of the card" that visibly
+    belongs with the others once they all land on the Card Backs grid. */
+export function fragmentIconClipPath(have: number): string {
+  return puzzlePieceClipPath(Math.max(0, have - 1));
+}

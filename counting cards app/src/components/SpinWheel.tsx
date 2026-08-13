@@ -70,7 +70,8 @@ export function SpinWheel({ onClose }: SpinWheelProps) {
         back={prize}
         resultLabel={resultLabel}
         onCollect={finish}
-        unlocked={fragmentResult ? fragmentResult.unlocked || !!fragmentResult.alreadyOwned : undefined} /> :
+        unlocked={fragmentResult ? fragmentResult.unlocked || !!fragmentResult.alreadyOwned : undefined}
+        have={fragmentResult?.have ?? 1} /> :
 
       <div className="flex flex-col items-center gap-5">
           <p className="font-serif text-xl text-gold-soft">Spin the Wheel</p>

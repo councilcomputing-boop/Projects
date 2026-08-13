@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { RARITY_META, type Rarity } from '../data/store';
 import { CardBackSprite, CardBackImage } from './CardBackSprite';
-import { FRAGMENT_ICON_CLIP_PATH } from '../utils/puzzlePiece';
+import { fragmentIconClipPath } from '../utils/puzzlePiece';
 import type { AwardResult } from '../hooks/useCardBackStore';
 
 interface SkillChestRevealProps {
@@ -67,7 +67,7 @@ export function SkillChestReveal({ tier, results, onClose }: SkillChestRevealPro
             <CardBackSprite back={result.back} width={80} /> :
 
             <div className="relative aspect-[5/7] overflow-hidden rounded-xl bg-ink shadow-card" style={{ width: 80 }}>
-                  <div className="absolute inset-0" style={{ clipPath: FRAGMENT_ICON_CLIP_PATH }}>
+                  <div className="absolute inset-0" style={{ clipPath: fragmentIconClipPath(result.have) }}>
                     <CardBackImage back={result.back} />
                   </div>
                 </div>
