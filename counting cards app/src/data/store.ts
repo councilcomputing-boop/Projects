@@ -1,4 +1,4 @@
-export type Rarity = 'common' | 'rare' | 'epic' | 'legendary';
+export type Rarity = 'common' | 'rare' | 'epic' | 'legendary' | 'mythic';
 
 export const RARITY_META: Record<Rarity, {label: string;ring: string;text: string;bg: string;glow: string;fragmentsNeeded: number;}> = {
   common: {
@@ -32,6 +32,14 @@ export const RARITY_META: Record<Rarity, {label: string;ring: string;text: strin
     bg: 'bg-blood/20',
     glow: 'rgba(224, 24, 79, 0.85)',
     fragmentsNeeded: 12
+  },
+  mythic: {
+    label: 'Mythic',
+    ring: 'ring-[#c77dff]',
+    text: 'text-[#c77dff]',
+    bg: 'bg-[#c77dff]/20',
+    glow: 'rgba(199, 125, 255, 0.9)',
+    fragmentsNeeded: 18
   }
 };
 
@@ -63,9 +71,9 @@ export interface ChestItem {
 }
 
 export const chestItems: ChestItem[] = [
-{ id: 'crypt', name: 'Crypt Chest', icon: '🪦', dropCost: 5000, odds: { common: 70, rare: 25, epic: 5, legendary: 0 } },
-{ id: 'royal', name: 'Blood Royal Chest', icon: '👑', dropCost: 20000, odds: { common: 30, rare: 45, epic: 20, legendary: 5 } },
-{ id: 'vault', name: 'Ancient Vault Chest', icon: '🏺', dropCost: 50000, odds: { common: 0, rare: 25, epic: 45, legendary: 30 } }];
+{ id: 'crypt', name: 'Crypt Chest', icon: '🪦', dropCost: 5000, odds: { common: 70, rare: 25, epic: 5, legendary: 0, mythic: 0 } },
+{ id: 'royal', name: 'Blood Royal Chest', icon: '👑', dropCost: 20000, odds: { common: 30, rare: 45, epic: 20, legendary: 5, mythic: 0 } },
+{ id: 'vault', name: 'Ancient Vault Chest', icon: '🏺', dropCost: 50000, odds: { common: 0, rare: 25, epic: 45, legendary: 29, mythic: 1 } }];
 
 export function findChest(id: string): ChestItem | undefined {
   return chestItems.find((c) => c.id === id);
@@ -102,8 +110,11 @@ export const CARD_BACK_SHEET = {
 export interface CardBackItem {
   id: string;
   name: string;
-  row: number;
-  col: number;
+  /** Sprite-sheet position — omitted for backs that use a standalone `image` instead. */
+  row?: number;
+  col?: number;
+  /** Standalone art (e.g. Mythic backs) — takes precedence over row/col sheet-cropping. */
+  image?: string;
   price: number;
   rarity: Rarity;
   fx?: boolean;
@@ -131,7 +142,9 @@ export const CARD_BACKS: CardBackItem[] = [
 { id: 'draculaseal', name: "Dracula's Seal", row: 3, col: 1, price: 25000, rarity: 'legendary', fx: true },
 { id: 'eternalnight', name: 'Eternal Night', row: 3, col: 2, price: 30000, rarity: 'legendary', fx: true },
 { id: 'fullmoon', name: 'Full Moon Curse', row: 3, col: 3, price: 40000, rarity: 'legendary', fx: true },
-{ id: 'vampirehoard', name: "Vampire's Hoard", row: 3, col: 4, price: 60000, rarity: 'legendary', fx: true }];
+{ id: 'vampirehoard', name: "Vampire's Hoard", row: 3, col: 4, price: 60000, rarity: 'mythic', fx: true },
+{ id: 'crimsonthrone', name: 'Crimson Throne', image: '/cardbacks/mythic-crimson-throne.jpg', price: 75000, rarity: 'mythic', fx: true },
+{ id: 'violetrequiem', name: 'Violet Requiem', image: '/cardbacks/mythic-violet-requiem.jpg', price: 90000, rarity: 'mythic', fx: true }];
 
 export function findCardBack(id: string): CardBackItem {
   return CARD_BACKS.find((b) => b.id === id) ?? CARD_BACKS[0];
@@ -154,7 +167,7 @@ fragments: Record<string, number>)
   const total = (Object.values(odds) as number[]).reduce((a, b) => a + b, 0);
   let r = Math.random() * total;
   let rarity: Rarity = 'common';
-  for (const key of ['common', 'rare', 'epic', 'legendary'] as Rarity[]) {
+  for (const key of ['common', 'rare', 'epic', 'legendary', 'mythic'] as Rarity[]) {
     const w = odds[key] || 0;
     if (r < w) { rarity = key; break; }
     r -= w;
