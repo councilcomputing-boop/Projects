@@ -42,6 +42,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 
 /* ── Content ──────────────────────────────────────────────── */
 #C{padding:16px 14px 110px}
+#C.hidden{display:none!important}
 
 /* ── Login ────────────────────────────────────────────────── */
 .login-wrap{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px 20px;background:var(--ink)}
@@ -319,7 +320,7 @@ select.finput{cursor:pointer}
 </div>
 
 <!-- MAIN APP ──────────────────────────────────────────────── -->
-<div id="C" style="display:none">
+<div id="C" class="hidden">
 
   <!-- Groups -->
   <div class="view active" id="viewGroups">
@@ -656,7 +657,7 @@ auth.onAuthStateChanged(user=>{
   if(user){
     document.getElementById('loginWrap').style.display='none';
     document.getElementById('hdr').style.display='flex';
-    document.getElementById('C').style.display='block';
+    document.getElementById('C').classList.remove('hidden');
     const av=document.getElementById('hdrAvatar');
     const name=user.displayName||user.email;
     av.textContent=name[0].toUpperCase();
@@ -671,7 +672,7 @@ auth.onAuthStateChanged(user=>{
   }else{
     document.getElementById('loginWrap').style.display='flex';
     document.getElementById('hdr').style.display='none';
-    document.getElementById('C').style.display='none';
+    document.getElementById('C').classList.add('hidden');
     document.getElementById('fab').style.display='none';
     document.getElementById('hdrAdminBtn').style.display='none';
     cleanup();
