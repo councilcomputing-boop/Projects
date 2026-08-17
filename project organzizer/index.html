@@ -1605,6 +1605,7 @@ async function saveSenderProfile(){
     senderProfile={name,email,company};
     toast('Sender info saved.');
     goBack();
+    renderOutreachList();
   }catch(e){alert('Error: '+e.message);btn.disabled=false;btn.textContent='Save';}
 }
 function renderOutreachList(){
