@@ -476,6 +476,27 @@ select.finput{cursor:pointer}
     </div>
   </div>
 
+  <!-- Sender Info (outreach profile — used to auto-fill/sign outreach emails) -->
+  <div class="view" id="viewSenderProfile">
+    <div class="form-section">
+      <div class="fg">
+        <label class="flabel">Your Name</label>
+        <input class="finput" id="spName" type="text" placeholder="e.g. Hayes McNeill" maxlength="60">
+      </div>
+      <div class="fg">
+        <label class="flabel">Your Email</label>
+        <input class="finput" id="spEmail" type="email" placeholder="you@yourcompany.com">
+      </div>
+      <div class="fg" style="margin-bottom:0">
+        <label class="flabel">Company Name</label>
+        <input class="finput" id="spCompany" type="text" placeholder="e.g. Council Computing" maxlength="80">
+      </div>
+    </div>
+    <div style="margin-top:4px">
+      <button class="btn btn-ink" id="spSaveBtn" onclick="saveSenderProfile()">Save</button>
+    </div>
+  </div>
+
   <!-- Desktop-only: shown in the right pane when nothing is selected -->
   <div class="split-hint" id="splitEmptyHint">
     <div class="split-hint-icon">📋</div>
@@ -604,6 +625,7 @@ let currentMetrics=[],unsubMetrics=null;
 let currentTasks=[],unsubTasks=null;
 let resources=[],unsubResources=null,editingResourceId=null;
 let outreachItems=[],unsubOutreach=null,currentOutreachId=null,editingOutreachId=null,preMembersView='list';
+let senderProfile={name:'',email:'',company:''};
 const OUTREACH_STATUS_LABEL={pending:'Pending',responded:'Responded',no_response:'No Response'};
 const OUTREACH_STATUS_BADGE={pending:'paused',responded:'active',no_response:'done'};
 const OUTREACH_STATUS_COLOR={pending:'#f59e0b',responded:'#10b981',no_response:'#94a3b8'};
@@ -668,6 +690,7 @@ auth.onAuthStateChanged(user=>{
     ensureUserDoc(user).then(role=>{
       myRole=role;
       document.getElementById('hdrAdminBtn').style.display=role==='admin'?'flex':'none';
+      if(currentView==='outreach')renderOutreachList();
     });
   }else{
     document.getElementById('loginWrap').style.display='flex';
@@ -682,7 +705,11 @@ async function ensureUserDoc(user){
   try{
     const ref=usersCol().doc(user.uid);
     const snap=await ref.get();
-    if(snap.exists)return snap.data().role||'member';
+    if(snap.exists){
+      const d=snap.data();
+      senderProfile={name:d.senderName||'',email:d.senderEmail||'',company:d.senderCompany||''};
+      return d.role||'member';
+    }
     await ref.set({name:myName(),email:user.email,role:'member',createdAt:Date.now()});
     return'member';
   }catch(e){
@@ -767,6 +794,8 @@ function showView(name){
     renderResources();
   }else if(name==='resourceForm'){
     back.style.display='block';
+  }else if(name==='senderProfile'){
+    title.textContent='Sender Info';back.style.display='block';
   }
   window.scrollTo(0,0);
 }
@@ -800,6 +829,7 @@ function goBack(){
   else if(currentView==='admin')showView('groups');
   else if(currentView==='resources')showView('groups');
   else if(currentView==='resourceForm')showView('resources');
+  else if(currentView==='senderProfile')showView('outreach');
 }
 function hdrCtxClick(){
   if(WORKSPACE_VIEWS.includes(currentView))showMembers();
@@ -1544,12 +1574,46 @@ function startListeningToOutreach(){
     }
   },err=>console.error(err));
 }
+function senderProfileBannerHtml(){
+  const complete=senderProfile.name&&senderProfile.email;
+  if(!complete){
+    return `<div class="card" style="margin-bottom:12px">
+      <div style="font-weight:700;margin-bottom:4px">Set up your sender info</div>
+      <div style="font-size:13px;color:var(--muted);margin-bottom:12px">Add your name, email, and company once — every outreach email will sign itself automatically instead of asking again.</div>
+      <button class="btn btn-blue btn-sm" onclick="startEditSenderProfile()">Set Up Now</button>
+    </div>`;
+  }
+  return `<div style="display:flex;justify-content:flex-end;margin-bottom:10px">
+    <button class="btn btn-ghost btn-sm" onclick="startEditSenderProfile()">✏️ ${esc(senderProfile.name)}${senderProfile.company?' · '+esc(senderProfile.company):''}</button>
+  </div>`;
+}
+function startEditSenderProfile(){
+  document.getElementById('spName').value=senderProfile.name||'';
+  document.getElementById('spEmail').value=senderProfile.email||'';
+  document.getElementById('spCompany').value=senderProfile.company||'';
+  document.getElementById('spSaveBtn').textContent='Save';
+  showView('senderProfile');
+}
+async function saveSenderProfile(){
+  const name=document.getElementById('spName').value.trim();
+  const email=document.getElementById('spEmail').value.trim();
+  const company=document.getElementById('spCompany').value.trim();
+  const btn=document.getElementById('spSaveBtn');
+  btn.disabled=true;btn.textContent='Saving…';
+  try{
+    await usersCol().doc(currentUser.uid).set({senderName:name,senderEmail:email,senderCompany:company},{merge:true});
+    senderProfile={name,email,company};
+    toast('Sender info saved.');
+    goBack();
+  }catch(e){alert('Error: '+e.message);btn.disabled=false;btn.textContent='Save';}
+}
 function renderOutreachList(){
   const el=document.getElementById('outreachList');
   if(!el)return;
   const tabs=workspaceTabsHtml('outreach');
+  const banner=senderProfileBannerHtml();
   if(outreachItems.length===0){
-    el.innerHTML=tabs+`<div class="empty-state"><div class="empty-icon">📮</div><div class="empty-title">No outreach yet</div><div class="empty-sub">Tap "New Outreach" to log your first contact.</div></div>`;
+    el.innerHTML=tabs+banner+`<div class="empty-state"><div class="empty-icon">📮</div><div class="empty-title">No outreach yet</div><div class="empty-sub">Tap "New Outreach" to log your first contact.</div></div>`;
     return;
   }
   const sorted=[...outreachItems].sort((a,b)=>{
@@ -1559,7 +1623,7 @@ function renderOutreachList(){
   if(isDesktopSplit()&&currentView==='outreach'&&!currentOutreachId&&sorted.length){
     showOutreachDetail(sorted[0].id);
   }
-  el.innerHTML=tabs+sorted.map(o=>{
+  el.innerHTML=tabs+banner+sorted.map(o=>{
     const sel=o.id===currentOutreachId?' sel':'';
     const statusBadge=`<span class="badge badge-${OUTREACH_STATUS_BADGE[o.status]||'done'}">${OUTREACH_STATUS_LABEL[o.status]||o.status}</span>`;
     return `<div class="proj-card${sel}" data-id="${o.id}" style="border-left-color:${OUTREACH_STATUS_COLOR[o.status]||'#94a3b8'}" onclick="showOutreachDetail('${o.id}')">
@@ -1606,9 +1670,11 @@ async function sendOutreachEmail(){
   const o=outreachItems.find(x=>x.id===currentOutreachId);if(!o||!o.contactEmail)return;
   const btn=document.getElementById('sendEmailBtn');
   if(btn){btn.disabled=true;btn.textContent='Sending…';}
+  const sigLines=[senderProfile.name||myName(),senderProfile.company,senderProfile.email].filter(Boolean);
+  const body=(o.message||'')+(sigLines.length?`\n\n—\n${sigLines.join('\n')}`:'');
   try{
     await emailjs.send(EMAILJS_SERVICE_ID,EMAILJS_TEMPLATE_ID,{
-      to_email:o.contactEmail,company:o.company,subject:o.subject||'',message:o.message||'',from_name:myName()
+      to_email:o.contactEmail,company:o.company,subject:o.subject||'',message:body,from_name:senderProfile.name||myName()
     });
     await outreachCol().doc(o.id).update({sentAt:Date.now()});
     toast('Email sent!');
