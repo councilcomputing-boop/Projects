@@ -9,6 +9,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-functions-compat.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -469,6 +470,7 @@ select.finput{cursor:pointer}
       <div class="fg" style="margin-bottom:0">
         <label class="flabel">Message</label>
         <textarea class="finput" id="oMessage" placeholder="Write the outreach message..."></textarea>
+        <div style="margin-top:8px"><button type="button" class="btn btn-ghost btn-sm" id="aiDraftBtn" onclick="draftOutreachWithAI()">✨ Draft with AI</button></div>
       </div>
     </div>
     <div style="margin-top:4px">
@@ -570,7 +572,7 @@ select.finput{cursor:pointer}
 // ── Firebase ──────────────────────────────────────────────────────────────────
 const firebaseConfig={apiKey:'AIzaSyAr1NqRx2JDO7nkRKSm30f9bRDfaDGcXso',authDomain:'project-tracker-4fdf1.firebaseapp.com',projectId:'project-tracker-4fdf1',storageBucket:'project-tracker-4fdf1.firebasestorage.app',messagingSenderId:'826880137148',appId:'1:826880137148:web:12b5675820ce484be5fdb9'};
 firebase.initializeApp(firebaseConfig);
-const auth=firebase.auth(), db=firebase.firestore();
+const auth=firebase.auth(), db=firebase.firestore(), functions=firebase.functions();
 
 // ── EmailJS (outreach sending) ──────────────────────────────────────────────
 // Fill these in from your EmailJS account (emailjs.com) — Service ID, Template ID, Public Key.
@@ -1771,6 +1773,19 @@ async function saveOutreach(){
     }
     editingOutreachId=null;showOutreachDetail(currentOutreachId);
   }catch(e){alert('Error: '+e.message);btn.disabled=false;btn.textContent=editingOutreachId?'Save Changes':'Save Outreach';}
+}
+async function draftOutreachWithAI(){
+  const company=document.getElementById('oCompany').value.trim();
+  if(!company){alert('Enter a company/organization name first.');document.getElementById('oCompany').focus();return;}
+  const type=document.getElementById('oType').value;
+  const btn=document.getElementById('aiDraftBtn');
+  btn.disabled=true;btn.textContent='Drafting…';
+  try{
+    const draft=functions.httpsCallable('draftOutreachEmail');
+    const res=await draft({company,type,senderName:senderProfile.name,senderCompany:senderProfile.company});
+    document.getElementById('oMessage').value=res.data.message||'';
+  }catch(e){alert('Error drafting email: '+(e?.message||e));}
+  btn.disabled=false;btn.textContent='✨ Draft with AI';
 }
 async function deleteOutreach(){
   const o=outreachItems.find(x=>x.id===currentOutreachId);if(!o)return;
