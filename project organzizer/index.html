@@ -626,6 +626,7 @@ let currentTasks=[],unsubTasks=null;
 let resources=[],unsubResources=null,editingResourceId=null;
 let outreachItems=[],unsubOutreach=null,currentOutreachId=null,editingOutreachId=null,preMembersView='list';
 let senderProfile={name:'',email:'',company:''};
+let respondingOutreachId=null;
 const OUTREACH_STATUS_LABEL={pending:'Pending',responded:'Responded',no_response:'No Response'};
 const OUTREACH_STATUS_BADGE={pending:'paused',responded:'active',no_response:'done'};
 const OUTREACH_STATUS_COLOR={pending:'#f59e0b',responded:'#10b981',no_response:'#94a3b8'};
@@ -1652,12 +1653,24 @@ function renderOutreachDetailAll(o){
     <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:4px">${esc(o.subject||'')}</div>
     <div class="proj-desc-full">${o.message?esc(o.message):'<span style="color:var(--muted);font-style:italic">No message written.</span>'}</div>`;
   document.getElementById('outreachDetailActions').innerHTML=`
+    ${o.convertedProjectId?`<div style="margin-bottom:14px"><button class="btn btn-blue btn-sm" onclick="showDetail('${o.convertedProjectId}')">📋 Open Project</button></div>`:''}
     <div class="section-title" style="margin-bottom:10px">Status</div>
+    ${respondingOutreachId===o.id?`
+    <div class="clockout-form">
+      <label class="flabel">What did they say? <span style="color:var(--muted);font-weight:400">(optional)</span></label>
+      <textarea class="finput" id="outreachResponseNotes" placeholder="Paste or summarize their reply...">${o.responseNotes?esc(o.responseNotes):''}</textarea>
+    </div>
+    <div class="btn-row" style="margin-bottom:12px">
+      <button class="btn btn-ink btn-sm" onclick="confirmOutreachResponse('${o.id}')">Save${o.convertedProjectId?'':' & Start Project'}</button>
+      <button class="btn btn-ghost btn-sm" onclick="cancelOutreachResponse()">Cancel</button>
+    </div>
+    `:`
     <div class="btn-row" style="margin-bottom:${o.status!=='pending'?'10px':'12px'}">
-      <button class="btn ${o.status==='responded'?'btn-green':'btn-ghost'} btn-sm" onclick="setOutreachStatus('responded')">Responded</button>
+      <button class="btn ${o.status==='responded'?'btn-green':'btn-ghost'} btn-sm" onclick="markResponded('${o.id}')">Responded</button>
       <button class="btn ${o.status==='no_response'?'btn-red':'btn-ghost'} btn-sm" onclick="setOutreachStatus('no_response')">No Response</button>
     </div>
     ${o.status!=='pending'?`<button class="btn btn-ghost btn-sm" onclick="setOutreachStatus('pending')" style="margin-bottom:12px">Reset to Pending</button>`:''}
+    `}
     <hr style="border:none;border-top:1px solid var(--border);margin:4px 0 14px">
     <div class="section-title" style="margin-bottom:10px">Send</div>
     ${EMAILJS_READY?`
@@ -1665,6 +1678,38 @@ function renderOutreachDetailAll(o){
     ${!o.contactEmail?'<div class="empty-hint">Add a contact email to send.</div>':''}
     ${o.sentAt?`<div style="font-size:12px;color:var(--muted);margin-top:8px">Sent ${formatDateTime(o.sentAt)}</div>`:''}
     `:`<div class="empty-hint">Email sending isn't set up yet — add your EmailJS Service ID, Template ID, and Public Key near the top of the script.</div>`}`;
+}
+function markResponded(id){
+  const o=outreachItems.find(x=>x.id===id);if(!o)return;
+  if(o.status==='responded'){return;}
+  respondingOutreachId=id;
+  renderOutreachDetailAll(o);
+}
+function cancelOutreachResponse(){
+  respondingOutreachId=null;
+  const o=outreachItems.find(x=>x.id===currentOutreachId);
+  if(o)renderOutreachDetailAll(o);
+}
+async function confirmOutreachResponse(id){
+  const o=outreachItems.find(x=>x.id===id);if(!o)return;
+  const notes=(document.getElementById('outreachResponseNotes')?.value||'').trim();
+  try{
+    await outreachCol().doc(id).update({status:'responded',responseNotes:notes});
+    respondingOutreachId=null;
+    if(o.convertedProjectId){
+      showDetail(o.convertedProjectId);
+      return;
+    }
+    const ref=await projectsCol().add({
+      name:o.company,
+      description:notes||`Responded to outreach${o.subject?': '+o.subject:''}.`,
+      status:'active',links:[],software:[],activeSessions:{},
+      createdAt:Date.now(),createdBy:currentUser.uid,createdByName:myName()
+    });
+    await outreachCol().doc(id).update({convertedProjectId:ref.id});
+    toast('Project created — logging it now.');
+    showDetail(ref.id);
+  }catch(e){alert('Error: '+e.message);}
 }
 async function sendOutreachEmail(){
   if(!EMAILJS_READY)return;
