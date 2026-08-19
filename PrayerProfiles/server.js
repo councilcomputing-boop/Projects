@@ -4,8 +4,10 @@ const express    = require('express');
 const fs         = require('fs');
 const path       = require('path');
 const https      = require('https');
+const crypto     = require('crypto');
 const { URL }    = require('url');
 const multer     = require('multer');
+const sharp      = require('sharp');
 const bcrypt     = require('bcryptjs');
 const jwt        = require('jsonwebtoken');
 const helmet     = require('helmet');
@@ -90,21 +92,43 @@ const apiLimiter = rateLimit({
 });
 
 // ── Multer ────────────────────────────────────────────────────────────────────
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, UPLOADS),
-  filename:    (req, file, cb) => {
-    const ext = path.extname(file.originalname).toLowerCase();
-    cb(null, `profile_${Date.now()}${ext}`);
-  },
-});
+// Uploads are held in memory only — never trust the client-supplied mimetype or
+// filename/extension for what actually lands on disk (both are attacker-controlled).
+// processAndSavePhoto() below decodes and re-encodes every upload with sharp, which
+// validates the real image content and produces the on-disk filename itself.
 const upload = multer({
-  storage,
+  storage: multer.memoryStorage(),
   limits: { fileSize: 5 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
     if (/^image\//.test(file.mimetype)) cb(null, true);
     else cb(new Error('Only image files are allowed'));
   },
 });
+
+// Wraps multer's upload.single('photo') so file-too-large / wrong-mimetype
+// rejections come back as a clean JSON 400 instead of Express's default HTML error page.
+function uploadPhoto(req, res, next) {
+  upload.single('photo')(req, res, (err) => {
+    if (err) return res.status(400).json({ error: err.message || 'Invalid photo upload' });
+    next();
+  });
+}
+
+// Decodes + re-encodes an uploaded image buffer with sharp, which both validates
+// that it's genuinely a decodable image (rejecting anything spoofed past the
+// mimetype check) and strips any non-image payload since the output bytes are
+// freshly generated, never a copy of the input. Always writes a server-chosen
+// .jpg filename — never derived from the client-supplied original filename.
+async function processAndSavePhoto(buffer) {
+  const jpegBuffer = await sharp(buffer)
+    .rotate()
+    .resize({ width: 1600, height: 1600, fit: 'inside', withoutEnlargement: true })
+    .jpeg({ quality: 82 })
+    .toBuffer();
+  const filename = `profile_${Date.now()}_${crypto.randomBytes(4).toString('hex')}.jpg`;
+  fs.writeFileSync(path.join(UPLOADS, filename), jpegBuffer);
+  return filename;
+}
 
 // ── Web Push (optional — enabled when VAPID env vars are set) ─────────────────
 let webpush = null;
@@ -143,7 +167,11 @@ function bumpMetric(db, key, n = 1) {
   db.metrics[day][key] = (db.metrics[day][key] || 0) + n;
 }
 function writeDB(data) {
-  fs.writeFileSync(DB_FILE, JSON.stringify(data, null, 2), 'utf8');
+  // Write to a temp file then rename over the real one — rename is atomic on the
+  // same filesystem, so a crash/kill mid-write can never leave profiles.json truncated.
+  const tmpFile = `${DB_FILE}.${process.pid}.tmp`;
+  fs.writeFileSync(tmpFile, JSON.stringify(data, null, 2), 'utf8');
+  fs.renameSync(tmpFile, DB_FILE);
 }
 function deletePhoto(photoUrl) {
   if (!photoUrl) return;
@@ -275,13 +303,19 @@ app.get('/api/profiles', requireAuth, (req, res) => {
   res.json(readDB().profiles.filter(p => p.userId === req.user.id));
 });
 
-app.post('/api/profiles', requireAuth, upload.single('photo'), (req, res) => {
+app.post('/api/profiles', requireAuth, uploadPhoto, async (req, res) => {
   const name = (req.body.name || '').trim();
-  if (!name) {
-    if (req.file) deletePhoto('/uploads/' + req.file.filename);
-    return res.status(400).json({ error: 'Name is required' });
-  }
+  if (!name) return res.status(400).json({ error: 'Name is required' });
   if (name.length > 100) return res.status(400).json({ error: 'Name is too long (max 100 characters)' });
+
+  let photo_url = null;
+  if (req.file) {
+    try {
+      photo_url = '/uploads/' + await processAndSavePhoto(req.file.buffer);
+    } catch {
+      return res.status(400).json({ error: 'That file could not be read as an image' });
+    }
+  }
 
   const db      = readDB();
   const profile = {
@@ -293,7 +327,7 @@ app.post('/api/profiles', requireAuth, upload.single('photo'), (req, res) => {
     email:            (req.body.email        || '').trim().slice(0, 200),
     birthday:         (req.body.birthday     || '').trim().slice(0, 30),
     notes:            (req.body.notes        || '').trim().slice(0, 5000),
-    photo_url:        req.file ? '/uploads/' + req.file.filename : null,
+    photo_url,
     last_prayed_date: null,
     last_prayed_at:   null,
     prayer_notes:     [],
@@ -307,25 +341,26 @@ app.post('/api/profiles', requireAuth, upload.single('photo'), (req, res) => {
   res.status(201).json(profile);
 });
 
-app.put('/api/profiles/:id', requireAuth, upload.single('photo'), (req, res) => {
+app.put('/api/profiles/:id', requireAuth, uploadPhoto, async (req, res) => {
   const name = (req.body.name || '').trim();
-  if (!name) {
-    if (req.file) deletePhoto('/uploads/' + req.file.filename);
-    return res.status(400).json({ error: 'Name is required' });
-  }
+  if (!name) return res.status(400).json({ error: 'Name is required' });
   if (name.length > 100) return res.status(400).json({ error: 'Name is too long' });
 
   const db  = readDB();
   const idx = db.profiles.findIndex(p => p.id === Number(req.params.id) && p.userId === req.user.id);
-  if (idx === -1) {
-    if (req.file) deletePhoto('/uploads/' + req.file.filename);
-    return res.status(404).json({ error: 'Not found' });
-  }
+  if (idx === -1) return res.status(404).json({ error: 'Not found' });
+
   const prev      = db.profiles[idx];
   let   photo_url = prev.photo_url;
   if (req.file) {
+    let newFilename;
+    try {
+      newFilename = await processAndSavePhoto(req.file.buffer);
+    } catch {
+      return res.status(400).json({ error: 'That file could not be read as an image' });
+    }
     deletePhoto(prev.photo_url);
-    photo_url = '/uploads/' + req.file.filename;
+    photo_url = '/uploads/' + newFilename;
   } else if (req.body.remove_photo === 'true') {
     deletePhoto(prev.photo_url);
     photo_url = null;
