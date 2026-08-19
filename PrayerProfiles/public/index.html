@@ -1197,6 +1197,15 @@
             </div>
           </div>
         </div>
+        <button class="settings-row" type="button" onclick="toggleEmailEdit()">
+          <span id="settings-email-label">Email</span>
+          <span class="chev"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="m9 6 6 6-6 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+        </button>
+        <div class="fg" id="email-edit-row" style="display:none; padding:0 4px 10px">
+          <input id="settings-email-input" type="email" placeholder="you@example.com" autocomplete="email">
+          <div class="auth-err" id="settings-email-err"></div>
+          <button class="btn-prim" style="margin-top:6px" onclick="saveEmail()">Save Email</button>
+        </div>
 
         <div class="group-label" style="margin-top:20px">App</div>
         <button class="settings-row" type="button" onclick="openInstallModal()">
@@ -1646,6 +1655,39 @@
       document.getElementById('settings-username').textContent = username;
       document.getElementById('settings-avatar').textContent   = initials(username);
     }
+    refreshAccountEmail();
+  }
+
+  // ── Account email (added for password-reset support) ──
+  let currentEmail = null;
+  function setEmailLabel(email) {
+    currentEmail = email || null;
+    document.getElementById('settings-email-label').textContent = currentEmail || 'Add email address';
+  }
+  async function refreshAccountEmail() {
+    const r = await api('/api/auth/me');
+    if (r && r.ok) setEmailLabel((await r.json()).email);
+  }
+  function toggleEmailEdit() {
+    const row = document.getElementById('email-edit-row');
+    const showing = row.style.display !== 'none';
+    row.style.display = showing ? 'none' : 'block';
+    if (!showing) {
+      document.getElementById('settings-email-input').value = currentEmail || '';
+      document.getElementById('settings-email-err').textContent = '';
+    }
+  }
+  async function saveEmail() {
+    const email = document.getElementById('settings-email-input').value.trim();
+    const errEl = document.getElementById('settings-email-err');
+    errEl.textContent = '';
+    if (!email) { errEl.textContent = 'Enter an email address'; return; }
+    const r = await api('/api/auth/email', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email }) });
+    if (!r) return;
+    const data = await r.json();
+    if (!r.ok) { errEl.textContent = data.error; return; }
+    setEmailLabel(data.email);
+    document.getElementById('email-edit-row').style.display = 'none';
   }
 
   // ── Slide-out panels ──

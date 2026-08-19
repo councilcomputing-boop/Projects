@@ -398,7 +398,30 @@ app.post('/api/auth/login', loginLimiter, async (req, res) => {
 });
 
 app.get('/api/auth/me', requireAuth, (req, res) => {
-  res.json({ id: req.user.id, username: req.user.username });
+  const db   = readDB();
+  const user = (db.users || []).find(u => u.id === req.user.id);
+  res.json({ id: req.user.id, username: req.user.username, email: user?.email || null });
+});
+
+// Lets an account created before email was required (or anyone changing
+// address) add/update it — this is what makes "forgot password" reachable
+// for those older accounts, since it's the only way to get an email on file
+// after registration.
+app.put('/api/auth/email', requireAuth, (req, res) => {
+  const email = (req.body.email || '').trim().toLowerCase();
+  if (!email || email.length > 200 || !EMAIL_RE.test(email))
+    return res.status(400).json({ error: 'Enter a valid email address' });
+
+  const db   = readDB();
+  if (db.users.find(u => u.id !== req.user.id && (u.email || '').toLowerCase() === email))
+    return res.status(409).json({ error: 'An account with that email already exists' });
+
+  const user = db.users.find(u => u.id === req.user.id);
+  if (!user) return res.status(404).json({ error: 'Account not found' });
+
+  user.email = email;
+  writeDB(db);
+  res.json({ email: user.email });
 });
 
 // Lets a user download everything stored under their account as a single JSON
