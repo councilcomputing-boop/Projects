@@ -110,7 +110,13 @@
     .auth-tab.active { background: var(--surface); color: var(--text); box-shadow: 0 1px 4px rgba(44,31,14,0.12); }
     .auth-form { display: flex; flex-direction: column; gap: 14px; }
     .auth-err { color: var(--red); font-size: 12px; font-weight: 600; min-height: 16px; text-align: center; }
+    .auth-msg { color: var(--green); font-size: 12px; font-weight: 600; text-align: center; }
     .auth-submit { width: 100%; justify-content: center; padding: 10px; margin-top: 4px; font-size: 14px; }
+    .auth-link-btn {
+      background: none; border: none; color: var(--gold); font-size: 13px;
+      font-weight: 600; cursor: pointer; padding: 4px; font-family: inherit;
+    }
+    .auth-link-btn:hover { text-decoration: underline; }
     .auth-remember { display: flex; align-items: center; gap: 9px; cursor: pointer; font-size: 13px; color: var(--text2); user-select: none; }
     .auth-remember input[type="checkbox"] { display: none; }
     .auth-remember-box {
@@ -1023,11 +1029,16 @@
       </label>
       <div class="auth-err" id="l-err"></div>
       <button class="btn-prim auth-submit" onclick="doLogin()">Sign In</button>
+      <button class="auth-link-btn" onclick="showForgot()">Forgot password?</button>
     </div>
     <div id="register-form" class="auth-form" style="display:none">
       <div class="fg">
         <label>Username</label>
         <input id="r-user" type="text" placeholder="Choose a username" autocomplete="username">
+      </div>
+      <div class="fg">
+        <label>Email</label>
+        <input id="r-email" type="email" placeholder="you@example.com" autocomplete="email">
       </div>
       <div class="fg">
         <label>Password</label>
@@ -1039,6 +1050,16 @@
       </div>
       <div class="auth-err" id="r-err"></div>
       <button class="btn-prim auth-submit" onclick="doRegister()">Create Account</button>
+    </div>
+    <div id="forgot-form" class="auth-form" style="display:none">
+      <div class="fg">
+        <label>Email</label>
+        <input id="f-email" type="email" placeholder="you@example.com" autocomplete="email">
+      </div>
+      <div class="auth-err" id="f-err"></div>
+      <div class="auth-msg" id="f-msg"></div>
+      <button class="btn-prim auth-submit" onclick="doRequestReset()">Send Reset Link</button>
+      <button class="auth-link-btn" onclick="showLoginFromForgot()">Back to sign in</button>
     </div>
   </div>
   <div class="auth-verse">"Pray without ceasing." — 1 Thessalonians 5:17</div>
@@ -1180,6 +1201,12 @@
         <div class="group-label" style="margin-top:20px">App</div>
         <button class="settings-row" type="button" onclick="openInstallModal()">
           <span>Add to Home Screen</span>
+          <span class="chev"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="m9 6 6 6-6 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+        </button>
+
+        <div class="group-label" style="margin-top:20px">Data</div>
+        <button class="settings-row" type="button" onclick="doExportData()">
+          <span>Export My Data</span>
           <span class="chev"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="m9 6 6 6-6 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
         </button>
 
@@ -1565,21 +1592,46 @@
 
 <script>
   // ── Auth ──
-  const TOKEN_KEY = 'prayer_token';
-  function getToken()            { return localStorage.getItem(TOKEN_KEY) || sessionStorage.getItem(TOKEN_KEY); }
-  function setToken(t, remember) {
-    if (remember) { localStorage.setItem(TOKEN_KEY, t); sessionStorage.removeItem(TOKEN_KEY); }
-    else          { sessionStorage.setItem(TOKEN_KEY, t); localStorage.removeItem(TOKEN_KEY); }
+  // Access tokens are short-lived (15m) so they're kept in memory only — never
+  // written to localStorage/sessionStorage, since that's the thing an XSS bug
+  // would go looking for. The refresh token is what's persisted; it's opaque
+  // (not a JWT) and can be revoked server-side, which the access token can't be.
+  const REFRESH_KEY = 'prayer_refresh';
+  let accessToken = null;
+  function getRefreshToken()            { return localStorage.getItem(REFRESH_KEY) || sessionStorage.getItem(REFRESH_KEY); }
+  function setTokens(access, refresh, remember) {
+    accessToken = access;
+    if (remember) { localStorage.setItem(REFRESH_KEY, refresh); sessionStorage.removeItem(REFRESH_KEY); }
+    else          { sessionStorage.setItem(REFRESH_KEY, refresh); localStorage.removeItem(REFRESH_KEY); }
   }
-  function clearToken() { localStorage.removeItem(TOKEN_KEY); sessionStorage.removeItem(TOKEN_KEY); }
+  function clearTokens() { accessToken = null; localStorage.removeItem(REFRESH_KEY); sessionStorage.removeItem(REFRESH_KEY); }
+
+  // Exchanges the stored refresh token for a new access token (and a rotated
+  // refresh token). Returns true on success, false if the session is really gone.
+  async function refreshAccessToken() {
+    const refreshToken = getRefreshToken();
+    if (!refreshToken) return false;
+    const remembered = !!localStorage.getItem(REFRESH_KEY);
+    try {
+      const r = await fetch('/api/auth/refresh', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refreshToken }),
+      });
+      if (!r.ok) return false;
+      const data = await r.json();
+      setTokens(data.token, data.refreshToken, remembered);
+      return true;
+    } catch { return false; }
+  }
 
   async function api(url, options = {}) {
-    const token = getToken();
-    const r = await fetch(url, {
+    const doFetch = () => fetch(url, {
       ...options,
-      headers: { ...(token ? { 'Authorization': `Bearer ${token}` } : {}), ...(options.headers || {}) },
+      headers: { ...(accessToken ? { 'Authorization': `Bearer ${accessToken}` } : {}), ...(options.headers || {}) },
     });
-    if (r.status === 401) { clearToken(); showAuth(); return null; }
+    let r = await doFetch();
+    if (r.status === 401 && await refreshAccessToken()) r = await doFetch();
+    if (r.status === 401) { clearTokens(); showAuth(); return null; }
     return r;
   }
 
@@ -1614,8 +1666,28 @@
   function switchTab(tab) {
     document.getElementById('login-form').style.display    = tab === 'login'    ? 'flex' : 'none';
     document.getElementById('register-form').style.display = tab === 'register' ? 'flex' : 'none';
+    document.getElementById('forgot-form').style.display   = 'none';
     document.getElementById('tab-login').className    = 'auth-tab' + (tab === 'login'    ? ' active' : '');
     document.getElementById('tab-register').className = 'auth-tab' + (tab === 'register' ? ' active' : '');
+  }
+
+  function showForgot() {
+    document.getElementById('login-form').style.display  = 'none';
+    document.getElementById('forgot-form').style.display = 'flex';
+    document.getElementById('f-err').textContent = '';
+    document.getElementById('f-msg').textContent = '';
+  }
+  function showLoginFromForgot() { switchTab('login'); }
+
+  async function doRequestReset() {
+    const email = document.getElementById('f-email').value.trim();
+    const errEl = document.getElementById('f-err');
+    const msgEl = document.getElementById('f-msg');
+    errEl.textContent = ''; msgEl.textContent = '';
+    if (!email) { errEl.textContent = 'Enter your email'; return; }
+    const r    = await fetch('/api/auth/request-reset', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email }) });
+    const data = await r.json();
+    msgEl.textContent = data.message || 'If an account exists for that email, a reset link has been sent.';
   }
 
   async function doLogin() {
@@ -1627,31 +1699,46 @@
     const r    = await fetch('/api/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username, password }) });
     const data = await r.json();
     if (!r.ok) { errEl.textContent = data.error; return; }
-    setToken(data.token, document.getElementById('l-remember').checked);
+    setTokens(data.token, data.refreshToken, document.getElementById('l-remember').checked);
     showApp(data.username); load();
   }
 
   async function doRegister() {
     const username   = document.getElementById('r-user').value.trim();
+    const email      = document.getElementById('r-email').value.trim();
     const password   = document.getElementById('r-pass').value;
     const inviteCode = document.getElementById('r-code').value.trim();
     const errEl      = document.getElementById('r-err');
     errEl.textContent = '';
-    if (!username || !password || !inviteCode) { errEl.textContent = 'All fields are required'; return; }
-    const r    = await fetch('/api/auth/register', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username, password, inviteCode }) });
+    if (!username || !email || !password || !inviteCode) { errEl.textContent = 'All fields are required'; return; }
+    const r    = await fetch('/api/auth/register', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username, email, password, inviteCode }) });
     const data = await r.json();
     if (!r.ok) { errEl.textContent = data.error; return; }
-    setToken(data.token, true);
+    setTokens(data.token, data.refreshToken, true);
     showApp(data.username); load();
   }
 
-  function logout() { clearToken(); profiles = []; prayerLog = []; selectedId = null; closePanels(); showAuth(); }
+  function logout() {
+    const refreshToken = getRefreshToken();
+    if (refreshToken) fetch('/api/auth/logout', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ refreshToken }) }).catch(() => {});
+    clearTokens(); profiles = []; prayerLog = []; selectedId = null; closePanels(); showAuth();
+  }
+
+  async function doExportData() {
+    const r = await api('/api/export');
+    if (!r || !r.ok) return;
+    const blob = await r.blob();
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href = url; a.download = 'prayer-profiles-export.json';
+    document.body.appendChild(a); a.click(); a.remove();
+    URL.revokeObjectURL(url);
+  }
 
   async function initApp() {
-    const token = getToken();
-    if (!token) { showAuth(); return; }
-    const r = await fetch('/api/auth/me', { headers: { 'Authorization': `Bearer ${token}` } });
-    if (!r.ok) { clearToken(); showAuth(); return; }
+    if (!getRefreshToken() || !(await refreshAccessToken())) { clearTokens(); showAuth(); return; }
+    const r = await fetch('/api/auth/me', { headers: { 'Authorization': `Bearer ${accessToken}` } });
+    if (!r.ok) { clearTokens(); showAuth(); return; }
     const me = await r.json();
     showApp(me.username); load();
   }

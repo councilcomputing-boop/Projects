@@ -77,7 +77,7 @@
 <main class="page">
   <div class="page-eyebrow">Legal</div>
   <h1>Privacy Policy</h1>
-  <p class="meta">Effective date: June 14, 2026 &nbsp;·&nbsp; Last updated: July 14, 2026</p>
+  <p class="meta">Effective date: June 14, 2026 &nbsp;·&nbsp; Last updated: August 19, 2026</p>
 
   <div class="callout">
     <p><strong>Short version:</strong> Your prayer data stays on your device or your own server. We don't sell it, share it, or use it for advertising. Ever.</p>
@@ -89,7 +89,7 @@
   <h2>2. What Data We Collect</h2>
   <p>When you use Prayer Profiles, the following information is stored:</p>
   <ul>
-    <li><strong>Account information:</strong> your chosen username and a bcrypt-hashed (one-way encrypted) version of your password. Your plain-text password is never stored.</li>
+    <li><strong>Account information:</strong> your chosen username, your email address, and a bcrypt-hashed (one-way encrypted) version of your password. Your plain-text password is never stored. Your email address is used only for account recovery (password reset) — it is never shown to other users and never used for marketing.</li>
     <li><strong>Prayer profiles:</strong> names, relationship labels, phone numbers, email addresses, birthdays, and personal notes you enter for each person you pray for.</li>
     <li><strong>Prayer notes:</strong> the text of prayer requests you log, and — when you mark one answered — the date/time it was answered and any note you write about how it was answered.</li>
     <li><strong>Bible verses:</strong> scripture references and verse text you attach to profiles.</li>
@@ -139,6 +139,7 @@
     <li><strong>Google Fonts</strong> — The app loads fonts from <code>fonts.googleapis.com</code>. Google may log your IP address when serving these fonts. See <a href="https://policies.google.com/privacy" target="_blank" rel="noopener">Google's Privacy Policy</a>.</li>
     <li><strong>Browser push services</strong> — Only if you enable reminder notifications (see Section 6), reminder messages are delivered through your browser vendor's push infrastructure (e.g., Apple Push or Google FCM).</li>
     <li><strong>Apple iCloud CardDAV</strong> — Only when you explicitly use the iCloud sync feature, as described in Section 4.</li>
+    <li><strong>Resend</strong> — Password-reset emails (see Section 10) are sent through <a href="https://resend.com" target="_blank" rel="noopener">Resend</a>, a transactional email provider. Only your email address and the reset link are sent to Resend, and only when you request a password reset.</li>
   </ul>
   <p>Verse text is entered or pasted by you directly — the app no longer sends verse references to any external Bible service. We have no advertising networks, no third-party analytics services, and no social login providers. Our hosting provider (Fly.io) may keep standard infrastructure logs (such as request IP addresses) as part of operating the platform.</p>
 
@@ -152,7 +153,9 @@
   <p>We take reasonable steps to protect your data:</p>
   <ul>
     <li>Passwords are hashed using bcrypt (work factor 12) and are never stored in plain text.</li>
-    <li>Sessions use signed JSON Web Tokens (JWT) that expire after 30 days.</li>
+    <li>Sign-in uses a short-lived (15-minute) access token plus a long-lived refresh token; refresh tokens are stored server-side only as a one-way hash, which lets a session be revoked (e.g. on password reset or sign-out) rather than simply expiring on its own.</li>
+    <li>If you request a password reset, we email a single-use link that expires after 15 minutes. Completing a reset signs you out of all existing sessions.</li>
+    <li>Profile photo uploads are validated by decoding and re-encoding the actual image content on our server — a file that isn't a genuine image is rejected, regardless of its name or the type it claims to be.</li>
     <li>The web version enforces HTTPS.</li>
     <li>API endpoints are rate-limited to reduce brute-force risk.</li>
     <li>Security headers (CSP, X-Frame-Options, etc.) are applied to all responses.</li>

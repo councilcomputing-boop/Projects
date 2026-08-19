@@ -48,7 +48,7 @@ app.use(helmet({
       styleSrc:      ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
       fontSrc:       ["'self'", 'https://fonts.gstatic.com'],
       imgSrc:        ["'self'", 'data:', 'blob:'],
-      connectSrc:    ["'self'", 'https://bible-api.com'],
+      connectSrc:    ["'self'"],
       workerSrc:     ["'self'"],
       frameAncestors:["'none'"],
     },
@@ -87,6 +87,30 @@ const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 500,
   message: { error: 'Too many requests. Please slow down.' },
+  standardHeaders: true, legacyHeaders: false,
+  skip: skipForElectron,
+});
+
+const refreshLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 30,
+  message: { error: 'Too many session refresh attempts. Please sign in again.' },
+  standardHeaders: true, legacyHeaders: false,
+  skip: skipForElectron,
+});
+
+const resetLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 5,
+  message: { error: 'Too many password reset requests. Try again later.' },
+  standardHeaders: true, legacyHeaders: false,
+  skip: skipForElectron,
+});
+
+const adminLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 20,
+  message: { error: 'Too many admin requests. Try again later.' },
   standardHeaders: true, legacyHeaders: false,
   skip: skipForElectron,
 });
@@ -144,6 +168,57 @@ if (PUSH_ENABLED) {
   console.warn('[WARN]  Web push disabled — set VAPID_PUBLIC_KEY / VAPID_PRIVATE_KEY to enable reminders.');
 }
 
+// ── Transactional email (optional — enabled when RESEND_API_KEY is set) ───────
+// Used only for password-reset links. Without a key configured, the reset link
+// is logged to the server console instead — lets reset work in dev/Electron
+// without any email account, at the cost of not actually reaching the user.
+const RESEND_API_KEY   = process.env.RESEND_API_KEY;
+const RESET_EMAIL_FROM = process.env.RESET_EMAIL_FROM || 'Prayer Profiles <onboarding@resend.dev>';
+const APP_ORIGIN       = process.env.APP_ORIGIN || `http://localhost:${process.env.PORT || 3001}`;
+const EMAIL_ENABLED    = !!RESEND_API_KEY;
+if (!EMAIL_ENABLED) {
+  console.warn('[WARN]  Email sending disabled — set RESEND_API_KEY to actually deliver password-reset links.');
+}
+
+function sendResetEmail(toEmail, resetLink) {
+  return new Promise((resolve) => {
+    const html = `<p>Someone requested a password reset for your Prayer Profiles account.</p>
+<p><a href="${resetLink}">Click here to choose a new password</a>. This link expires in 15 minutes.</p>
+<p>If you didn't request this, you can safely ignore this email.</p>`;
+
+    if (!EMAIL_ENABLED) {
+      console.log(`[reset] Email sending is not configured. Reset link for ${toEmail}: ${resetLink}`);
+      return resolve();
+    }
+
+    const body = JSON.stringify({
+      from:    RESET_EMAIL_FROM,
+      to:      [toEmail],
+      subject: 'Reset your Prayer Profiles password',
+      html,
+    });
+    const req = https.request({
+      hostname: 'api.resend.com',
+      path:     '/emails',
+      method:   'POST',
+      headers: {
+        'Authorization': `Bearer ${RESEND_API_KEY}`,
+        'Content-Type':  'application/json',
+        'Content-Length': Buffer.byteLength(body),
+      },
+    }, (res) => {
+      res.on('data', () => {});
+      res.on('end', resolve);
+    });
+    req.on('error', (err) => {
+      console.error('[reset] Failed to send reset email:', err.message);
+      resolve();
+    });
+    req.write(body);
+    req.end();
+  });
+}
+
 // ── JSON storage ──────────────────────────────────────────────────────────────
 function readDB() {
   let db;
@@ -153,10 +228,12 @@ function readDB() {
     try { db = JSON.parse(fs.readFileSync(DB_FILE, 'utf8')); }
     catch { db = { users: [], profiles: [], prayer_log: [], nextId: 1 }; }
   }
-  if (!db.prayer_log) db.prayer_log = [];
-  if (!db.reminders)  db.reminders  = [];
-  if (!db.push_subs)  db.push_subs  = [];
-  if (!db.metrics)    db.metrics    = {};
+  if (!db.prayer_log)     db.prayer_log     = [];
+  if (!db.reminders)      db.reminders      = [];
+  if (!db.push_subs)      db.push_subs      = [];
+  if (!db.metrics)        db.metrics        = {};
+  if (!db.refreshTokens)  db.refreshTokens  = [];
+  if (!db.resetTokens)    db.resetTokens    = [];
   return db;
 }
 
@@ -196,6 +273,60 @@ function requireAuth(req, res, next) {
   }
 }
 
+// ── Tokens ────────────────────────────────────────────────────────────────────
+// Access tokens are short-lived JWTs (stateless, can't be revoked early).
+// Refresh tokens are long-lived, opaque, random, and tracked server-side by
+// hash only — this is what actually gives us revocation (logout, "sign out
+// everywhere") that a bare JWT can never provide on its own.
+const ACCESS_TOKEN_TTL     = '15m';
+const REFRESH_TOKEN_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
+
+function signAccessToken(user) {
+  return jwt.sign({ id: user.id, username: user.username }, JWT_SECRET, { expiresIn: ACCESS_TOKEN_TTL });
+}
+
+function hashRefreshToken(raw) {
+  return crypto.createHash('sha256').update(raw).digest('hex');
+}
+
+function pruneExpiredRefreshTokens(db) {
+  const now = Date.now();
+  db.refreshTokens = db.refreshTokens.filter(rt => rt.expiresAt > now);
+}
+
+// Issues a new refresh token for a user and stores only its hash — the raw
+// token is returned once and never persisted, so a leaked DB alone can't be
+// replayed as a live session.
+function issueRefreshToken(db, userId) {
+  pruneExpiredRefreshTokens(db);
+  const raw = crypto.randomBytes(48).toString('hex');
+  db.refreshTokens.push({ userId, tokenHash: hashRefreshToken(raw), createdAt: Date.now(), expiresAt: Date.now() + REFRESH_TOKEN_TTL_MS });
+  return raw;
+}
+
+// Invalidates every refresh token for a user — used on logout-everywhere and
+// on password reset, so a changed/reset password also kills existing sessions.
+function revokeAllRefreshTokens(db, userId) {
+  db.refreshTokens = db.refreshTokens.filter(rt => rt.userId !== userId);
+}
+
+const RESET_TOKEN_TTL_MS = 15 * 60 * 1000; // 15 minutes, single-use
+
+function pruneExpiredResetTokens(db) {
+  const now = Date.now();
+  db.resetTokens = db.resetTokens.filter(rt => rt.expiresAt > now);
+}
+
+// Issues a single-use password-reset token for a user, storing only its hash
+// (same reasoning as refresh tokens — the raw value is emailed once, never persisted).
+function issueResetToken(db, userId) {
+  pruneExpiredResetTokens(db);
+  db.resetTokens = db.resetTokens.filter(rt => rt.userId !== userId); // one live reset token per user
+  const raw = crypto.randomBytes(32).toString('hex');
+  db.resetTokens.push({ userId, tokenHash: hashRefreshToken(raw), expiresAt: Date.now() + RESET_TOKEN_TTL_MS });
+  return raw;
+}
+
 // ── Middleware ────────────────────────────────────────────────────────────────
 app.use(express.json({ limit: '512kb' }));
 app.use(apiLimiter);
@@ -203,16 +334,21 @@ app.use('/uploads', express.static(UPLOADS));
 app.use(express.static(path.join(__dirname, 'public')));
 
 // ── Auth routes ───────────────────────────────────────────────────────────────
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 app.post('/api/auth/register', registerLimiter, async (req, res) => {
   const { password, inviteCode } = req.body;
   const username = (req.body.username || '').trim();
+  const email    = (req.body.email    || '').trim().toLowerCase();
 
-  if (!username || !password)
-    return res.status(400).json({ error: 'Username and password are required' });
+  if (!username || !password || !email)
+    return res.status(400).json({ error: 'Username, email, and password are required' });
   if (username.length > 32)
     return res.status(400).json({ error: 'Username must be 32 characters or fewer' });
   if (!/^[a-zA-Z0-9_.\-]+$/.test(username))
     return res.status(400).json({ error: 'Username may only contain letters, numbers, _ . -' });
+  if (email.length > 200 || !EMAIL_RE.test(email))
+    return res.status(400).json({ error: 'Enter a valid email address' });
   if (password.length < 8)
     return res.status(400).json({ error: 'Password must be at least 8 characters' });
   if (password.length > 72)
@@ -225,18 +361,21 @@ app.post('/api/auth/register', registerLimiter, async (req, res) => {
   if (!db.users) db.users = [];
   if (db.users.find(u => u.username.toLowerCase() === username.toLowerCase()))
     return res.status(409).json({ error: 'Username already taken' });
+  if (db.users.find(u => (u.email || '').toLowerCase() === email))
+    return res.status(409).json({ error: 'An account with that email already exists' });
 
   const user = {
     id:         db.nextId++,
     username,
+    email,
     password:   await bcrypt.hash(password, 12),
     created_at: new Date().toISOString(),
   };
   db.users.push(user);
+  const refreshToken = issueRefreshToken(db, user.id);
   writeDB(db);
 
-  const token = jwt.sign({ id: user.id, username: user.username }, JWT_SECRET, { expiresIn: '30d' });
-  res.json({ token, username: user.username });
+  res.json({ token: signAccessToken(user), refreshToken, username: user.username });
 });
 
 app.post('/api/auth/login', loginLimiter, async (req, res) => {
@@ -252,14 +391,116 @@ app.post('/api/auth/login', loginLimiter, async (req, res) => {
     return res.status(401).json({ error: 'Invalid username or password' });
 
   bumpMetric(db, 'logins');
+  const refreshToken = issueRefreshToken(db, user.id);
   writeDB(db);
 
-  const token = jwt.sign({ id: user.id, username: user.username }, JWT_SECRET, { expiresIn: '30d' });
-  res.json({ token, username: user.username });
+  res.json({ token: signAccessToken(user), refreshToken, username: user.username });
 });
 
 app.get('/api/auth/me', requireAuth, (req, res) => {
   res.json({ id: req.user.id, username: req.user.username });
+});
+
+// Lets a user download everything stored under their account as a single JSON
+// file — account info aside, never includes another user's data or anyone
+// else's password hash.
+app.get('/api/export', requireAuth, (req, res) => {
+  const db = readDB();
+  const user = (db.users || []).find(u => u.id === req.user.id);
+  const exportData = {
+    exported_at: new Date().toISOString(),
+    account:     user ? { id: user.id, username: user.username, email: user.email || null, created_at: user.created_at } : null,
+    profiles:    (db.profiles    || []).filter(p => p.userId === req.user.id),
+    prayer_log:  (db.prayer_log  || []).filter(e => e.userId === req.user.id),
+    reminders:   (db.reminders   || []).filter(r => r.userId === req.user.id),
+  };
+  res.setHeader('Content-Disposition', 'attachment; filename="prayer-profiles-export.json"');
+  res.json(exportData);
+});
+
+// Exchanges a still-valid refresh token for a new access token, and rotates
+// the refresh token itself (old one is invalidated, a new one is issued) —
+// rotation means a stolen-and-replayed refresh token gets detected/cut off
+// the next time the legitimate client tries to use its now-superseded copy.
+app.post('/api/auth/refresh', refreshLimiter, (req, res) => {
+  const { refreshToken } = req.body || {};
+  if (!refreshToken || typeof refreshToken !== 'string')
+    return res.status(401).json({ error: 'Session expired — please sign in again' });
+
+  const db   = readDB();
+  pruneExpiredRefreshTokens(db);
+  const hash   = hashRefreshToken(refreshToken);
+  const record = db.refreshTokens.find(rt => rt.tokenHash === hash);
+  if (!record) return res.status(401).json({ error: 'Session expired — please sign in again' });
+
+  const user = (db.users || []).find(u => u.id === record.userId);
+  if (!user) return res.status(401).json({ error: 'Session expired — please sign in again' });
+
+  db.refreshTokens = db.refreshTokens.filter(rt => rt.tokenHash !== hash);
+  const newRefreshToken = issueRefreshToken(db, user.id);
+  writeDB(db);
+
+  res.json({ token: signAccessToken(user), refreshToken: newRefreshToken, username: user.username });
+});
+
+// Revokes a single refresh token (this device/session only). Doesn't require
+// a valid access token, since the whole point is to work even after it's expired.
+app.post('/api/auth/logout', (req, res) => {
+  const { refreshToken } = req.body || {};
+  if (refreshToken && typeof refreshToken === 'string') {
+    const db   = readDB();
+    const hash = hashRefreshToken(refreshToken);
+    if (db.refreshTokens.some(rt => rt.tokenHash === hash)) {
+      db.refreshTokens = db.refreshTokens.filter(rt => rt.tokenHash !== hash);
+      writeDB(db);
+    }
+  }
+  res.status(204).end();
+});
+
+// Always responds with the same generic message whether or not the email is
+// registered — otherwise this endpoint would let anyone check which emails
+// have accounts.
+app.post('/api/auth/request-reset', resetLimiter, async (req, res) => {
+  const email = (req.body.email || '').trim().toLowerCase();
+  const genericMessage = { message: 'If an account exists for that email, a reset link has been sent.' };
+  if (!email || !EMAIL_RE.test(email)) return res.json(genericMessage);
+
+  const db   = readDB();
+  const user = (db.users || []).find(u => (u.email || '').toLowerCase() === email);
+  if (user) {
+    const resetToken = issueResetToken(db, user.id);
+    writeDB(db);
+    const resetLink = `${APP_ORIGIN}/reset.html?token=${resetToken}`;
+    await sendResetEmail(user.email, resetLink);
+  }
+  res.json(genericMessage);
+});
+
+app.post('/api/auth/reset-password', resetLimiter, async (req, res) => {
+  const { token, newPassword } = req.body || {};
+  if (!token || typeof token !== 'string')
+    return res.status(400).json({ error: 'Invalid or expired reset link' });
+  if (!newPassword || newPassword.length < 8)
+    return res.status(400).json({ error: 'Password must be at least 8 characters' });
+  if (newPassword.length > 72)
+    return res.status(400).json({ error: 'Password is too long (max 72 characters)' });
+
+  const db = readDB();
+  pruneExpiredResetTokens(db);
+  const hash   = hashRefreshToken(token);
+  const record = db.resetTokens.find(rt => rt.tokenHash === hash);
+  if (!record) return res.status(400).json({ error: 'Invalid or expired reset link' });
+
+  const user = (db.users || []).find(u => u.id === record.userId);
+  if (!user) return res.status(400).json({ error: 'Invalid or expired reset link' });
+
+  user.password   = await bcrypt.hash(newPassword, 12);
+  db.resetTokens  = db.resetTokens.filter(rt => rt.tokenHash !== hash);
+  revokeAllRefreshTokens(db, user.id); // resetting the password signs out every existing session
+  writeDB(db);
+
+  res.json({ message: 'Password updated — you can now sign in.' });
 });
 
 // ── Birthday parsing (free-text field → month/day) ───────────────────────────
@@ -724,11 +965,20 @@ async function reminderTick() {
 
 if (PUSH_ENABLED) setInterval(() => reminderTick().catch(err => console.error('[reminders]', err.message)), 60 * 1000);
 
+// Constant-time string compare — a plain `!==` leaks timing information about
+// how many leading characters matched, which is avoidable for free here.
+function safeEqual(a, b) {
+  const bufA = Buffer.from(String(a));
+  const bufB = Buffer.from(String(b));
+  if (bufA.length !== bufB.length) return false;
+  return crypto.timingSafeEqual(bufA, bufB);
+}
+
 // ── Admin metrics (aggregate + anonymous — reporting only) ────────────────────
-app.get('/api/admin/metrics', (req, res) => {
+app.get('/api/admin/metrics', adminLimiter, (req, res) => {
   const key = process.env.ADMIN_KEY;
   if (!key) return res.status(503).json({ error: 'ADMIN_KEY is not configured' });
-  if (req.headers['x-admin-key'] !== key) return res.status(401).json({ error: 'Unauthorized' });
+  if (!safeEqual(req.headers['x-admin-key'] || '', key)) return res.status(401).json({ error: 'Unauthorized' });
 
   const db     = readDB();
   const totals = {};
