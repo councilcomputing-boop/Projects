@@ -373,6 +373,7 @@ select.finput{cursor:pointer}
     <div class="card" id="detailClock"></div>
     <div class="card" id="detailLinks"></div>
     <div class="card" id="detailSoftware"></div>
+    <div class="card" id="detailSecrets"></div>
     <div class="card" id="detailTasks"></div>
     <div class="card" id="detailMetrics"></div>
     <div class="card" id="detailNotes"></div>
@@ -422,6 +423,18 @@ select.finput{cursor:pointer}
           <input class="finput" id="fSoftUrl" type="url" placeholder="Website (optional)">
         </div>
         <button class="btn btn-blue btn-sm" onclick="addFormSoft()">+ Add Software</button>
+      </div>
+    </div>
+    <div class="form-section">
+      <div class="form-section-label">Keys &amp; Secrets</div>
+      <div style="font-size:12px;color:var(--muted);margin:-6px 0 10px">Values are masked on screen, but not encrypted — anyone with access to this project can still view them.</div>
+      <div id="fSecretList" class="entry-list"></div>
+      <div class="add-strip">
+        <div class="add-strip-row">
+          <input class="finput" id="fSecretName" type="text" placeholder="Name (e.g. Firebase API Key)" maxlength="60">
+          <input class="finput" id="fSecretValue" type="text" placeholder="Value" autocomplete="off">
+        </div>
+        <button class="btn btn-blue btn-sm" onclick="addFormSecret()">+ Add Secret</button>
       </div>
     </div>
     <div style="margin-top:4px">
@@ -618,7 +631,7 @@ document.getElementById('hdrLogo').src=APP_LOGO;
 
 // ── State ─────────────────────────────────────────────────────────────────────
 let currentUser=null,groups=[],currentGroup=null,projects=[],currentSessions=[];
-let currentView='groups',currentProjectId=null,editingId=null,formLinks=[],formSoft=[];
+let currentView='groups',currentProjectId=null,editingId=null,formLinks=[],formSoft=[],formSecrets=[],revealedSecretIds=new Set();
 let timerInterval=null,clockOutPending=false;
 let unsubGroups=null,unsubProjects=null,unsubSessions=null,loginMode='in';
 let myRole='member',adminGroupsCache=[];
@@ -1050,7 +1063,7 @@ function startAddResource(){
   document.getElementById('rUrl').value='';
   document.getElementById('rCategory').value='';
   document.getElementById('rDesc').value='';
-  document.getElementById('rSaveBtn').textContent='Save Resource';
+  document.getElementById('rSaveBtn').disabled=false;document.getElementById('rSaveBtn').textContent='Save Resource';
   document.getElementById('hdrTitle').textContent='New Resource';
   showView('resourceForm');
 }
@@ -1061,7 +1074,7 @@ function startEditResource(id){
   document.getElementById('rUrl').value=r.url||'';
   document.getElementById('rCategory').value=r.category||'';
   document.getElementById('rDesc').value=r.description||'';
-  document.getElementById('rSaveBtn').textContent='Save Changes';
+  document.getElementById('rSaveBtn').disabled=false;document.getElementById('rSaveBtn').textContent='Save Changes';
   document.getElementById('hdrTitle').textContent='Edit Resource';
   showView('resourceForm');
 }
@@ -1354,10 +1367,28 @@ function renderDetailAll(p){
   document.getElementById('detailSoftware').innerHTML=`
     <div class="section-title">Software &amp; Tools</div>
     ${soft.length?soft.map(s=>`<div class="entry-row"><div class="entry-row-info"><div class="entry-row-name">${esc(s.name)}</div>${s.url?`<div class="entry-row-url"><a href="${esc(s.url)}" target="_blank" rel="noopener">${esc(s.url)}</a></div>`:''}</div>${s.url?`<a href="${esc(s.url)}" target="_blank" rel="noopener" style="color:var(--blue);font-size:18px;text-decoration:none;flex-shrink:0">↗</a>`:''}</div>`).join(''):'<div class="empty-hint">No software added yet.</div>'}`;
+  renderDetailSecrets(p);
   renderClockCard(p);
   renderTasksCard();
   renderMetricsCard();
   renderNotesCard();
+}
+function renderDetailSecrets(p){
+  const secrets=p.secrets||[];
+  document.getElementById('detailSecrets').innerHTML=`
+    <div class="section-title">Keys &amp; Secrets</div>
+    ${secrets.length?secrets.map(s=>`<div class="entry-row"><div class="entry-row-info"><div class="entry-row-name">${esc(s.name)}</div><div class="entry-row-url" id="dSecretVal_${s.id}">${maskSecret(s.value)}</div></div><button class="entry-del" style="margin-right:4px" onclick="toggleDetailSecretVisibility('${s.id}')" title="Show/hide">👁</button><button class="entry-del" onclick="copySecret('${s.id}')" title="Copy">⧉</button></div>`).join(''):'<div class="empty-hint">No keys or secrets added yet.</div>'}`;
+}
+function toggleDetailSecretVisibility(id){
+  const p=projects.find(x=>x.id===currentProjectId);if(!p)return;
+  const s=(p.secrets||[]).find(x=>x.id===id);if(!s)return;
+  if(revealedSecretIds.has(id))revealedSecretIds.delete(id);else revealedSecretIds.add(id);
+  document.getElementById(`dSecretVal_${id}`).textContent=revealedSecretIds.has(id)?s.value:maskSecret(s.value);
+}
+function copySecret(id){
+  const p=projects.find(x=>x.id===currentProjectId);if(!p)return;
+  const s=(p.secrets||[]).find(x=>x.id===id);if(!s)return;
+  navigator.clipboard.writeText(s.value).then(()=>toast('Copied to clipboard.')).catch(()=>alert('Could not copy — your browser may be blocking clipboard access.'));
 }
 function refreshDetailActive(p){
   const myActive=(p.activeSessions||{})[currentUser?.uid];
@@ -1489,25 +1520,26 @@ function p2(n){return String(n).padStart(2,'0');}
 
 // ── Project form ──────────────────────────────────────────────────────────────
 function startAdd(){
-  editingId=null;formLinks=[];formSoft=[];
+  editingId=null;formLinks=[];formSoft=[];formSecrets=[];
   document.getElementById('fName').value='';
   document.getElementById('fDesc').value='';
   document.getElementById('fStatus').value='active';
-  document.getElementById('fSaveBtn').textContent='Save Project';
+  document.getElementById('fSaveBtn').disabled=false;document.getElementById('fSaveBtn').textContent='Save Project';
   document.getElementById('hdrTitle').textContent='New Project';
-  renderFormLinks();renderFormSoft();showView('form');
+  renderFormLinks();renderFormSoft();renderFormSecrets();showView('form');
 }
 function startEdit(){
   const p=projects.find(x=>x.id===currentProjectId);if(!p)return;
   editingId=p.id;
   formLinks=JSON.parse(JSON.stringify(p.links||[]));
   formSoft=JSON.parse(JSON.stringify(p.software||[]));
+  formSecrets=JSON.parse(JSON.stringify(p.secrets||[]));
   document.getElementById('fName').value=p.name;
   document.getElementById('fDesc').value=p.description||'';
   document.getElementById('fStatus').value=p.status||'active';
-  document.getElementById('fSaveBtn').textContent='Save Changes';
+  document.getElementById('fSaveBtn').disabled=false;document.getElementById('fSaveBtn').textContent='Save Changes';
   document.getElementById('hdrTitle').textContent='Edit Project';
-  renderFormLinks();renderFormSoft();showView('form');
+  renderFormLinks();renderFormSoft();renderFormSecrets();showView('form');
 }
 async function saveProject(){
   const name=document.getElementById('fName').value.trim();
@@ -1518,10 +1550,10 @@ async function saveProject(){
   btn.disabled=true;btn.textContent='Saving…';
   try{
     if(editingId){
-      await projectsCol().doc(editingId).update({name,description:desc,status,links:formLinks,software:formSoft});
+      await projectsCol().doc(editingId).update({name,description:desc,status,links:formLinks,software:formSoft,secrets:formSecrets});
       currentProjectId=editingId;
     }else{
-      const ref=await projectsCol().add({name,description:desc,status,links:formLinks,software:formSoft,activeSessions:{},createdAt:Date.now(),createdBy:currentUser.uid,createdByName:myName()});
+      const ref=await projectsCol().add({name,description:desc,status,links:formLinks,software:formSoft,secrets:formSecrets,activeSessions:{},createdAt:Date.now(),createdBy:currentUser.uid,createdByName:myName()});
       currentProjectId=ref.id;
     }
     editingId=null;showDetail(currentProjectId);
@@ -1564,6 +1596,25 @@ function removeFormSoft(id){formSoft=formSoft.filter(s=>s.id!==id);renderFormSof
 function renderFormSoft(){
   document.getElementById('fSoftList').innerHTML=formSoft.map(s=>`<div class="entry-row"><div class="entry-row-info"><div class="entry-row-name">${esc(s.name)}</div>${s.url?`<div class="entry-row-url">${esc(s.url)}</div>`:''}</div><button class="entry-del" onclick="removeFormSoft('${s.id}')">✕</button></div>`).join('');
 }
+function addFormSecret(){
+  const name=document.getElementById('fSecretName').value.trim();
+  const value=document.getElementById('fSecretValue').value.trim();
+  if(!name){document.getElementById('fSecretName').focus();return;}
+  if(!value){document.getElementById('fSecretValue').focus();return;}
+  formSecrets.push({id:uid(),name,value});
+  document.getElementById('fSecretName').value='';document.getElementById('fSecretValue').value='';
+  renderFormSecrets();
+}
+function removeFormSecret(id){formSecrets=formSecrets.filter(s=>s.id!==id);renderFormSecrets();}
+function renderFormSecrets(){
+  document.getElementById('fSecretList').innerHTML=formSecrets.map(s=>`<div class="entry-row"><div class="entry-row-info"><div class="entry-row-name">${esc(s.name)}</div><div class="entry-row-url" id="fSecretVal_${s.id}">${maskSecret(s.value)}</div></div><button class="entry-del" style="margin-right:4px" onclick="toggleFormSecretVisibility('${s.id}')" title="Show/hide">👁</button><button class="entry-del" onclick="removeFormSecret('${s.id}')">✕</button></div>`).join('');
+}
+function toggleFormSecretVisibility(id){
+  if(revealedSecretIds.has(id))revealedSecretIds.delete(id);else revealedSecretIds.add(id);
+  const s=formSecrets.find(x=>x.id===id);if(!s)return;
+  document.getElementById(`fSecretVal_${id}`).textContent=revealedSecretIds.has(id)?s.value:maskSecret(s.value);
+}
+function maskSecret(v){return'•'.repeat(Math.min(v.length,24))||'•••';}
 
 // ── Outreach ──────────────────────────────────────────────────────────────────
 function startListeningToOutreach(){
@@ -1594,7 +1645,7 @@ function startEditSenderProfile(){
   document.getElementById('spName').value=senderProfile.name||'';
   document.getElementById('spEmail').value=senderProfile.email||'';
   document.getElementById('spCompany').value=senderProfile.company||'';
-  document.getElementById('spSaveBtn').textContent='Save';
+  document.getElementById('spSaveBtn').disabled=false;document.getElementById('spSaveBtn').textContent='Save';
   showView('senderProfile');
 }
 async function saveSenderProfile(){
@@ -1738,7 +1789,7 @@ function startAddOutreach(){
   document.getElementById('oType').value='company';
   document.getElementById('oSubject').value='';
   document.getElementById('oMessage').value='';
-  document.getElementById('oSaveBtn').textContent='Save Outreach';
+  document.getElementById('oSaveBtn').disabled=false;document.getElementById('oSaveBtn').textContent='Save Outreach';
   document.getElementById('hdrTitle').textContent='New Outreach';
   showView('outreachForm');
 }
@@ -1750,7 +1801,7 @@ function startEditOutreach(){
   document.getElementById('oType').value=o.type||'company';
   document.getElementById('oSubject').value=o.subject||'';
   document.getElementById('oMessage').value=o.message||'';
-  document.getElementById('oSaveBtn').textContent='Save Changes';
+  document.getElementById('oSaveBtn').disabled=false;document.getElementById('oSaveBtn').textContent='Save Changes';
   document.getElementById('hdrTitle').textContent='Edit Outreach';
   showView('outreachForm');
 }

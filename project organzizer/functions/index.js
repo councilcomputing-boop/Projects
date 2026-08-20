@@ -1,13 +1,30 @@
 const {onCall, HttpsError} = require("firebase-functions/v2/https");
 const {defineSecret} = require("firebase-functions/params");
 const Anthropic = require("@anthropic-ai/sdk");
+const {initializeApp} = require("firebase-admin/app");
+const {getFirestore} = require("firebase-admin/firestore");
+
+initializeApp();
+const db = getFirestore();
 
 const anthropicApiKey = defineSecret("ANTHROPIC_API_KEY");
+const DAILY_DRAFT_LIMIT = 10;
 
 exports.draftOutreachEmail = onCall({secrets: [anthropicApiKey]}, async (request) => {
   if (!request.auth) {
     throw new HttpsError("unauthenticated", "Sign in required.");
   }
+
+  const today = new Date().toISOString().slice(0, 10);
+  const usageRef = db.collection("aiUsage").doc(`${request.auth.uid}_${today}`);
+  await db.runTransaction(async (tx) => {
+    const snap = await tx.get(usageRef);
+    const count = snap.exists ? snap.data().count : 0;
+    if (count >= DAILY_DRAFT_LIMIT) {
+      throw new HttpsError("resource-exhausted", `Daily AI draft limit reached (${DAILY_DRAFT_LIMIT}/day). Try again tomorrow.`);
+    }
+    tx.set(usageRef, {count: count + 1, uid: request.auth.uid, date: today}, {merge: true});
+  });
 
   const {company, type, senderName, senderCompany} = request.data || {};
   if (!company || typeof company !== "string") {
