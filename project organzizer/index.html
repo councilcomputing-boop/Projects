@@ -222,6 +222,11 @@ select.finput{cursor:pointer}
 
 /* ── Toast ────────────────────────────────────────────────── */
 .toast{position:fixed;bottom:88px;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;padding:10px 20px;border-radius:20px;font-size:13px;font-weight:600;z-index:500;opacity:0;transition:opacity .2s;pointer-events:none;white-space:nowrap;box-shadow:0 4px 16px rgba(0,0,0,.2)}
+
+/* ── AI modal ─────────────────────────────────────────────── */
+.modal-overlay{position:fixed;inset:0;background:rgba(15,23,42,.55);display:flex;align-items:center;justify-content:center;z-index:600;padding:20px}
+.modal-card{background:var(--surface);border-radius:var(--r);box-shadow:var(--shadow-pop);padding:20px;width:100%;max-width:420px;max-height:85vh;overflow-y:auto}
+.modal-title{font-size:16px;font-weight:800;margin-bottom:14px;color:var(--text)}
 .toast.show{opacity:1}
 
 /* ── Install banner ───────────────────────────────────────── */
@@ -466,7 +471,10 @@ select.finput{cursor:pointer}
       <div class="fg" style="margin-bottom:0">
         <label class="flabel">Message</label>
         <textarea class="finput" id="oMessage" placeholder="Write the outreach message..."></textarea>
-        <div style="margin-top:8px"><button type="button" class="btn btn-ghost btn-sm" id="aiDraftBtn" onclick="draftOutreachWithAI()">✨ Draft with AI</button></div>
+        <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap">
+          <button type="button" class="btn btn-ghost btn-sm" id="aiDraftBtn" onclick="openDraftModal()">✨ Draft with AI</button>
+          <button type="button" class="btn btn-ghost btn-sm" id="aiReviseBtn" onclick="openReviseModal()">🔄 Revise with AI</button>
+        </div>
       </div>
     </div>
     <div style="margin-top:4px">
@@ -563,6 +571,18 @@ select.finput{cursor:pointer}
 </button>
 
 <div class="toast" id="toast"></div>
+
+<!-- AI Draft / Revise popup -->
+<div class="modal-overlay" id="aiModalOverlay" style="display:none" onclick="if(event.target===this)closeAiModal()">
+  <div class="modal-card">
+    <div class="modal-title" id="aiModalTitle">Draft with AI</div>
+    <div id="aiModalBody"></div>
+    <div class="btn-row" style="margin-top:16px">
+      <button class="btn btn-ghost btn-sm" onclick="closeAiModal()">Cancel</button>
+      <button class="btn btn-blue btn-sm" id="aiModalSubmitBtn" onclick="submitAiModal()">Generate</button>
+    </div>
+  </div>
+</div>
 
 <script>
 // ── Firebase ──────────────────────────────────────────────────────────────────
@@ -1867,18 +1887,80 @@ async function saveOutreach(){
     editingOutreachId=null;showOutreachDetail(currentOutreachId);
   }catch(e){alert('Error: '+e.message);btn.disabled=false;btn.textContent=editingOutreachId?'Save Changes':'Save Outreach';}
 }
-async function draftOutreachWithAI(){
+let aiModalMode=null;
+function openDraftModal(){
   const company=document.getElementById('oCompany').value.trim();
   if(!company){alert('Enter a company/organization name first.');document.getElementById('oCompany').focus();return;}
-  const type=document.getElementById('oType').value;
-  const btn=document.getElementById('aiDraftBtn');
-  btn.disabled=true;btn.textContent='Drafting…';
-  try{
-    const draft=functions.httpsCallable('draftOutreachEmail');
-    const res=await draft({company,type,senderName:senderProfile.name,senderCompany:senderProfile.company});
-    document.getElementById('oMessage').value=res.data.message||'';
-  }catch(e){alert('Error drafting email: '+(e?.message||e));}
-  btn.disabled=false;btn.textContent='✨ Draft with AI';
+  aiModalMode='draft';
+  document.getElementById('aiModalTitle').textContent='Draft with AI';
+  document.getElementById('aiModalBody').innerHTML=`
+    <div class="fg">
+      <label class="flabel">What's this email about? *</label>
+      <textarea class="finput" id="aiTopic" placeholder="e.g. Introducing our fintech app and proposing a partnership demo"></textarea>
+    </div>
+    <div class="fg">
+      <label class="flabel">Tone</label>
+      <select class="finput" id="aiTone">
+        <option value="professional">Professional</option>
+        <option value="friendly">Friendly</option>
+        <option value="casual">Casual</option>
+        <option value="direct and bold">Direct / Bold</option>
+      </select>
+    </div>
+    <div class="fg" style="margin-bottom:0">
+      <label class="flabel">Key points to include <span style="color:var(--muted);font-weight:400">(optional)</span></label>
+      <textarea class="finput" id="aiKeyPoints" placeholder="e.g. We've worked with 3 similar companies, mention our free trial"></textarea>
+    </div>`;
+  document.getElementById('aiModalSubmitBtn').textContent='Generate';
+  document.getElementById('aiModalOverlay').style.display='flex';
+  setTimeout(()=>document.getElementById('aiTopic')?.focus(),50);
+}
+function openReviseModal(){
+  const current=document.getElementById('oMessage').value.trim();
+  if(!current){alert('Draft or write a message first, then revise it.');return;}
+  aiModalMode='revise';
+  document.getElementById('aiModalTitle').textContent='Revise with AI';
+  document.getElementById('aiModalBody').innerHTML=`
+    <div class="fg" style="margin-bottom:0">
+      <label class="flabel">What should change? *</label>
+      <textarea class="finput" id="aiInstructions" placeholder="e.g. Make it shorter, sound more casual, add urgency, remove the last sentence"></textarea>
+    </div>`;
+  document.getElementById('aiModalSubmitBtn').textContent='Revise';
+  document.getElementById('aiModalOverlay').style.display='flex';
+  setTimeout(()=>document.getElementById('aiInstructions')?.focus(),50);
+}
+function closeAiModal(){
+  document.getElementById('aiModalOverlay').style.display='none';
+  aiModalMode=null;
+}
+async function submitAiModal(){
+  const btn=document.getElementById('aiModalSubmitBtn');
+  if(aiModalMode==='draft'){
+    const topic=document.getElementById('aiTopic').value.trim();
+    if(!topic){document.getElementById('aiTopic').focus();return;}
+    const tone=document.getElementById('aiTone').value;
+    const keyPoints=document.getElementById('aiKeyPoints').value.trim();
+    const company=document.getElementById('oCompany').value.trim();
+    const type=document.getElementById('oType').value;
+    btn.disabled=true;btn.textContent='Drafting…';
+    try{
+      const draft=functions.httpsCallable('draftOutreachEmail');
+      const res=await draft({company,type,topic,tone,keyPoints,senderName:senderProfile.name,senderCompany:senderProfile.company});
+      document.getElementById('oMessage').value=res.data.message||'';
+      closeAiModal();
+    }catch(e){alert('Error drafting email: '+(e?.message||e));btn.disabled=false;btn.textContent='Generate';}
+  }else if(aiModalMode==='revise'){
+    const instructions=document.getElementById('aiInstructions').value.trim();
+    if(!instructions){document.getElementById('aiInstructions').focus();return;}
+    const currentMessage=document.getElementById('oMessage').value.trim();
+    btn.disabled=true;btn.textContent='Revising…';
+    try{
+      const revise=functions.httpsCallable('reviseOutreachEmail');
+      const res=await revise({currentMessage,instructions});
+      document.getElementById('oMessage').value=res.data.message||'';
+      closeAiModal();
+    }catch(e){alert('Error revising email: '+(e?.message||e));btn.disabled=false;btn.textContent='Revise';}
+  }
 }
 async function deleteOutreach(){
   const o=outreachItems.find(x=>x.id===currentOutreachId);if(!o)return;
