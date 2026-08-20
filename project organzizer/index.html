@@ -157,8 +157,8 @@ select.finput{cursor:pointer}
 /* ── Project form ─────────────────────────────────────────── */
 .form-section{background:var(--surface);border-radius:var(--r);box-shadow:var(--shadow);padding:18px;margin-bottom:12px}
 .form-section-label{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:14px}
-.secrets-section,#detailSecrets{background:var(--amber-light);border:1.5px solid #fde68a}
-.secrets-section .form-section-label,#detailSecrets .section-title{color:var(--amber)}
+#detailSecrets{background:var(--amber-light);border:1.5px solid #fde68a}
+#detailSecrets .section-title{color:var(--amber)}
 .entry-list{display:flex;flex-direction:column;gap:8px;margin-bottom:12px}
 .entry-row{display:flex;align-items:center;gap:8px;background:var(--slate-light);border-radius:9px;padding:10px 12px}
 .entry-row-info{flex:1;min-width:0}
@@ -420,40 +420,6 @@ select.finput{cursor:pointer}
         </select>
       </div>
     </div>
-    <div class="form-section">
-      <div class="form-section-label">Project Links</div>
-      <div id="fLinkList" class="entry-list"></div>
-      <div class="add-strip">
-        <div class="add-strip-row">
-          <input class="finput" id="fLinkLabel" type="text" placeholder="Label (e.g. GitHub)" maxlength="40">
-          <input class="finput" id="fLinkUrl" type="url" placeholder="https://...">
-        </div>
-        <button class="btn btn-blue btn-sm" onclick="addFormLink()">+ Add Link</button>
-      </div>
-    </div>
-    <div class="form-section">
-      <div class="form-section-label">Software / Tools</div>
-      <div id="fSoftList" class="entry-list"></div>
-      <div class="add-strip">
-        <div class="add-strip-row">
-          <input class="finput" id="fSoftName" type="text" placeholder="e.g. VS Code" maxlength="60">
-          <input class="finput" id="fSoftUrl" type="url" placeholder="Website (optional)">
-        </div>
-        <button class="btn btn-blue btn-sm" onclick="addFormSoft()">+ Add Software</button>
-      </div>
-    </div>
-    <div class="form-section secrets-section">
-      <div class="form-section-label" id="fSecretLabel"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg> Keys &amp; Secrets</div>
-      <div style="font-size:12px;color:var(--amber);margin:-6px 0 10px">Values are masked on screen, but not encrypted — anyone with access to this project can still view them.</div>
-      <div id="fSecretList" class="entry-list"></div>
-      <div class="add-strip">
-        <div class="add-strip-row">
-          <input class="finput" id="fSecretName" type="text" placeholder="Name (e.g. Firebase API Key)" maxlength="60">
-          <input class="finput" id="fSecretValue" type="text" placeholder="Value" autocomplete="off">
-        </div>
-        <button class="btn btn-blue btn-sm" onclick="addFormSecret()">+ Add Secret</button>
-      </div>
-    </div>
     <div style="margin-top:4px">
       <button class="btn btn-ink" id="fSaveBtn" onclick="saveProject()">Save Project</button>
     </div>
@@ -649,7 +615,7 @@ document.getElementById('hdrLogo').src=APP_LOGO;
 
 // ── State ─────────────────────────────────────────────────────────────────────
 let currentUser=null,groups=[],currentGroup=null,projects=[],currentSessions=[];
-let currentView='groups',currentProjectId=null,editingId=null,formLinks=[],formSoft=[],formSecrets=[],revealedSecretIds=new Set();
+let currentView='groups',currentProjectId=null,editingId=null,revealedSecretIds=new Set();
 let timerInterval=null,clockOutPending=false;
 let unsubGroups=null,unsubProjects=null,unsubSessions=null,loginMode='in';
 let myRole='member',adminGroupsCache=[];
@@ -1384,25 +1350,96 @@ function renderDetailAll(p){
       <span style="font-size:12px;color:var(--muted)">${formatDate(p.createdAt)}</span>
     </div>
     <div class="proj-desc-full">${p.description?esc(p.description):'<span style="color:var(--muted);font-style:italic">No description yet.</span>'}</div>`;
-  const links=p.links||[];
-  document.getElementById('detailLinks').innerHTML=`
-    <div class="section-title">Project Links</div>
-    ${links.length?links.map(l=>`<div class="entry-row"><div class="entry-row-info"><div class="entry-row-name">${esc(l.label)}</div>${l.url?`<div class="entry-row-url"><a href="${esc(l.url)}" target="_blank" rel="noopener">${esc(l.url)}</a></div>`:''}</div>${l.url?`<a href="${esc(l.url)}" target="_blank" rel="noopener" style="color:var(--blue);font-size:18px;text-decoration:none;flex-shrink:0">↗</a>`:''}</div>`).join(''):'<div class="empty-hint">No links added yet.</div>'}`;
-  const soft=p.software||[];
-  document.getElementById('detailSoftware').innerHTML=`
-    <div class="section-title">Software &amp; Tools</div>
-    ${soft.length?soft.map(s=>`<div class="entry-row"><div class="entry-row-info"><div class="entry-row-name">${esc(s.name)}</div>${s.url?`<div class="entry-row-url"><a href="${esc(s.url)}" target="_blank" rel="noopener">${esc(s.url)}</a></div>`:''}</div>${s.url?`<a href="${esc(s.url)}" target="_blank" rel="noopener" style="color:var(--blue);font-size:18px;text-decoration:none;flex-shrink:0">↗</a>`:''}</div>`).join(''):'<div class="empty-hint">No software added yet.</div>'}`;
+  renderDetailLinks(p);
+  renderDetailSoftware(p);
   renderDetailSecrets(p);
   renderClockCard(p);
   renderTasksCard();
   renderMetricsCard();
   renderNotesCard();
 }
+function renderDetailLinks(p){
+  const links=p.links||[];
+  document.getElementById('detailLinks').innerHTML=`
+    <div class="section-title" style="margin-bottom:10px">Project Links</div>
+    ${links.length?links.map(l=>`<div class="entry-row"><div class="entry-row-info"><div class="entry-row-name">${esc(l.label)}</div>${l.url?`<div class="entry-row-url"><a href="${esc(l.url)}" target="_blank" rel="noopener">${esc(l.url)}</a></div>`:''}</div><button class="entry-del" onclick="removeDetailLink('${l.id}')" title="Remove">${icon('x')}</button></div>`).join(''):'<div class="empty-hint">No links added yet.</div>'}
+    <div class="add-strip" style="margin-top:10px">
+      <div class="add-strip-row">
+        <input class="finput" id="dLinkLabel" type="text" placeholder="Label (e.g. GitHub)" maxlength="40">
+        <input class="finput" id="dLinkUrl" type="url" placeholder="https://...">
+      </div>
+      <button class="btn btn-blue btn-sm" onclick="addDetailLink()">+ Add Link</button>
+    </div>`;
+}
+async function addDetailLink(){
+  const label=document.getElementById('dLinkLabel').value.trim();
+  const url=document.getElementById('dLinkUrl').value.trim();
+  if(!label){document.getElementById('dLinkLabel').focus();return;}
+  try{
+    await projectsCol().doc(currentProjectId).update({links:firebase.firestore.FieldValue.arrayUnion({id:uid(),label,url})});
+    document.getElementById('dLinkLabel').value='';document.getElementById('dLinkUrl').value='';
+  }catch(e){alert('Error: '+e.message);}
+}
+async function removeDetailLink(id){
+  const p=projects.find(x=>x.id===currentProjectId);if(!p)return;
+  try{await projectsCol().doc(currentProjectId).update({links:(p.links||[]).filter(l=>l.id!==id)});}
+  catch(e){alert('Error: '+e.message);}
+}
+function renderDetailSoftware(p){
+  const soft=p.software||[];
+  document.getElementById('detailSoftware').innerHTML=`
+    <div class="section-title" style="margin-bottom:10px">Software &amp; Tools</div>
+    ${soft.length?soft.map(s=>`<div class="entry-row"><div class="entry-row-info"><div class="entry-row-name">${esc(s.name)}</div>${s.url?`<div class="entry-row-url"><a href="${esc(s.url)}" target="_blank" rel="noopener">${esc(s.url)}</a></div>`:''}</div><button class="entry-del" onclick="removeDetailSoftware('${s.id}')" title="Remove">${icon('x')}</button></div>`).join(''):'<div class="empty-hint">No software added yet.</div>'}
+    <div class="add-strip" style="margin-top:10px">
+      <div class="add-strip-row">
+        <input class="finput" id="dSoftName" type="text" placeholder="e.g. VS Code" maxlength="60">
+        <input class="finput" id="dSoftUrl" type="url" placeholder="Website (optional)">
+      </div>
+      <button class="btn btn-blue btn-sm" onclick="addDetailSoftware()">+ Add Software</button>
+    </div>`;
+}
+async function addDetailSoftware(){
+  const name=document.getElementById('dSoftName').value.trim();
+  const url=document.getElementById('dSoftUrl').value.trim();
+  if(!name){document.getElementById('dSoftName').focus();return;}
+  try{
+    await projectsCol().doc(currentProjectId).update({software:firebase.firestore.FieldValue.arrayUnion({id:uid(),name,url})});
+    document.getElementById('dSoftName').value='';document.getElementById('dSoftUrl').value='';
+  }catch(e){alert('Error: '+e.message);}
+}
+async function removeDetailSoftware(id){
+  const p=projects.find(x=>x.id===currentProjectId);if(!p)return;
+  try{await projectsCol().doc(currentProjectId).update({software:(p.software||[]).filter(s=>s.id!==id)});}
+  catch(e){alert('Error: '+e.message);}
+}
 function renderDetailSecrets(p){
   const secrets=p.secrets||[];
   document.getElementById('detailSecrets').innerHTML=`
-    <div class="section-title">${icon('lock',13)} Keys &amp; Secrets</div>
-    ${secrets.length?secrets.map(s=>`<div class="entry-row"><div class="entry-row-info"><div class="entry-row-name">${esc(s.name)}</div><div class="entry-row-url" id="dSecretVal_${s.id}">${maskSecret(s.value)}</div></div><button class="entry-icon-btn" style="margin-right:4px" onclick="toggleDetailSecretVisibility('${s.id}')" title="Show/hide">${icon('eye')}</button><button class="entry-icon-btn" onclick="copySecret('${s.id}')" title="Copy">${icon('copy')}</button></div>`).join(''):'<div class="empty-hint">No keys or secrets added yet.</div>'}`;
+    <div class="section-title" style="margin-bottom:10px">${icon('lock',13)} Keys &amp; Secrets</div>
+    ${secrets.length?secrets.map(s=>`<div class="entry-row"><div class="entry-row-info"><div class="entry-row-name">${esc(s.name)}</div><div class="entry-row-url" id="dSecretVal_${s.id}">${maskSecret(s.value)}</div></div><button class="entry-icon-btn" style="margin-right:4px" onclick="toggleDetailSecretVisibility('${s.id}')" title="Show/hide">${icon('eye')}</button><button class="entry-icon-btn" style="margin-right:4px" onclick="copySecret('${s.id}')" title="Copy">${icon('copy')}</button><button class="entry-del" onclick="removeDetailSecret('${s.id}')" title="Remove">${icon('x')}</button></div>`).join(''):'<div class="empty-hint">No keys or secrets added yet.</div>'}
+    <div class="add-strip" style="margin-top:10px">
+      <div class="add-strip-row">
+        <input class="finput" id="dSecretName" type="text" placeholder="Name (e.g. Firebase API Key)" maxlength="60">
+        <input class="finput" id="dSecretValue" type="text" placeholder="Value" autocomplete="off">
+      </div>
+      <button class="btn btn-blue btn-sm" onclick="addDetailSecret()">+ Add Secret</button>
+    </div>`;
+}
+async function addDetailSecret(){
+  const name=document.getElementById('dSecretName').value.trim();
+  const value=document.getElementById('dSecretValue').value.trim();
+  if(!name){document.getElementById('dSecretName').focus();return;}
+  if(!value){document.getElementById('dSecretValue').focus();return;}
+  try{
+    await projectsCol().doc(currentProjectId).update({secrets:firebase.firestore.FieldValue.arrayUnion({id:uid(),name,value})});
+    document.getElementById('dSecretName').value='';document.getElementById('dSecretValue').value='';
+  }catch(e){alert('Error: '+e.message);}
+}
+async function removeDetailSecret(id){
+  const p=projects.find(x=>x.id===currentProjectId);if(!p)return;
+  if(!confirm('Remove this secret?'))return;
+  try{await projectsCol().doc(currentProjectId).update({secrets:(p.secrets||[]).filter(s=>s.id!==id)});}
+  catch(e){alert('Error: '+e.message);}
 }
 function toggleDetailSecretVisibility(id){
   const p=projects.find(x=>x.id===currentProjectId);if(!p)return;
@@ -1443,6 +1480,9 @@ function refreshDetailActive(p){
   if(myActive&&!timerInterval)startTimerTick();
   if(!myActive)stopTimerTick();
   renderClockCard(p);
+  renderDetailLinks(p);
+  renderDetailSoftware(p);
+  renderDetailSecrets(p);
 }
 function renderClockCard(p){
   const active=p.activeSessions||{};
@@ -1568,26 +1608,23 @@ function p2(n){return String(n).padStart(2,'0');}
 
 // ── Project form ──────────────────────────────────────────────────────────────
 function startAdd(){
-  editingId=null;formLinks=[];formSoft=[];formSecrets=[];
+  editingId=null;
   document.getElementById('fName').value='';
   document.getElementById('fDesc').value='';
   document.getElementById('fStatus').value='active';
   document.getElementById('fSaveBtn').disabled=false;document.getElementById('fSaveBtn').textContent='Save Project';
   document.getElementById('hdrTitle').textContent='New Project';
-  renderFormLinks();renderFormSoft();renderFormSecrets();showView('form');
+  showView('form');
 }
 function startEdit(){
   const p=projects.find(x=>x.id===currentProjectId);if(!p)return;
   editingId=p.id;
-  formLinks=JSON.parse(JSON.stringify(p.links||[]));
-  formSoft=JSON.parse(JSON.stringify(p.software||[]));
-  formSecrets=JSON.parse(JSON.stringify(p.secrets||[]));
   document.getElementById('fName').value=p.name;
   document.getElementById('fDesc').value=p.description||'';
   document.getElementById('fStatus').value=p.status||'active';
   document.getElementById('fSaveBtn').disabled=false;document.getElementById('fSaveBtn').textContent='Save Changes';
   document.getElementById('hdrTitle').textContent='Edit Project';
-  renderFormLinks();renderFormSoft();renderFormSecrets();showView('form');
+  showView('form');
 }
 async function saveProject(){
   const name=document.getElementById('fName').value.trim();
@@ -1598,10 +1635,10 @@ async function saveProject(){
   btn.disabled=true;btn.textContent='Saving…';
   try{
     if(editingId){
-      await projectsCol().doc(editingId).update({name,description:desc,status,links:formLinks,software:formSoft,secrets:formSecrets});
+      await projectsCol().doc(editingId).update({name,description:desc,status});
       currentProjectId=editingId;
     }else{
-      const ref=await projectsCol().add({name,description:desc,status,links:formLinks,software:formSoft,secrets:formSecrets,activeSessions:{},createdAt:Date.now(),createdBy:currentUser.uid,createdByName:myName()});
+      const ref=await projectsCol().add({name,description:desc,status,links:[],software:[],secrets:[],activeSessions:{},createdAt:Date.now(),createdBy:currentUser.uid,createdByName:myName()});
       currentProjectId=ref.id;
     }
     editingId=null;showDetail(currentProjectId);
@@ -1619,49 +1656,6 @@ async function deleteProject(){
   }catch(e){alert('Error: '+e.message);}
 }
 
-// ── Form links/software ───────────────────────────────────────────────────────
-function addFormLink(){
-  const label=document.getElementById('fLinkLabel').value.trim();
-  const url=document.getElementById('fLinkUrl').value.trim();
-  if(!label){document.getElementById('fLinkLabel').focus();return;}
-  formLinks.push({id:uid(),label,url});
-  document.getElementById('fLinkLabel').value='';document.getElementById('fLinkUrl').value='';
-  renderFormLinks();
-}
-function removeFormLink(id){formLinks=formLinks.filter(l=>l.id!==id);renderFormLinks();}
-function renderFormLinks(){
-  document.getElementById('fLinkList').innerHTML=formLinks.map(l=>`<div class="entry-row"><div class="entry-row-info"><div class="entry-row-name">${esc(l.label)}</div>${l.url?`<div class="entry-row-url">${esc(l.url)}</div>`:''}</div><button class="entry-del" onclick="removeFormLink('${l.id}')">${icon('x')}</button></div>`).join('');
-}
-function addFormSoft(){
-  const name=document.getElementById('fSoftName').value.trim();
-  const url=document.getElementById('fSoftUrl').value.trim();
-  if(!name){document.getElementById('fSoftName').focus();return;}
-  formSoft.push({id:uid(),name,url});
-  document.getElementById('fSoftName').value='';document.getElementById('fSoftUrl').value='';
-  renderFormSoft();
-}
-function removeFormSoft(id){formSoft=formSoft.filter(s=>s.id!==id);renderFormSoft();}
-function renderFormSoft(){
-  document.getElementById('fSoftList').innerHTML=formSoft.map(s=>`<div class="entry-row"><div class="entry-row-info"><div class="entry-row-name">${esc(s.name)}</div>${s.url?`<div class="entry-row-url">${esc(s.url)}</div>`:''}</div><button class="entry-del" onclick="removeFormSoft('${s.id}')">${icon('x')}</button></div>`).join('');
-}
-function addFormSecret(){
-  const name=document.getElementById('fSecretName').value.trim();
-  const value=document.getElementById('fSecretValue').value.trim();
-  if(!name){document.getElementById('fSecretName').focus();return;}
-  if(!value){document.getElementById('fSecretValue').focus();return;}
-  formSecrets.push({id:uid(),name,value});
-  document.getElementById('fSecretName').value='';document.getElementById('fSecretValue').value='';
-  renderFormSecrets();
-}
-function removeFormSecret(id){formSecrets=formSecrets.filter(s=>s.id!==id);renderFormSecrets();}
-function renderFormSecrets(){
-  document.getElementById('fSecretList').innerHTML=formSecrets.map(s=>`<div class="entry-row"><div class="entry-row-info"><div class="entry-row-name">${esc(s.name)}</div><div class="entry-row-url" id="fSecretVal_${s.id}">${maskSecret(s.value)}</div></div><button class="entry-icon-btn" style="margin-right:4px" onclick="toggleFormSecretVisibility('${s.id}')" title="Show/hide">${icon('eye')}</button><button class="entry-del" onclick="removeFormSecret('${s.id}')">${icon('x')}</button></div>`).join('');
-}
-function toggleFormSecretVisibility(id){
-  if(revealedSecretIds.has(id))revealedSecretIds.delete(id);else revealedSecretIds.add(id);
-  const s=formSecrets.find(x=>x.id===id);if(!s)return;
-  document.getElementById(`fSecretVal_${id}`).textContent=revealedSecretIds.has(id)?s.value:maskSecret(s.value);
-}
 function maskSecret(v){return'•'.repeat(Math.min(v.length,24))||'•••';}
 
 // ── Outreach ──────────────────────────────────────────────────────────────────
