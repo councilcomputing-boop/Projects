@@ -48,6 +48,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 /* ── Login ────────────────────────────────────────────────── */
 .login-wrap{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px 20px;background:var(--ink)}
 .login-mark{width:64px;height:64px;border-radius:18px;margin-bottom:16px;box-shadow:0 8px 24px rgba(37,99,235,.4)}
+.spinner{width:28px;height:28px;border-radius:50%;border:3px solid rgba(255,255,255,.2);border-top-color:#fff;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
 .login-title{font-size:26px;font-weight:800;color:#fff;margin-bottom:4px;letter-spacing:-.5px}
 .login-sub{font-size:14px;color:rgba(255,255,255,.5);margin-bottom:32px;text-align:center}
 .login-card{background:var(--surface);border-radius:20px;padding:24px;width:100%;max-width:380px;box-shadow:0 20px 60px rgba(0,0,0,.4)}
@@ -155,6 +157,8 @@ select.finput{cursor:pointer}
 /* ── Project form ─────────────────────────────────────────── */
 .form-section{background:var(--surface);border-radius:var(--r);box-shadow:var(--shadow);padding:18px;margin-bottom:12px}
 .form-section-label{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:14px}
+.secrets-section,#detailSecrets{background:var(--amber-light);border:1.5px solid #fde68a}
+.secrets-section .form-section-label,#detailSecrets .section-title{color:var(--amber)}
 .entry-list{display:flex;flex-direction:column;gap:8px;margin-bottom:12px}
 .entry-row{display:flex;align-items:center;gap:8px;background:var(--slate-light);border-radius:9px;padding:10px 12px}
 .entry-row-info{flex:1;min-width:0}
@@ -162,6 +166,7 @@ select.finput{cursor:pointer}
 .entry-row-url{font-size:12px;color:var(--blue);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .entry-row-url a{color:var(--blue);text-decoration:none}
 .entry-del{background:none;border:none;color:var(--red);font-size:17px;cursor:pointer;padding:3px;line-height:1;flex-shrink:0;opacity:.5}
+.entry-icon-btn{background:none;border:none;color:var(--muted);font-size:17px;cursor:pointer;padding:3px;line-height:1;flex-shrink:0;opacity:.6}
 .entry-del:active{opacity:1}
 .add-strip{display:flex;flex-direction:column;gap:8px;background:var(--blue-light);border-radius:10px;padding:12px;border:1px solid var(--blue-mid)}
 .add-strip-row{display:flex;gap:8px;flex-wrap:wrap}
@@ -289,12 +294,19 @@ select.finput{cursor:pointer}
   <img class="hdr-logo" id="hdrLogo" alt="">
   <div class="hdr-title" id="hdrTitle">My Groups</div>
   <button class="hdr-ctx-btn" id="hdrCtx" onclick="hdrCtxClick()"></button>
+  <button class="hdr-ctx-btn" id="hdrActivityBtn" onclick="showView('activity')" style="display:none">📋 Activity</button>
   <button class="hdr-admin-btn" id="hdrAdminBtn" onclick="showView('admin')">🛡️ Admin</button>
   <div class="hdr-avatar" id="hdrAvatar" onclick="signOut()" title="Sign out"></div>
 </div>
 
+<!-- LOADING (shown until Firebase resolves auth state) ──────── -->
+<div id="authLoading" class="login-wrap">
+  <img class="login-mark" id="loadingMark" alt="Project Organizer logo">
+  <div class="spinner"></div>
+</div>
+
 <!-- LOGIN ─────────────────────────────────────────────────── -->
-<div id="loginWrap" class="login-wrap">
+<div id="loginWrap" class="login-wrap" style="display:none">
   <img class="login-mark" id="loginMark" alt="Project Organizer logo">
   <div class="login-title">Project Organizer</div>
   <div class="login-sub">Track work & time with your team</div>
@@ -358,6 +370,11 @@ select.finput{cursor:pointer}
     <div id="projectList"></div>
   </div>
 
+  <!-- Activity Feed -->
+  <div class="view" id="viewActivity">
+    <div id="activityList"></div>
+  </div>
+
   <!-- Members -->
   <div class="view" id="viewMembers">
     <div id="membersInvite"></div>
@@ -378,7 +395,7 @@ select.finput{cursor:pointer}
     <div class="card" id="detailMetrics"></div>
     <div class="card" id="detailNotes"></div>
     <div class="btn-row" style="margin-top:4px">
-      <button class="btn btn-ghost btn-sm" onclick="startEdit()">✏️ Edit</button>
+      <button class="btn btn-ghost btn-sm" onclick="startEdit()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg> Edit</button>
       <button class="btn btn-red btn-sm" onclick="deleteProject()">Delete</button>
     </div>
   </div>
@@ -425,9 +442,9 @@ select.finput{cursor:pointer}
         <button class="btn btn-blue btn-sm" onclick="addFormSoft()">+ Add Software</button>
       </div>
     </div>
-    <div class="form-section">
-      <div class="form-section-label">Keys &amp; Secrets</div>
-      <div style="font-size:12px;color:var(--muted);margin:-6px 0 10px">Values are masked on screen, but not encrypted — anyone with access to this project can still view them.</div>
+    <div class="form-section secrets-section">
+      <div class="form-section-label" id="fSecretLabel"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg> Keys &amp; Secrets</div>
+      <div style="font-size:12px;color:var(--amber);margin:-6px 0 10px">Values are masked on screen, but not encrypted — anyone with access to this project can still view them.</div>
       <div id="fSecretList" class="entry-list"></div>
       <div class="add-strip">
         <div class="add-strip-row">
@@ -452,7 +469,7 @@ select.finput{cursor:pointer}
     <div class="card" id="outreachDetailHeader"></div>
     <div class="card" id="outreachDetailActions"></div>
     <div class="btn-row" style="margin-top:4px">
-      <button class="btn btn-ghost btn-sm" onclick="startEditOutreach()">✏️ Edit</button>
+      <button class="btn btn-ghost btn-sm" onclick="startEditOutreach()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg> Edit</button>
       <button class="btn btn-red btn-sm" onclick="deleteOutreach()">Delete</button>
     </div>
   </div>
@@ -627,6 +644,7 @@ function makeIcon(sz){
 }
 const APP_LOGO=makeIcon(128);
 document.getElementById('loginMark').src=APP_LOGO;
+document.getElementById('loadingMark').src=APP_LOGO;
 document.getElementById('hdrLogo').src=APP_LOGO;
 
 // ── State ─────────────────────────────────────────────────────────────────────
@@ -640,6 +658,7 @@ let currentMetrics=[],unsubMetrics=null;
 let currentTasks=[],unsubTasks=null;
 let resources=[],unsubResources=null,editingResourceId=null;
 let outreachItems=[],unsubOutreach=null,currentOutreachId=null,editingOutreachId=null,preMembersView='list';
+let activityFeedItems=[];
 let senderProfile={name:'',email:'',company:''};
 let respondingOutreachId=null;
 const OUTREACH_STATUS_LABEL={pending:'Pending',responded:'Responded',no_response:'No Response'};
@@ -692,6 +711,7 @@ function signOut(){
 }
 auth.onAuthStateChanged(user=>{
   currentUser=user;
+  document.getElementById('authLoading').style.display='none';
   if(user){
     document.getElementById('loginWrap').style.display='none';
     document.getElementById('hdr').style.display='flex';
@@ -812,7 +832,11 @@ function showView(name){
     back.style.display='block';
   }else if(name==='senderProfile'){
     title.textContent='Sender Info';back.style.display='block';
+  }else if(name==='activity'){
+    title.textContent='Activity Feed';back.style.display='block';
+    renderActivityFeed();
   }
+  document.getElementById('hdrActivityBtn').style.display=(currentGroup&&name!=='activity')?'flex':'none';
   window.scrollTo(0,0);
 }
 function goBack(){
@@ -846,6 +870,7 @@ function goBack(){
   else if(currentView==='resources')showView('groups');
   else if(currentView==='resourceForm')showView('resources');
   else if(currentView==='senderProfile')showView('outreach');
+  else if(currentView==='activity')showView('list');
 }
 function hdrCtxClick(){
   if(WORKSPACE_VIEWS.includes(currentView))showMembers();
@@ -869,7 +894,7 @@ function renderGroups(){
   const isIOS=/iphone|ipad|ipod/i.test(navigator.userAgent);
   const isStandalone=window.navigator.standalone===true;
   const dismissed=localStorage.getItem('po_install_dismissed');
-  const installBanner=isIOS&&!isStandalone&&!dismissed?`<div class="install-banner"><div class="ib-icon">📋</div><div class="ib-text"><div class="ib-title">Add to Home Screen</div>Tap <strong>Share ↑</strong> → <strong>View More</strong> → <strong>"Add to Home Screen"</strong></div><button class="ib-close" data-dismiss-install>✕</button></div>`:'';
+  const installBanner=isIOS&&!isStandalone&&!dismissed?`<div class="install-banner"><div class="ib-icon">📋</div><div class="ib-text"><div class="ib-title">Add to Home Screen</div>Tap <strong>Share ↑</strong> → <strong>View More</strong> → <strong>"Add to Home Screen"</strong></div><button class="ib-close" data-dismiss-install>${icon('x')}</button></div>`:'';
   let html=installBanner;
   if(groups.length===0){
     html=`<div class="empty-state"><div class="empty-icon">👥</div><div class="empty-title">No groups yet</div><div class="empty-sub">Create a group below, or<br>enter an invite code to join one.</div></div>`;
@@ -1011,7 +1036,7 @@ async function renderAdmin(){
       const n=Object.keys(g.members||{}).length;
       return `<div class="entry-row">
         <div class="entry-row-info"><div class="entry-row-name">${esc(g.name)}</div><div class="entry-row-url">${n} member${n!==1?'s':''}</div></div>
-        <button class="entry-del" onclick="adminDeleteGroup('${g.id}')">✕</button>
+        <button class="entry-del" onclick="adminDeleteGroup('${g.id}')">${icon('x')}</button>
       </div>`;
     }).join(''):'<div class="empty-hint">No groups yet.</div>';
   }catch(e){groupsEl.innerHTML=`<div class="empty-hint">Couldn't load groups — ${esc(e.message)}</div>`;}
@@ -1048,7 +1073,7 @@ function renderResources(){
     ${r.description?`<div class="resource-card-desc">${esc(r.description)}</div>`:''}
     <div class="resource-card-meta">
       ${r.url?`<a class="resource-card-url" href="${esc(r.url)}" target="_blank" rel="noopener">${esc(r.url)} ↗</a>`:'<span></span>'}
-      ${canManage(r)?`<div class="resource-card-actions"><button onclick="startEditResource('${r.id}')">✏️ Edit</button><button onclick="deleteResource('${r.id}')">🗑️</button></div>`:''}
+      ${canManage(r)?`<div class="resource-card-actions"><button onclick="startEditResource('${r.id}')">${icon('edit')} Edit</button><button onclick="deleteResource('${r.id}')">${icon('trash')}</button></div>`:''}
     </div>
   </div>`).join(''):'<div class="empty-state"><div class="empty-icon">📚</div><div class="empty-title">No resources yet</div><div class="empty-sub">Add the first tool or template below.</div></div>';
   html+=`<div class="new-group-card" onclick="startAddResource()">
@@ -1136,7 +1161,7 @@ function renderNotesCard(){
   const list=currentNotes.length?currentNotes.map(n=>`<div class="session-item">
       <div class="session-top">
         <div><div class="session-who">${esc(n.createdByName||'Unknown')}</div><div class="session-when">${formatDateTime(n.createdAt)}</div></div>
-        <button class="session-del" onclick="deleteNote('${n.id}')">✕</button>
+        <button class="session-del" onclick="deleteNote('${n.id}')">${icon('x')}</button>
       </div>
       <div class="session-notes">${esc(n.text)}</div>
     </div>`).join(''):'<div class="empty-hint">No notes yet.</div>';
@@ -1208,7 +1233,7 @@ function renderMetricsCard(){
         <div style="display:flex;align-items:baseline;gap:8px">
           <div style="font-size:18px;font-weight:800;color:var(--text)">${fmtNum(latest.value)}</div>
           ${delta!==null?`<div style="font-size:12px;font-weight:700;color:${deltaColor}">${deltaText}</div>`:''}
-          <button class="entry-del" onclick="deleteMetric('${latest.id}')" title="Delete latest entry">✕</button>
+          <button class="entry-del" onclick="deleteMetric('${latest.id}')" title="Delete latest entry">${icon('x')}</button>
         </div>
       </div>
       <canvas id="${g.canvasId}" width="600" height="60" style="width:100%;height:44px;display:block;margin-bottom:6px"></canvas>
@@ -1262,7 +1287,7 @@ function renderTasksCard(){
       const moveBtns=TASK_COLS.filter(c=>c.key!==col.key).map(o=>`<button class="task-move-btn" onclick="moveTask('${t.id}','${o.key}')">→ ${esc(o.label)}</button>`).join('');
       return `<div class="task-chip">
         <div class="task-chip-text">${esc(t.text)}</div>
-        <div class="task-chip-actions">${moveBtns}<button class="task-del" onclick="deleteTask('${t.id}')">✕</button></div>
+        <div class="task-chip-actions">${moveBtns}<button class="task-del" onclick="deleteTask('${t.id}')">${icon('x')}</button></div>
       </div>`;
     }).join(''):'<div class="empty-hint" style="padding:2px 0">Nothing here</div>';
     return `<div><div class="kanban-col-title">${esc(col.label)} (${items.length})</div>${chips}</div>`;
@@ -1376,8 +1401,8 @@ function renderDetailAll(p){
 function renderDetailSecrets(p){
   const secrets=p.secrets||[];
   document.getElementById('detailSecrets').innerHTML=`
-    <div class="section-title">Keys &amp; Secrets</div>
-    ${secrets.length?secrets.map(s=>`<div class="entry-row"><div class="entry-row-info"><div class="entry-row-name">${esc(s.name)}</div><div class="entry-row-url" id="dSecretVal_${s.id}">${maskSecret(s.value)}</div></div><button class="entry-del" style="margin-right:4px" onclick="toggleDetailSecretVisibility('${s.id}')" title="Show/hide">👁</button><button class="entry-del" onclick="copySecret('${s.id}')" title="Copy">⧉</button></div>`).join(''):'<div class="empty-hint">No keys or secrets added yet.</div>'}`;
+    <div class="section-title">${icon('lock',13)} Keys &amp; Secrets</div>
+    ${secrets.length?secrets.map(s=>`<div class="entry-row"><div class="entry-row-info"><div class="entry-row-name">${esc(s.name)}</div><div class="entry-row-url" id="dSecretVal_${s.id}">${maskSecret(s.value)}</div></div><button class="entry-icon-btn" style="margin-right:4px" onclick="toggleDetailSecretVisibility('${s.id}')" title="Show/hide">${icon('eye')}</button><button class="entry-icon-btn" onclick="copySecret('${s.id}')" title="Copy">${icon('copy')}</button></div>`).join(''):'<div class="empty-hint">No keys or secrets added yet.</div>'}`;
 }
 function toggleDetailSecretVisibility(id){
   const p=projects.find(x=>x.id===currentProjectId);if(!p)return;
@@ -1389,6 +1414,29 @@ function copySecret(id){
   const p=projects.find(x=>x.id===currentProjectId);if(!p)return;
   const s=(p.secrets||[]).find(x=>x.id===id);if(!s)return;
   navigator.clipboard.writeText(s.value).then(()=>toast('Copied to clipboard.')).catch(()=>alert('Could not copy — your browser may be blocking clipboard access.'));
+}
+async function renderActivityFeed(){
+  const el=document.getElementById('activityList');
+  el.innerHTML='<div class="empty-hint">Loading activity…</div>';
+  try{
+    const perProject=await Promise.all(projects.map(async p=>{
+      const [sessSnap,noteSnap]=await Promise.all([
+        sessionsCol(p.id).orderBy('start','desc').limit(10).get(),
+        notesCol(p.id).orderBy('createdAt','desc').limit(10).get()
+      ]);
+      const sessions=sessSnap.docs.map(d=>d.data()).filter(s=>s.end).map(s=>({type:'session',ts:s.end,projectId:p.id,projectName:p.name,userName:s.userName,duration:s.duration||(s.end-s.start)}));
+      const notes=noteSnap.docs.map(d=>d.data()).map(n=>({type:'note',ts:n.createdAt,projectId:p.id,projectName:p.name,userName:n.createdByName,text:n.text}));
+      return sessions.concat(notes);
+    }));
+    const outreachSent=outreachItems.filter(o=>o.sentAt).map(o=>({type:'outreach',ts:o.sentAt,outreachId:o.id,company:o.company}));
+    activityFeedItems=perProject.flat().concat(outreachSent).sort((a,b)=>b.ts-a.ts).slice(0,40);
+    if(!activityFeedItems.length){el.innerHTML='<div class="empty-hint">No activity yet. Prompt in on a project, add a note, or send an outreach email to see it here.</div>';return;}
+    el.innerHTML=activityFeedItems.map(a=>{
+      if(a.type==='session')return`<div class="entry-row" style="cursor:pointer" onclick="showDetail('${a.projectId}')"><div class="entry-row-info"><div class="entry-row-name">🕐 ${esc(a.userName||'Someone')} logged ${fmtMs(a.duration)} on ${esc(a.projectName)}</div><div class="entry-row-url">${formatDateTime(a.ts)}</div></div></div>`;
+      if(a.type==='note')return`<div class="entry-row" style="cursor:pointer" onclick="showDetail('${a.projectId}')"><div class="entry-row-info"><div class="entry-row-name">📝 ${esc(a.userName||'Someone')} added a note to ${esc(a.projectName)}</div><div class="entry-row-url">${esc((a.text||'').slice(0,80))}</div></div></div>`;
+      return`<div class="entry-row" style="cursor:pointer" onclick="showOutreachDetail('${a.outreachId}')"><div class="entry-row-info"><div class="entry-row-name">✉️ Outreach sent to ${esc(a.company)}</div><div class="entry-row-url">${formatDateTime(a.ts)}</div></div></div>`;
+    }).join('');
+  }catch(e){el.innerHTML=`<div class="empty-hint">Couldn't load activity: ${esc(e.message)}</div>`;}
 }
 function refreshDetailActive(p){
   const myActive=(p.activeSessions||{})[currentUser?.uid];
@@ -1442,7 +1490,7 @@ function renderClockCard(p){
         <div><div class="session-who">${esc(s.userName||'Unknown')}</div><div class="session-when">${formatDateTime(s.start)} → ${formatDateTime(s.end)}</div></div>
         <div style="display:flex;align-items:center;gap:4px">
           <div class="session-dur">${fmtMs(s.duration||(s.end-s.start))}</div>
-          <button class="session-del" onclick="deleteSession('${s.id}')">✕</button>
+          <button class="session-del" onclick="deleteSession('${s.id}')">${icon('x')}</button>
         </div>
       </div>
       ${s.notes?`<div class="session-notes">${esc(s.notes)}</div>`:''}
@@ -1582,7 +1630,7 @@ function addFormLink(){
 }
 function removeFormLink(id){formLinks=formLinks.filter(l=>l.id!==id);renderFormLinks();}
 function renderFormLinks(){
-  document.getElementById('fLinkList').innerHTML=formLinks.map(l=>`<div class="entry-row"><div class="entry-row-info"><div class="entry-row-name">${esc(l.label)}</div>${l.url?`<div class="entry-row-url">${esc(l.url)}</div>`:''}</div><button class="entry-del" onclick="removeFormLink('${l.id}')">✕</button></div>`).join('');
+  document.getElementById('fLinkList').innerHTML=formLinks.map(l=>`<div class="entry-row"><div class="entry-row-info"><div class="entry-row-name">${esc(l.label)}</div>${l.url?`<div class="entry-row-url">${esc(l.url)}</div>`:''}</div><button class="entry-del" onclick="removeFormLink('${l.id}')">${icon('x')}</button></div>`).join('');
 }
 function addFormSoft(){
   const name=document.getElementById('fSoftName').value.trim();
@@ -1594,7 +1642,7 @@ function addFormSoft(){
 }
 function removeFormSoft(id){formSoft=formSoft.filter(s=>s.id!==id);renderFormSoft();}
 function renderFormSoft(){
-  document.getElementById('fSoftList').innerHTML=formSoft.map(s=>`<div class="entry-row"><div class="entry-row-info"><div class="entry-row-name">${esc(s.name)}</div>${s.url?`<div class="entry-row-url">${esc(s.url)}</div>`:''}</div><button class="entry-del" onclick="removeFormSoft('${s.id}')">✕</button></div>`).join('');
+  document.getElementById('fSoftList').innerHTML=formSoft.map(s=>`<div class="entry-row"><div class="entry-row-info"><div class="entry-row-name">${esc(s.name)}</div>${s.url?`<div class="entry-row-url">${esc(s.url)}</div>`:''}</div><button class="entry-del" onclick="removeFormSoft('${s.id}')">${icon('x')}</button></div>`).join('');
 }
 function addFormSecret(){
   const name=document.getElementById('fSecretName').value.trim();
@@ -1607,7 +1655,7 @@ function addFormSecret(){
 }
 function removeFormSecret(id){formSecrets=formSecrets.filter(s=>s.id!==id);renderFormSecrets();}
 function renderFormSecrets(){
-  document.getElementById('fSecretList').innerHTML=formSecrets.map(s=>`<div class="entry-row"><div class="entry-row-info"><div class="entry-row-name">${esc(s.name)}</div><div class="entry-row-url" id="fSecretVal_${s.id}">${maskSecret(s.value)}</div></div><button class="entry-del" style="margin-right:4px" onclick="toggleFormSecretVisibility('${s.id}')" title="Show/hide">👁</button><button class="entry-del" onclick="removeFormSecret('${s.id}')">✕</button></div>`).join('');
+  document.getElementById('fSecretList').innerHTML=formSecrets.map(s=>`<div class="entry-row"><div class="entry-row-info"><div class="entry-row-name">${esc(s.name)}</div><div class="entry-row-url" id="fSecretVal_${s.id}">${maskSecret(s.value)}</div></div><button class="entry-icon-btn" style="margin-right:4px" onclick="toggleFormSecretVisibility('${s.id}')" title="Show/hide">${icon('eye')}</button><button class="entry-del" onclick="removeFormSecret('${s.id}')">${icon('x')}</button></div>`).join('');
 }
 function toggleFormSecretVisibility(id){
   if(revealedSecretIds.has(id))revealedSecretIds.delete(id);else revealedSecretIds.add(id);
@@ -1638,7 +1686,7 @@ function senderProfileBannerHtml(){
     </div>`;
   }
   return `<div style="display:flex;justify-content:flex-end;margin-bottom:10px">
-    <button class="btn btn-ghost btn-sm" onclick="startEditSenderProfile()">✏️ ${esc(senderProfile.name)}${senderProfile.company?' · '+esc(senderProfile.company):''}</button>
+    <button class="btn btn-ghost btn-sm" onclick="startEditSenderProfile()">${icon('edit')} ${esc(senderProfile.name)}${senderProfile.company?' · '+esc(senderProfile.company):''}</button>
   </div>`;
 }
 function startEditSenderProfile(){
@@ -1850,6 +1898,18 @@ async function setOutreachStatus(status){
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+const ICON_PATHS={
+  edit:'<path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z"/>',
+  x:'<path d="M18 6 6 18"/><path d="M6 6l12 12"/>',
+  eye:'<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8Z"/><circle cx="12" cy="12" r="3"/>',
+  copy:'<rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>',
+  trash:'<path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>',
+  lock:'<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>'
+};
+function icon(name,size){
+  size=size||14;
+  return`<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0">${ICON_PATHS[name]||''}</svg>`;
+}
 function formatDate(ts){if(!ts)return'';return new Date(ts).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});}
 function formatDateTime(ts){if(!ts)return'';return new Date(ts).toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'});}
 function statusLabel(s){return{active:'Active',paused:'Paused',done:'Done'}[s]||s;}
