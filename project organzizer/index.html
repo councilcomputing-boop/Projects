@@ -62,6 +62,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 .flabel{display:block;font-size:13px;font-weight:600;margin-bottom:5px;color:var(--ink3)}
 .finput{width:100%;padding:11px 13px;border:1.5px solid var(--border);border-radius:10px;font-size:16px;background:var(--surface);color:var(--text);-webkit-appearance:none;appearance:none;transition:border-color .15s}
 .finput:focus{outline:none;border-color:var(--blue)}
+.finput:disabled,.inline-name-input:disabled{opacity:.7;cursor:not-allowed;background:var(--slate-light)}
 textarea.finput{resize:vertical;min-height:82px;font-family:inherit;line-height:1.5}
 select.finput{cursor:pointer}
 
@@ -1778,15 +1779,18 @@ function renderOutreachDetailAll(o){
   renderOutreachDetailActions(o);
 }
 function renderOutreachDetailHeader(o){
+  const locked=!!o.sentAt;
+  const d=locked?' disabled':'';
   document.getElementById('outreachDetailHeader').innerHTML=`
-    <input class="inline-name-input" id="dOutreachCompany" value="${esc(o.company)}" maxlength="80" onblur="saveOutreachField('company',this.value)" onkeydown="if(event.key==='Enter')this.blur()">
+    <input class="inline-name-input" id="dOutreachCompany" value="${esc(o.company)}" maxlength="80" onblur="saveOutreachField('company',this.value)" onkeydown="if(event.key==='Enter')this.blur()"${d}>
     <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:14px;gap:10px">
       <span class="badge badge-${OUTREACH_STATUS_BADGE[o.status]||'done'}">${OUTREACH_STATUS_LABEL[o.status]||o.status}</span>
       <span style="font-size:12px;color:var(--muted);flex-shrink:0;padding-top:3px">${formatDate(o.createdAt)}</span>
     </div>
+    ${locked?`<div style="font-size:12px;color:var(--muted);margin-bottom:12px">${icon('lock',12)} Sent ${formatDateTime(o.sentAt)} — locked from editing so the record matches what was actually sent.</div>`:''}
     <div class="fg" style="margin-bottom:10px">
       <label class="flabel">Type</label>
-      <select class="finput" id="dOutreachType" onchange="saveOutreachField('type',this.value)">
+      <select class="finput" id="dOutreachType" onchange="saveOutreachField('type',this.value)"${d}>
         <option value="company"${o.type==='company'?' selected':''}>Company</option>
         <option value="investor"${o.type==='investor'?' selected':''}>Investor</option>
         <option value="customer"${o.type==='customer'?' selected':''}>Customer</option>
@@ -1794,19 +1798,19 @@ function renderOutreachDetailHeader(o){
     </div>
     <div class="fg" style="margin-bottom:10px">
       <label class="flabel">Contact Email</label>
-      <input class="finput" id="dOutreachEmail" type="email" value="${esc(o.contactEmail||'')}" placeholder="contact@example.com" onblur="saveOutreachField('contactEmail',this.value)">
+      <input class="finput" id="dOutreachEmail" type="email" value="${esc(o.contactEmail||'')}" placeholder="contact@example.com" onblur="saveOutreachField('contactEmail',this.value)"${d}>
     </div>
     <div class="fg" style="margin-bottom:10px">
       <label class="flabel">Subject</label>
-      <input class="finput" id="dOutreachSubject" type="text" value="${esc(o.subject||'')}" placeholder="e.g. Partnership opportunity" maxlength="120" onblur="saveOutreachField('subject',this.value)">
+      <input class="finput" id="dOutreachSubject" type="text" value="${esc(o.subject||'')}" placeholder="e.g. Partnership opportunity" maxlength="120" onblur="saveOutreachField('subject',this.value)"${d}>
     </div>
     <div class="fg" style="margin-bottom:0">
       <label class="flabel">Message</label>
-      <textarea class="finput" id="dOutreachMessage" placeholder="Write the outreach message..." onblur="saveOutreachField('message',this.value)">${esc(o.message||'')}</textarea>
-      <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap">
+      <textarea class="finput" id="dOutreachMessage" placeholder="Write the outreach message..." onblur="saveOutreachField('message',this.value)"${d}>${esc(o.message||'')}</textarea>
+      ${locked?'':`<div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap">
         <button type="button" class="btn btn-ghost btn-sm" onclick="openDraftModal(true)">✨ Draft with AI</button>
         <button type="button" class="btn btn-ghost btn-sm" onclick="openReviseModal(true)">🔄 Revise with AI</button>
-      </div>
+      </div>`}
     </div>`;
 }
 function renderOutreachDetailActions(o){
