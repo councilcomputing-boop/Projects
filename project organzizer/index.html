@@ -62,7 +62,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 .flabel{display:block;font-size:13px;font-weight:600;margin-bottom:5px;color:var(--ink3)}
 .finput{width:100%;padding:11px 13px;border:1.5px solid var(--border);border-radius:10px;font-size:16px;background:var(--surface);color:var(--text);-webkit-appearance:none;appearance:none;transition:border-color .15s}
 .finput:focus{outline:none;border-color:var(--blue)}
-.finput:disabled,.inline-name-input:disabled{opacity:.7;cursor:not-allowed;background:var(--slate-light)}
+.finput:disabled{opacity:.7;cursor:not-allowed;background:var(--slate-light)}
 textarea.finput{resize:vertical;min-height:82px;font-family:inherit;line-height:1.5}
 select.finput{cursor:pointer}
 
@@ -203,15 +203,6 @@ select.finput{cursor:pointer}
 /* ── Detail sections ──────────────────────────────────────── */
 .section-title{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:11px}
 .proj-desc-full{font-size:15px;color:var(--text);line-height:1.65;white-space:pre-wrap;word-break:break-word}
-.inline-name-input{display:block;width:100%;border:none;border-bottom:1.5px solid transparent;background:transparent;font-size:20px;font-weight:800;color:var(--text);padding:0 0 4px;margin-bottom:10px;font-family:inherit;letter-spacing:-.3px;appearance:none;-webkit-appearance:none}
-.inline-name-input:focus{outline:none;border-bottom-color:var(--blue)}
-.badge-select{border:none;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:700;letter-spacing:.1px;cursor:pointer;font-family:inherit}
-.badge-select.badge-active{background:var(--green-mid);color:var(--green)}
-.badge-select.badge-paused{background:var(--amber-light);color:var(--amber)}
-.badge-select.badge-done{background:var(--slate-light);color:var(--slate)}
-.proj-desc-edit{display:block;width:100%;border:none;background:transparent;font-size:15px;color:var(--text);line-height:1.65;font-family:inherit;resize:vertical;min-height:60px;padding:0}
-.proj-desc-edit:focus{outline:none}
-.proj-desc-edit::placeholder{color:var(--muted);font-style:italic}
 .empty-hint{font-size:13px;color:var(--muted);font-style:italic;padding:4px 0}
 
 /* ── FAB (projects only) ──────────────────────────────────── */
@@ -410,11 +401,12 @@ select.finput{cursor:pointer}
     <div class="card" id="detailMetrics"></div>
     <div class="card" id="detailNotes"></div>
     <div class="btn-row" style="margin-top:4px">
+      <button class="btn btn-ghost btn-sm" onclick="startEdit()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg> Edit</button>
       <button class="btn btn-red btn-sm" onclick="deleteProject()">Delete</button>
     </div>
   </div>
 
-  <!-- Add Project -->
+  <!-- Add/Edit Project -->
   <div class="view" id="viewForm">
     <div class="form-section">
       <div class="fg">
@@ -449,6 +441,7 @@ select.finput{cursor:pointer}
     <div class="card" id="outreachDetailHeader"></div>
     <div class="card" id="outreachDetailActions"></div>
     <div class="btn-row" style="margin-top:4px">
+      <button class="btn btn-ghost btn-sm" id="outreachEditBtn" onclick="startEditOutreach()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg> Edit</button>
       <button class="btn btn-red btn-sm" onclick="deleteOutreach()">Delete</button>
     </div>
   </div>
@@ -643,7 +636,7 @@ document.getElementById('hdrLogo').src=APP_LOGO;
 
 // ── State ─────────────────────────────────────────────────────────────────────
 let currentUser=null,groups=[],currentGroup=null,projects=[],currentSessions=[];
-let currentView='groups',currentProjectId=null,revealedSecretIds=new Set();
+let currentView='groups',currentProjectId=null,editingId=null,revealedSecretIds=new Set();
 let timerInterval=null,clockOutPending=false;
 let unsubGroups=null,unsubProjects=null,unsubSessions=null,loginMode='in';
 let myRole='member',adminGroupsCache=[];
@@ -651,7 +644,7 @@ let currentNotes=[],unsubNotes=null;
 let currentMetrics=[],unsubMetrics=null;
 let currentTasks=[],unsubTasks=null;
 let resources=[],unsubResources=null,editingResourceId=null;
-let outreachItems=[],unsubOutreach=null,currentOutreachId=null,preMembersView='list';
+let outreachItems=[],unsubOutreach=null,currentOutreachId=null,editingOutreachId=null,preMembersView='list';
 let activityFeedItems=[];
 let senderProfile={name:'',email:'',company:''};
 let respondingOutreachId=null;
@@ -851,11 +844,13 @@ function goBack(){
     if(isDesktopSplit())toGroups();else showView('outreach');
   }
   else if(currentView==='form'){
-    if(isDesktopSplit())toGroups();
+    if(editingId)showDetail(editingId);
+    else if(isDesktopSplit())toGroups();
     else showView('list');
   }
   else if(currentView==='outreachForm'){
-    if(isDesktopSplit())toGroups();
+    if(editingOutreachId)showOutreachDetail(editingOutreachId);
+    else if(isDesktopSplit())toGroups();
     else showView('outreach');
   }
   else if(currentView==='createGroup')showView('groups');
@@ -1372,16 +1367,11 @@ function showDetail(id){
 }
 function renderDetailAll(p){
   document.getElementById('detailHeader').innerHTML=`
-    <input class="inline-name-input" id="detailNameInput" value="${esc(p.name)}" maxlength="80" onblur="saveProjectName(this.value)" onkeydown="if(event.key==='Enter')this.blur()">
-    <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:12px;gap:10px">
-      <select class="badge-select badge-${p.status}" id="statusSelect" onchange="updateProjectStatus(this.value)">
-        <option value="active"${p.status==='active'?' selected':''}>Active</option>
-        <option value="paused"${p.status==='paused'?' selected':''}>Paused</option>
-        <option value="done"${p.status==='done'?' selected':''}>Done</option>
-      </select>
-      <span style="font-size:12px;color:var(--muted);flex-shrink:0;padding-top:3px">${formatDate(p.createdAt)}</span>
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:12px">
+      <span class="badge badge-${p.status}">${statusLabel(p.status)}</span>
+      <span style="font-size:12px;color:var(--muted)">${formatDate(p.createdAt)}</span>
     </div>
-    <textarea class="proj-desc-edit" id="detailDescInput" placeholder="Describe the project, goals, current progress..." onblur="saveProjectDescription(this.value)">${esc(p.description||'')}</textarea>`;
+    <div class="proj-desc-full">${p.description?esc(p.description):'<span style="color:var(--muted);font-style:italic">No description yet.</span>'}</div>`;
   renderDetailLinks(p);
   renderDetailSoftware(p);
   renderDetailSecrets(p);
@@ -1389,28 +1379,6 @@ function renderDetailAll(p){
   renderTasksCard();
   renderMetricsCard();
   renderNotesCard();
-}
-async function saveProjectName(value){
-  const p=projects.find(x=>x.id===currentProjectId);if(!p)return;
-  const name=value.trim();
-  if(!name){document.getElementById('detailNameInput').value=p.name;return;}
-  if(name===p.name)return;
-  try{
-    await projectsCol().doc(currentProjectId).update({name});
-    document.getElementById('hdrTitle').textContent=name;
-  }catch(e){alert('Error: '+e.message);document.getElementById('detailNameInput').value=p.name;}
-}
-async function saveProjectDescription(value){
-  const p=projects.find(x=>x.id===currentProjectId);if(!p)return;
-  const desc=value.trim();
-  if(desc===(p.description||''))return;
-  try{await projectsCol().doc(currentProjectId).update({description:desc});}
-  catch(e){alert('Error: '+e.message);document.getElementById('detailDescInput').value=p.description||'';}
-}
-async function updateProjectStatus(status){
-  const p=projects.find(x=>x.id===currentProjectId);if(!p)return;
-  try{await projectsCol().doc(currentProjectId).update({status});}
-  catch(e){alert('Error: '+e.message);document.getElementById('statusSelect').value=p.status;}
 }
 function renderDetailLinks(p){
   const links=p.links||[];
@@ -1660,13 +1628,24 @@ function fmtMsClock(ms){
 }
 function p2(n){return String(n).padStart(2,'0');}
 
-// ── Project form (creation only — existing projects are edited inline on the detail view) ──
+// ── Project form ──────────────────────────────────────────────────────────────
 function startAdd(){
+  editingId=null;
   document.getElementById('fName').value='';
   document.getElementById('fDesc').value='';
   document.getElementById('fStatus').value='active';
   document.getElementById('fSaveBtn').disabled=false;document.getElementById('fSaveBtn').textContent='Save Project';
   document.getElementById('hdrTitle').textContent='New Project';
+  showView('form');
+}
+function startEdit(){
+  const p=projects.find(x=>x.id===currentProjectId);if(!p)return;
+  editingId=p.id;
+  document.getElementById('fName').value=p.name;
+  document.getElementById('fDesc').value=p.description||'';
+  document.getElementById('fStatus').value=p.status||'active';
+  document.getElementById('fSaveBtn').disabled=false;document.getElementById('fSaveBtn').textContent='Save Changes';
+  document.getElementById('hdrTitle').textContent='Edit Project';
   showView('form');
 }
 async function saveProject(){
@@ -1677,10 +1656,15 @@ async function saveProject(){
   const btn=document.getElementById('fSaveBtn');
   btn.disabled=true;btn.textContent='Saving…';
   try{
-    const ref=await projectsCol().add({name,description:desc,status,links:[],software:[],secrets:[],activeSessions:{},createdAt:Date.now(),createdBy:currentUser.uid,createdByName:myName()});
-    currentProjectId=ref.id;
-    showDetail(currentProjectId);
-  }catch(e){alert('Error: '+e.message);btn.disabled=false;btn.textContent='Save Project';}
+    if(editingId){
+      await projectsCol().doc(editingId).update({name,description:desc,status});
+      currentProjectId=editingId;
+    }else{
+      const ref=await projectsCol().add({name,description:desc,status,links:[],software:[],secrets:[],activeSessions:{},createdAt:Date.now(),createdBy:currentUser.uid,createdByName:myName()});
+      currentProjectId=ref.id;
+    }
+    editingId=null;showDetail(currentProjectId);
+  }catch(e){alert('Error: '+e.message);btn.disabled=false;btn.textContent=editingId?'Save Changes':'Save Project';}
 }
 async function deleteProject(){
   const p=projects.find(x=>x.id===currentProjectId);if(!p)return;
@@ -1704,7 +1688,7 @@ function startListeningToOutreach(){
     renderOutreachList();
     if(currentView==='outreachDetail'&&currentOutreachId){
       const o=outreachItems.find(x=>x.id===currentOutreachId);
-      if(o)renderOutreachDetailActions(o);
+      if(o)renderOutreachDetailAll(o);
     }
   },err=>console.error(err));
 }
@@ -1777,45 +1761,17 @@ function showOutreachDetail(id){
   renderOutreachList();
 }
 function renderOutreachDetailAll(o){
-  renderOutreachDetailHeader(o);
-  renderOutreachDetailActions(o);
-}
-function renderOutreachDetailHeader(o){
-  const locked=!!o.sentAt;
-  const d=locked?' disabled':'';
   document.getElementById('outreachDetailHeader').innerHTML=`
-    <input class="inline-name-input" id="dOutreachCompany" value="${esc(o.company)}" maxlength="80" onblur="saveOutreachField('company',this.value)" onkeydown="if(event.key==='Enter')this.blur()"${d}>
-    <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:14px;gap:10px">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:12px">
       <span class="badge badge-${OUTREACH_STATUS_BADGE[outreachDisplayStatus(o)]||'done'}">${OUTREACH_STATUS_LABEL[outreachDisplayStatus(o)]||o.status}</span>
-      <span style="font-size:12px;color:var(--muted);flex-shrink:0;padding-top:3px">${formatDate(o.createdAt)}</span>
+      <span style="font-size:12px;color:var(--muted)">${formatDate(o.createdAt)}</span>
     </div>
-    ${locked?`<div style="font-size:12px;color:var(--muted);margin-bottom:12px">${icon('lock',12)} Sent ${formatDateTime(o.sentAt)} — locked from editing so the record matches what was actually sent.</div>`:''}
-    <div class="fg" style="margin-bottom:10px">
-      <label class="flabel">Type</label>
-      <select class="finput" id="dOutreachType" onchange="saveOutreachField('type',this.value)"${d}>
-        <option value="company"${o.type==='company'?' selected':''}>Company</option>
-        <option value="investor"${o.type==='investor'?' selected':''}>Investor</option>
-        <option value="customer"${o.type==='customer'?' selected':''}>Customer</option>
-      </select>
-    </div>
-    <div class="fg" style="margin-bottom:10px">
-      <label class="flabel">Contact Email</label>
-      <input class="finput" id="dOutreachEmail" type="email" value="${esc(o.contactEmail||'')}" placeholder="contact@example.com" onblur="saveOutreachField('contactEmail',this.value)"${d}>
-    </div>
-    <div class="fg" style="margin-bottom:10px">
-      <label class="flabel">Subject</label>
-      <input class="finput" id="dOutreachSubject" type="text" value="${esc(o.subject||'')}" placeholder="e.g. Partnership opportunity" maxlength="120" onblur="saveOutreachField('subject',this.value)"${d}>
-    </div>
-    <div class="fg" style="margin-bottom:0">
-      <label class="flabel">Message</label>
-      <textarea class="finput" id="dOutreachMessage" placeholder="Write the outreach message..." onblur="saveOutreachField('message',this.value)"${d}>${esc(o.message||'')}</textarea>
-      ${locked?'':`<div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap">
-        <button type="button" class="btn btn-ghost btn-sm" onclick="openDraftModal(true)">✨ Draft with AI</button>
-        <button type="button" class="btn btn-ghost btn-sm" onclick="openReviseModal(true)">🔄 Revise with AI</button>
-      </div>`}
-    </div>`;
-}
-function renderOutreachDetailActions(o){
+    <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.7px;margin-bottom:4px">${esc(OUTREACH_TYPE_LABEL[o.type]||o.type||'')}</div>
+    <div style="font-size:15px;color:var(--text);margin-bottom:14px">${o.contactEmail?esc(o.contactEmail):'<span style="color:var(--muted);font-style:italic">No contact email yet.</span>'}</div>
+    <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:4px">${esc(o.subject||'')}</div>
+    <div class="proj-desc-full">${o.message?esc(o.message):'<span style="color:var(--muted);font-style:italic">No message written.</span>'}</div>
+    ${o.sentAt?`<div style="font-size:12px;color:var(--muted);margin-top:10px">${icon('lock',12)} Sent ${formatDateTime(o.sentAt)} — locked from editing so the record matches what was actually sent.</div>`:''}`;
+  document.getElementById('outreachEditBtn').style.display=o.sentAt?'none':'flex';
   document.getElementById('outreachDetailActions').innerHTML=`
     ${o.convertedProjectId?`<div style="margin-bottom:14px"><button class="btn btn-blue btn-sm" onclick="showDetail('${o.convertedProjectId}')">📋 Open Project</button></div>`:''}
     <div class="section-title" style="margin-bottom:10px">Status</div>
@@ -1843,33 +1799,16 @@ function renderOutreachDetailActions(o){
     ${o.sentAt?`<div style="font-size:12px;color:var(--muted);margin-top:8px">Sent ${formatDateTime(o.sentAt)}</div>`:''}
     `:`<div class="empty-hint">Email sending isn't set up yet — add your EmailJS Service ID, Template ID, and Public Key near the top of the script.</div>`}`;
 }
-async function saveOutreachField(field,value){
-  const o=outreachItems.find(x=>x.id===currentOutreachId);if(!o)return;
-  const v=(value||'').trim();
-  const revert=()=>{
-    if(field==='company')document.getElementById('dOutreachCompany').value=o.company;
-    else if(field==='type')document.getElementById('dOutreachType').value=o.type||'company';
-    else if(field==='contactEmail')document.getElementById('dOutreachEmail').value=o.contactEmail||'';
-    else if(field==='subject')document.getElementById('dOutreachSubject').value=o.subject||'';
-    else if(field==='message')document.getElementById('dOutreachMessage').value=o.message||'';
-  };
-  if(field==='company'&&!v){revert();return;}
-  if(v===(o[field]||''))return;
-  try{
-    await outreachCol().doc(currentOutreachId).update({[field]:v});
-    if(field==='company')document.getElementById('hdrTitle').textContent=v;
-  }catch(e){alert('Error: '+e.message);revert();}
-}
 function markResponded(id){
   const o=outreachItems.find(x=>x.id===id);if(!o)return;
   if(o.status==='responded'){return;}
   respondingOutreachId=id;
-  renderOutreachDetailActions(o);
+  renderOutreachDetailAll(o);
 }
 function cancelOutreachResponse(){
   respondingOutreachId=null;
   const o=outreachItems.find(x=>x.id===currentOutreachId);
-  if(o)renderOutreachDetailActions(o);
+  if(o)renderOutreachDetailAll(o);
 }
 async function confirmOutreachResponse(id){
   const o=outreachItems.find(x=>x.id===id);if(!o)return;
@@ -1911,6 +1850,7 @@ async function sendOutreachEmail(){
   }
 }
 function startAddOutreach(){
+  editingOutreachId=null;
   document.getElementById('oCompany').value='';
   document.getElementById('oEmail').value='';
   document.getElementById('oType').value='company';
@@ -1918,6 +1858,18 @@ function startAddOutreach(){
   document.getElementById('oMessage').value='';
   document.getElementById('oSaveBtn').disabled=false;document.getElementById('oSaveBtn').textContent='Save as Draft';
   document.getElementById('hdrTitle').textContent='New Outreach';
+  showView('outreachForm');
+}
+function startEditOutreach(){
+  const o=outreachItems.find(x=>x.id===currentOutreachId);if(!o)return;
+  editingOutreachId=o.id;
+  document.getElementById('oCompany').value=o.company||'';
+  document.getElementById('oEmail').value=o.contactEmail||'';
+  document.getElementById('oType').value=o.type||'company';
+  document.getElementById('oSubject').value=o.subject||'';
+  document.getElementById('oMessage').value=o.message||'';
+  document.getElementById('oSaveBtn').disabled=false;document.getElementById('oSaveBtn').textContent='Save Changes';
+  document.getElementById('hdrTitle').textContent='Edit Outreach';
   showView('outreachForm');
 }
 async function saveOutreach(){
@@ -1930,17 +1882,21 @@ async function saveOutreach(){
   const btn=document.getElementById('oSaveBtn');
   btn.disabled=true;btn.textContent='Saving…';
   try{
-    const ref=await outreachCol().add({company,contactEmail,type,subject,message,status:'pending',sentAt:null,createdAt:Date.now(),createdBy:currentUser.uid,createdByName:myName()});
-    currentOutreachId=ref.id;
-    showOutreachDetail(currentOutreachId);
-  }catch(e){alert('Error: '+e.message);btn.disabled=false;btn.textContent='Save as Draft';}
+    if(editingOutreachId){
+      await outreachCol().doc(editingOutreachId).update({company,contactEmail,type,subject,message});
+      currentOutreachId=editingOutreachId;
+    }else{
+      const ref=await outreachCol().add({company,contactEmail,type,subject,message,status:'pending',sentAt:null,createdAt:Date.now(),createdBy:currentUser.uid,createdByName:myName()});
+      currentOutreachId=ref.id;
+    }
+    editingOutreachId=null;showOutreachDetail(currentOutreachId);
+  }catch(e){alert('Error: '+e.message);btn.disabled=false;btn.textContent=editingOutreachId?'Save Changes':'Save as Draft';}
 }
-let aiModalMode=null,aiTargetMessageId='oMessage',aiPersist=false;
-function openDraftModal(detail){
-  const companyElId=detail?'dOutreachCompany':'oCompany';
-  const company=document.getElementById(companyElId).value.trim();
-  if(!company){alert('Enter a company/organization name first.');document.getElementById(companyElId).focus();return;}
-  aiModalMode='draft';aiTargetMessageId=detail?'dOutreachMessage':'oMessage';aiPersist=!!detail;
+let aiModalMode=null;
+function openDraftModal(){
+  const company=document.getElementById('oCompany').value.trim();
+  if(!company){alert('Enter a company/organization name first.');document.getElementById('oCompany').focus();return;}
+  aiModalMode='draft';
   document.getElementById('aiModalTitle').textContent='Draft with AI';
   document.getElementById('aiModalBody').innerHTML=`
     <div class="fg">
@@ -1964,11 +1920,10 @@ function openDraftModal(detail){
   document.getElementById('aiModalOverlay').style.display='flex';
   setTimeout(()=>document.getElementById('aiTopic')?.focus(),50);
 }
-function openReviseModal(detail){
-  const msgElId=detail?'dOutreachMessage':'oMessage';
-  const current=document.getElementById(msgElId).value.trim();
+function openReviseModal(){
+  const current=document.getElementById('oMessage').value.trim();
   if(!current){alert('Draft or write a message first, then revise it.');return;}
-  aiModalMode='revise';aiTargetMessageId=msgElId;aiPersist=!!detail;
+  aiModalMode='revise';
   document.getElementById('aiModalTitle').textContent='Revise with AI';
   document.getElementById('aiModalBody').innerHTML=`
     <div class="fg" style="margin-bottom:0">
@@ -1985,36 +1940,29 @@ function closeAiModal(){
 }
 async function submitAiModal(){
   const btn=document.getElementById('aiModalSubmitBtn');
-  const detail=aiTargetMessageId==='dOutreachMessage';
-  const companyElId=detail?'dOutreachCompany':'oCompany';
-  const typeElId=detail?'dOutreachType':'oType';
   if(aiModalMode==='draft'){
     const topic=document.getElementById('aiTopic').value.trim();
     if(!topic){document.getElementById('aiTopic').focus();return;}
     const tone=document.getElementById('aiTone').value;
     const keyPoints=document.getElementById('aiKeyPoints').value.trim();
-    const company=document.getElementById(companyElId).value.trim();
-    const type=document.getElementById(typeElId).value;
+    const company=document.getElementById('oCompany').value.trim();
+    const type=document.getElementById('oType').value;
     btn.disabled=true;btn.textContent='Drafting…';
     try{
       const draft=functions.httpsCallable('draftOutreachEmail');
       const res=await draft({company,type,topic,tone,keyPoints,senderName:senderProfile.name,senderCompany:senderProfile.company});
-      const msg=res.data.message||'';
-      document.getElementById(aiTargetMessageId).value=msg;
-      if(aiPersist)await outreachCol().doc(currentOutreachId).update({message:msg});
+      document.getElementById('oMessage').value=res.data.message||'';
       closeAiModal();
     }catch(e){alert('Error drafting email: '+(e?.message||e));btn.disabled=false;btn.textContent='Generate';}
   }else if(aiModalMode==='revise'){
     const instructions=document.getElementById('aiInstructions').value.trim();
     if(!instructions){document.getElementById('aiInstructions').focus();return;}
-    const currentMessage=document.getElementById(aiTargetMessageId).value.trim();
+    const currentMessage=document.getElementById('oMessage').value.trim();
     btn.disabled=true;btn.textContent='Revising…';
     try{
       const revise=functions.httpsCallable('reviseOutreachEmail');
       const res=await revise({currentMessage,instructions});
-      const msg=res.data.message||'';
-      document.getElementById(aiTargetMessageId).value=msg;
-      if(aiPersist)await outreachCol().doc(currentOutreachId).update({message:msg});
+      document.getElementById('oMessage').value=res.data.message||'';
       closeAiModal();
     }catch(e){alert('Error revising email: '+(e?.message||e));btn.disabled=false;btn.textContent='Revise';}
   }
