@@ -486,7 +486,7 @@ select.finput{cursor:pointer}
       </div>
     </div>
     <div style="margin-top:4px">
-      <button class="btn btn-ink" id="oSaveBtn" onclick="saveOutreach()">Save Outreach</button>
+      <button class="btn btn-ink" id="oSaveBtn" onclick="saveOutreach()">Save as Draft</button>
     </div>
   </div>
 
@@ -655,9 +655,10 @@ let outreachItems=[],unsubOutreach=null,currentOutreachId=null,preMembersView='l
 let activityFeedItems=[];
 let senderProfile={name:'',email:'',company:''};
 let respondingOutreachId=null;
-const OUTREACH_STATUS_LABEL={pending:'Pending',responded:'Responded',no_response:'No Response'};
-const OUTREACH_STATUS_BADGE={pending:'paused',responded:'active',no_response:'done'};
-const OUTREACH_STATUS_COLOR={pending:'#f59e0b',responded:'#10b981',no_response:'#94a3b8'};
+const OUTREACH_STATUS_LABEL={draft:'Draft',pending:'Pending',responded:'Responded',no_response:'No Response'};
+const OUTREACH_STATUS_BADGE={draft:'done',pending:'paused',responded:'active',no_response:'done'};
+const OUTREACH_STATUS_COLOR={draft:'#94a3b8',pending:'#f59e0b',responded:'#10b981',no_response:'#94a3b8'};
+function outreachDisplayStatus(o){return!o.sentAt&&o.status==='pending'?'draft':o.status;}
 const OUTREACH_TYPE_LABEL={company:'Company',investor:'Investor',customer:'Customer'};
 
 // ── Group accent colors ───────────────────────────────────────────────────────
@@ -1759,8 +1760,9 @@ function renderOutreachList(){
   }
   el.innerHTML=tabs+banner+sorted.map(o=>{
     const sel=o.id===currentOutreachId?' sel':'';
-    const statusBadge=`<span class="badge badge-${OUTREACH_STATUS_BADGE[o.status]||'done'}">${OUTREACH_STATUS_LABEL[o.status]||o.status}</span>`;
-    return `<div class="proj-card${sel}" data-id="${o.id}" style="border-left-color:${OUTREACH_STATUS_COLOR[o.status]||'#94a3b8'}" onclick="showOutreachDetail('${o.id}')">
+    const ds=outreachDisplayStatus(o);
+    const statusBadge=`<span class="badge badge-${OUTREACH_STATUS_BADGE[ds]||'done'}">${OUTREACH_STATUS_LABEL[ds]||ds}</span>`;
+    return `<div class="proj-card${sel}" data-id="${o.id}" style="border-left-color:${OUTREACH_STATUS_COLOR[ds]||'#94a3b8'}" onclick="showOutreachDetail('${o.id}')">
       <div class="proj-card-top"><div class="proj-card-name">${esc(o.company)}</div>${statusBadge}</div>
       <div class="proj-card-desc">${esc(OUTREACH_TYPE_LABEL[o.type]||o.type||'')}${o.contactEmail?' · '+esc(o.contactEmail):''}</div>
     </div>`;
@@ -1784,7 +1786,7 @@ function renderOutreachDetailHeader(o){
   document.getElementById('outreachDetailHeader').innerHTML=`
     <input class="inline-name-input" id="dOutreachCompany" value="${esc(o.company)}" maxlength="80" onblur="saveOutreachField('company',this.value)" onkeydown="if(event.key==='Enter')this.blur()"${d}>
     <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:14px;gap:10px">
-      <span class="badge badge-${OUTREACH_STATUS_BADGE[o.status]||'done'}">${OUTREACH_STATUS_LABEL[o.status]||o.status}</span>
+      <span class="badge badge-${OUTREACH_STATUS_BADGE[outreachDisplayStatus(o)]||'done'}">${OUTREACH_STATUS_LABEL[outreachDisplayStatus(o)]||o.status}</span>
       <span style="font-size:12px;color:var(--muted);flex-shrink:0;padding-top:3px">${formatDate(o.createdAt)}</span>
     </div>
     ${locked?`<div style="font-size:12px;color:var(--muted);margin-bottom:12px">${icon('lock',12)} Sent ${formatDateTime(o.sentAt)} — locked from editing so the record matches what was actually sent.</div>`:''}
@@ -1817,7 +1819,7 @@ function renderOutreachDetailActions(o){
   document.getElementById('outreachDetailActions').innerHTML=`
     ${o.convertedProjectId?`<div style="margin-bottom:14px"><button class="btn btn-blue btn-sm" onclick="showDetail('${o.convertedProjectId}')">📋 Open Project</button></div>`:''}
     <div class="section-title" style="margin-bottom:10px">Status</div>
-    ${respondingOutreachId===o.id?`
+    ${!o.sentAt?`<div class="empty-hint">Send this outreach to start tracking responses.</div>`:respondingOutreachId===o.id?`
     <div class="clockout-form">
       <label class="flabel">What did they say? <span style="color:var(--muted);font-weight:400">(optional)</span></label>
       <textarea class="finput" id="outreachResponseNotes" placeholder="Paste or summarize their reply...">${o.responseNotes?esc(o.responseNotes):''}</textarea>
@@ -1914,7 +1916,7 @@ function startAddOutreach(){
   document.getElementById('oType').value='company';
   document.getElementById('oSubject').value='';
   document.getElementById('oMessage').value='';
-  document.getElementById('oSaveBtn').disabled=false;document.getElementById('oSaveBtn').textContent='Save Outreach';
+  document.getElementById('oSaveBtn').disabled=false;document.getElementById('oSaveBtn').textContent='Save as Draft';
   document.getElementById('hdrTitle').textContent='New Outreach';
   showView('outreachForm');
 }
@@ -1931,7 +1933,7 @@ async function saveOutreach(){
     const ref=await outreachCol().add({company,contactEmail,type,subject,message,status:'pending',sentAt:null,createdAt:Date.now(),createdBy:currentUser.uid,createdByName:myName()});
     currentOutreachId=ref.id;
     showOutreachDetail(currentOutreachId);
-  }catch(e){alert('Error: '+e.message);btn.disabled=false;btn.textContent='Save Outreach';}
+  }catch(e){alert('Error: '+e.message);btn.disabled=false;btn.textContent='Save as Draft';}
 }
 let aiModalMode=null,aiTargetMessageId='oMessage',aiPersist=false;
 function openDraftModal(detail){
