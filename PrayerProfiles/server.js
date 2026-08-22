@@ -173,7 +173,7 @@ if (PUSH_ENABLED) {
 // is logged to the server console instead — lets reset work in dev/Electron
 // without any email account, at the cost of not actually reaching the user.
 const RESEND_API_KEY   = process.env.RESEND_API_KEY;
-const RESET_EMAIL_FROM = process.env.RESET_EMAIL_FROM || 'Prayer Profiles <onboarding@resend.dev>';
+const RESET_EMAIL_FROM = process.env.RESET_EMAIL_FROM || 'Pray For Them <onboarding@resend.dev>';
 const APP_ORIGIN       = process.env.APP_ORIGIN || `http://localhost:${process.env.PORT || 3001}`;
 const EMAIL_ENABLED    = !!RESEND_API_KEY;
 if (!EMAIL_ENABLED) {
@@ -182,7 +182,7 @@ if (!EMAIL_ENABLED) {
 
 function sendResetEmail(toEmail, resetLink) {
   return new Promise((resolve) => {
-    const html = `<p>Someone requested a password reset for your Prayer Profiles account.</p>
+    const html = `<p>Someone requested a password reset for your Pray For Them account.</p>
 <p><a href="${resetLink}">Click here to choose a new password</a>. This link expires in 15 minutes.</p>
 <p>If you didn't request this, you can safely ignore this email.</p>`;
 
@@ -194,7 +194,7 @@ function sendResetEmail(toEmail, resetLink) {
     const body = JSON.stringify({
       from:    RESET_EMAIL_FROM,
       to:      [toEmail],
-      subject: 'Reset your Prayer Profiles password',
+      subject: 'Reset your Pray For Them password',
       html,
     });
     const req = https.request({
@@ -1189,4 +1189,4 @@ app.post('/api/icloud/contacts', requireAuth, icloudLimiter, async (req, res) =>
 });
 
 // ── Start ─────────────────────────────────────────────────────────────────────
-app.listen(PORT, () => console.log(`Prayer Profiles running at http://localhost:${PORT}`));
+app.listen(PORT, () => console.log(`Pray For Them running at http://localhost:${PORT}`));

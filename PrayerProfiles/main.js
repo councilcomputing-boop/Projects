@@ -28,7 +28,7 @@ function createWindow() {
     height: 840,
     minWidth: 820,
     minHeight: 600,
-    title: 'Prayer Profiles',
+    title: 'Pray For Them',
     backgroundColor: '#FAF6EF',
     webPreferences: {
       nodeIntegration:  false,
@@ -63,7 +63,7 @@ app.whenReady().then(async () => {
     await waitForServer(3001);
     createWindow();
   } catch (err) {
-    console.error('[Prayer Profiles] startup error:', err);
+    console.error('[Pray For Them] startup error:', err);
     app.quit();
   }
 

@@ -7,7 +7,7 @@ self.addEventListener('fetch',    e  => e.respondWith(fetch(e.request)));
 self.addEventListener('push', e => {
   let data = {};
   try { data = e.data ? e.data.json() : {}; } catch {}
-  e.waitUntil(self.registration.showNotification(data.title || 'Prayer Profiles', {
+  e.waitUntil(self.registration.showNotification(data.title || 'Pray For Them', {
     body:  data.body || 'You have a prayer reminder.',
     icon:  '/icon-192.png',
     badge: '/icon-192.png',

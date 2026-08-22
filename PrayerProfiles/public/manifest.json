@@ -1,6 +1,6 @@
 {
-  "name": "Prayer Profiles",
-  "short_name": "Prayer",
+  "name": "Pray For Them",
+  "short_name": "Pray For Them",
   "description": "Track prayers for the people you care about",
   "start_url": "/",
   "display": "standalone",

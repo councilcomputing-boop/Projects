@@ -1,7 +1,7 @@
 {
   "name": "prayer-profiles",
   "version": "1.0.0",
-  "description": "Prayer Profiles — companion to YouVersion Bible app",
+  "description": "Pray For Them — companion to YouVersion Bible app",
   "main": "main.js",
   "scripts": {
     "start": "node server.js",
@@ -25,7 +25,7 @@
   },
   "build": {
     "appId": "com.prayer.profiles",
-    "productName": "Prayer Profiles",
+    "productName": "Pray For Them",
     "directories": {
       "output": "dist"
     },
