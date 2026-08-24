@@ -155,15 +155,16 @@ export function PlayingCard({ card, size = 'lg', width }: PlayingCardProps) {
       portrait ?
       // Classic double-ended court card: the same bust crop shown upright in the top
       // half and rotated 180deg in the bottom half, meeting at a cut line through the
-      // middle — reads right-side up no matter which way the card is held. The crop
-      // height (93% of the square source) is measured to land just past every
-      // portrait's actual artwork into its transparent margin, not mid-jacket/mid-hair,
-      // so the seam is invisible instead of a visible hard-cut line.
+      // middle — reads right-side up no matter which way the card is held. Every
+      // portrait's actual artwork (measured via alpha bbox) spans ~4.7%-89.4% of the
+      // square source, so the crop height (89.5% of the source) lands right at that
+      // bottom edge instead of past it — a wider margin here doubles up at the seam
+      // (top half's bottom margin + bottom half's mirrored top margin) into a visible gap.
       <span
         aria-hidden="true"
         className="absolute flex flex-col items-center"
         style={{ width: '50%', top: '50%', left: '50%', transform: 'translate(-50%, -50%)' }}>
-          <span className="w-full overflow-hidden" style={{ aspectRatio: '10 / 9.3' }}>
+          <span className="w-full overflow-hidden" style={{ aspectRatio: '10 / 8.95' }}>
             <img src={portrait} alt="" className="h-full w-full object-cover object-top" />
           </span>
           <span className="w-full overflow-hidden" style={{ aspectRatio: '10 / 9.3', transform: 'rotate(180deg)' }}>
