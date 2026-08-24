@@ -44,6 +44,9 @@ export function useSpeedDrill() {
   const [index, setIndex] = useState(0);
   const [elapsedMs, setElapsedMs] = useState(0);
   const [answer, setAnswer] = useState(0);
+  const [midQuizAnswer, setMidQuizAnswer] = useState(0);
+  const [midQuizSubmitted, setMidQuizSubmitted] = useState(false);
+  const [midQuizCorrect, setMidQuizCorrect] = useState(false);
   const [lastResultCorrect, setLastResultCorrect] = useState(false);
   const [lastExpectedSum, setLastExpectedSum] = useState(0);
   const [speedState, setSpeedState] = useState<SpeedState>(loadSpeedState);
@@ -99,6 +102,8 @@ export function useSpeedDrill() {
     if (index + 1 >= deck.length) return false; // no cards left after this one
     if (cardsSinceAskRef.current >= MID_DRILL_ASK_EVERY && Math.random() < MID_DRILL_ASK_CHANCE) {
       cardsSinceAskRef.current = 0;
+      setMidQuizAnswer(0);
+      setMidQuizSubmitted(false);
       setStage('midQuiz');
       return true;
     }
@@ -131,6 +136,11 @@ export function useSpeedDrill() {
   }
 
   const countSoFar = deck.slice(0, index + 1).reduce((sum, c) => sum + hiLoValue(c.rank), 0);
+
+  function submitMidQuizAnswer() {
+    setMidQuizCorrect(midQuizAnswer === countSoFar);
+    setMidQuizSubmitted(true);
+  }
 
   function continueMidDrill() {
     setStage('running');
@@ -165,6 +175,10 @@ export function useSpeedDrill() {
     elapsedMs,
     answer,
     setAnswer,
+    midQuizAnswer,
+    setMidQuizAnswer,
+    midQuizSubmitted,
+    midQuizCorrect,
     lastResultCorrect,
     lastExpectedSum,
     midQuizCountSoFar: countSoFar,
@@ -172,6 +186,7 @@ export function useSpeedDrill() {
     start,
     advanceManually,
     continueMidDrill,
+    submitMidQuizAnswer,
     submitAnswer,
     stopDrill
   };

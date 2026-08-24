@@ -101,7 +101,11 @@ export function PlayingCard({ card, size = 'lg', width }: PlayingCardProps) {
   // third of the card's actual height, which barged into face-card portraits and
   // crowded pip layouts instead of sitting as a small, unobtrusive corner index like a
   // real card's.
-  const rankSize = Math.round(w * 0.15);
+  // '10' is the only two-character rank -- at the same font size as every other
+  // rank's single character, its corner index renders wide enough to run into the
+  // first pip row, so it gets a smaller size to keep the same rendered width as
+  // the rest of the corner indices (matching how real decks print a condensed '10').
+  const rankSize = Math.round(w * (card.rank === '10' ? 0.11 : 0.15));
   const cornerSuitSize = Math.round(w * 0.12);
   const centreSize = Math.round(w * 0.52);
   const pipSize = Math.round(w * 0.16);

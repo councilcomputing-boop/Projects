@@ -98,11 +98,42 @@ export function SpeedDrill() {
         {stage === 'midQuiz' &&
         <div className="fixed inset-0 z-40 flex items-center justify-center bg-ink/90 px-6" role="dialog" aria-label="Count so far">
             <div className="w-full max-w-xs rounded-2xl bg-parch p-5 text-center">
-              <p className="font-serif text-sm font-semibold uppercase tracking-[0.12em] text-gold-deep">What's the count so far?</p>
-              <p className="tabular mt-3 font-serif text-4xl font-semibold text-charcoal">{formatCount(drill.midQuizCountSoFar)}</p>
-              <button type="button" onClick={drill.continueMidDrill} className="mt-4 w-full rounded-xl bg-white py-3 text-sm font-bold text-charcoal shadow-card">
-                Continue
-              </button>
+              {!drill.midQuizSubmitted ?
+            <>
+                  <p className="font-serif text-sm font-semibold uppercase tracking-[0.12em] text-gold-deep">What's the count so far?</p>
+                  <div className="mt-4 flex items-center justify-center gap-6">
+                    <button
+                  type="button"
+                  onClick={() => drill.setMidQuizAnswer(drill.midQuizAnswer - 1)}
+                  aria-label="Decrease count"
+                  className="flex h-12 w-12 items-center justify-center rounded-full bg-maroon-800 text-gold transition-colors hover:bg-maroon-700">
+                      <MinusIcon size={18} strokeWidth={2.25} aria-hidden="true" />
+                    </button>
+                    <span className="tabular min-w-[4.5rem] text-center font-serif text-5xl font-semibold leading-none text-charcoal">
+                      {formatCount(drill.midQuizAnswer)}
+                    </span>
+                    <button
+                  type="button"
+                  onClick={() => drill.setMidQuizAnswer(drill.midQuizAnswer + 1)}
+                  aria-label="Increase count"
+                  className="flex h-12 w-12 items-center justify-center rounded-full bg-maroon-800 text-gold transition-colors hover:bg-maroon-700">
+                      <PlusIcon size={18} strokeWidth={2.25} aria-hidden="true" />
+                    </button>
+                  </div>
+                  <button type="button" onClick={drill.submitMidQuizAnswer} className="mt-4 w-full rounded-xl bg-white py-3 text-sm font-bold text-charcoal shadow-card">
+                    Submit
+                  </button>
+                </> :
+
+            <>
+                  <p className={`font-serif text-base font-semibold ${drill.midQuizCorrect ? 'text-felt' : 'text-blood-deep'}`}>
+                    {drill.midQuizCorrect ? 'Correct.' : `Off — the count is ${formatCount(drill.midQuizCountSoFar)}.`}
+                  </p>
+                  <button type="button" onClick={drill.continueMidDrill} className="mt-4 w-full rounded-xl bg-white py-3 text-sm font-bold text-charcoal shadow-card">
+                    Continue
+                  </button>
+                </>
+            }
             </div>
           </div>
         }
