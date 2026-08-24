@@ -66,12 +66,12 @@ const PIP_LAYOUTS: Record<string, PipPos[]> = {
   { x: 0.3, y: 0.86, flip: true }, { x: 0.7, y: 0.86, flip: true }],
 
   '10': [
-  { x: 0.3, y: 0.12 }, { x: 0.7, y: 0.12 },
-  { x: 0.5, y: 0.24 },
-  { x: 0.3, y: 0.38 }, { x: 0.7, y: 0.38 },
-  { x: 0.3, y: 0.62, flip: true }, { x: 0.7, y: 0.62, flip: true },
-  { x: 0.5, y: 0.76, flip: true },
-  { x: 0.3, y: 0.88, flip: true }, { x: 0.7, y: 0.88, flip: true }]
+  { x: 0.33, y: 0.15 }, { x: 0.67, y: 0.15 },
+  { x: 0.5, y: 0.27 },
+  { x: 0.33, y: 0.4 }, { x: 0.67, y: 0.4 },
+  { x: 0.33, y: 0.6, flip: true }, { x: 0.67, y: 0.6, flip: true },
+  { x: 0.5, y: 0.73, flip: true },
+  { x: 0.33, y: 0.85, flip: true }, { x: 0.67, y: 0.85, flip: true }]
 
 };
 
@@ -105,7 +105,7 @@ export function PlayingCard({ card, size = 'lg', width }: PlayingCardProps) {
   // rank's single character, its corner index renders wide enough to run into the
   // first pip row, so it gets a smaller size to keep the same rendered width as
   // the rest of the corner indices (matching how real decks print a condensed '10').
-  const rankSize = Math.round(w * (card.rank === '10' ? 0.11 : 0.15));
+  const rankSize = Math.round(w * (card.rank === '10' ? 0.1 : 0.15));
   const cornerSuitSize = Math.round(w * 0.12);
   const centreSize = Math.round(w * 0.52);
   const pipSize = Math.round(w * 0.16);
