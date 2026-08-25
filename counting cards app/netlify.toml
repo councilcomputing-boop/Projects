@@ -1,0 +1,33 @@
+[build]
+  command = "npm run build"
+  publish = "dist"
+  functions = "netlify/functions"
+
+[[redirects]]
+  # SPA fallback: react-router-dom handles routing client-side, so every real
+  # route (/peek, /store, /profile, ...) must still resolve to index.html on a
+  # direct load or refresh rather than 404ing.
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+[build.environment]
+  # STRIPE_SECRET_KEY and FIREBASE_SERVICE_ACCOUNT are read only at runtime
+  # inside netlify/functions/verify-payment.js — never written to the publish
+  # directory or the client bundle. Netlify's secrets scanner can't tell that
+  # apart from a real leak, so it flags them; this tells it they're safe.
+  SECRETS_SCAN_OMIT_KEYS = "STRIPE_SECRET_KEY,FIREBASE_SERVICE_ACCOUNT"
+  # Firebase Web API keys are meant to be public in client-side code — access
+  # is controlled by Firestore/Auth security rules, not by hiding this value.
+  # It's already in plain sight in index.html; this just tells the scanner's
+  # generic pattern-matcher it's not a leak.
+  SECRETS_SCAN_SMART_DETECTION_OMIT_VALUES = "AIzaSyAKjpkly-sczi0pkHGBie3ln255dN7iyF0"
+
+[functions]
+  node_bundler = "esbuild"
+
+[[plugins]]
+  # Installs netlify/functions/package.json's dependencies (stripe,
+  # firebase-admin) before esbuild bundles verify-payment.js — without this,
+  # the bundler can't resolve either require() and the build fails.
+  package = "@netlify/plugin-functions-install-core"

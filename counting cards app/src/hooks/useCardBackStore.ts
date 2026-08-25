@@ -1,0 +1,255 @@
+import { useEffect, useState } from 'react';
+import { RARITY_META, findCardBack, type CardBackItem } from '../data/store';
+
+const STORAGE_KEY = 'cardCountingStoreState';
+
+interface DailyBonusState {
+  streak: number;
+  lastClaimDate: string | null;
+}
+interface AdWatchState {
+  count: number;
+  date: string | null;
+}
+interface SpinWheelState {
+  lastSpinDate: string | null;
+}
+interface CardBacksState {
+  owned: string[];
+  equipped: string;
+  fragments: Record<string, number>;
+}
+interface StoreState {
+  dailyBonus: DailyBonusState;
+  adWatch: AdWatchState;
+  spinWheel: SpinWheelState;
+  cardBacks: CardBacksState;
+  autoEquipNewBacks: boolean;
+  /** Normalized (uppercase) promo codes already redeemed on this device. */
+  redeemedCodes: string[];
+  /** Fragment counts as of the last time the Card Backs shop was visited, per back id --
+      lets the shop animate only newly-earned shards flying in instead of replaying every
+      already-seen one on every visit. */
+  lastSeenFragments: Record<string, number>;
+}
+
+function defaultState(): StoreState {
+  return {
+    dailyBonus: { streak: 0, lastClaimDate: null },
+    adWatch: { count: 0, date: null },
+    spinWheel: { lastSpinDate: null },
+    cardBacks: { owned: ['classic'], equipped: 'classic', fragments: {} },
+    autoEquipNewBacks: false,
+    redeemedCodes: [],
+    lastSeenFragments: {}
+  };
+}
+
+function loadState(): StoreState {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return defaultState();
+    const parsed = JSON.parse(raw);
+    const base = defaultState();
+    return {
+      dailyBonus: { ...base.dailyBonus, ...parsed.dailyBonus },
+      adWatch: { ...base.adWatch, ...parsed.adWatch },
+      spinWheel: { ...base.spinWheel, ...parsed.spinWheel },
+      cardBacks: { ...base.cardBacks, ...parsed.cardBacks },
+      autoEquipNewBacks: Boolean(parsed.autoEquipNewBacks),
+      redeemedCodes: Array.isArray(parsed.redeemedCodes) ? parsed.redeemedCodes : [],
+      lastSeenFragments: parsed.lastSeenFragments && typeof parsed.lastSeenFragments === 'object' ? parsed.lastSeenFragments : {}
+    };
+  } catch {
+    return defaultState();
+  }
+}
+
+export function todayStr() {
+  const d = new Date();
+  return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
+}
+
+export interface AwardResult {
+  unlocked: boolean;
+  alreadyOwned?: boolean;
+  back: CardBackItem;
+  have: number;
+  need: number;
+}
+
+// Mirrors the live app's storeState (localStorage: cardCountingStoreState) — everything
+// here is per-device, never synced to Firestore, matching real behavior exactly.
+export function useCardBackStore() {
+  const [state, setState] = useState<StoreState>(loadState);
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  }, [state]);
+
+  /** Pure computation of what awarding `back` would do, given a specific owned/fragments
+      snapshot — touches no state. Batch callers (opening several chests at once) roll
+      multiple results against a locally-tracked snapshot via this, then apply them all
+      in one commitAwards() call at the end.
+
+      This exists because calling a *stateful* award function repeatedly in a tight loop
+      isn't safe: it relied on setState's updater running synchronously so the result
+      could be read back immediately, but React doesn't guarantee that for several rapid
+      calls to the same piece of state in a row — a later call in the loop can read back
+      undefined, and code immediately doing result.unlocked on that throws. That's what
+      was actually behind chest multi-open freezing/erroring, not just animation load. */
+  const previewAward = (back: CardBackItem, owned: string[], fragments: Record<string, number>): AwardResult => {
+    const need = RARITY_META[back.rarity].fragmentsNeeded;
+    if (owned.includes(back.id)) {
+      return { unlocked: false, alreadyOwned: true, back, have: need, need };
+    }
+    const have = Math.min(need, (fragments[back.id] || 0) + 1);
+    return { unlocked: have >= need, back, have, need };
+  };
+
+  /** Applies a batch of already-computed previewAward results in a single state update.
+      Keeps `fragments[id]` at its final count even once a back is unlocked (rather than
+      clearing it) -- the Card Backs shop's reveal queue decides what to show by
+      comparing the current fragment count against what was last seen, so a back whose
+      count got wiped back to 0 the instant it completed would never register as
+      "changed" and would skip its reveal entirely, silently completing with no
+      animation. Owned-ness is what actually gates re-earning it (see rollFragmentTarget
+      and the shop grid's isOwned check), so a stale full fragment count on an owned
+      back is otherwise harmless. */
+  const commitAwards = (results: AwardResult[]) => {
+    if (results.length === 0) return;
+    setState((prev) => {
+      let owned = prev.cardBacks.owned;
+      let fragments = prev.cardBacks.fragments;
+      let equipped = prev.cardBacks.equipped;
+      for (const result of results) {
+        if (result.alreadyOwned) continue;
+        fragments = { ...fragments, [result.back.id]: result.have };
+        if (result.unlocked) {
+          owned = [...owned, result.back.id];
+          if (prev.autoEquipNewBacks) equipped = result.back.id;
+        }
+      }
+      return { ...prev, cardBacks: { ...prev.cardBacks, owned, fragments, equipped } };
+    });
+  };
+
+  /** Awards one fragment of `back`, unlocking it if that completes the set. For single,
+      isolated calls (the wheel's one card segment) -- batch callers use
+      previewAward + commitAwards instead. */
+  const awardFragment = (back: CardBackItem): AwardResult => {
+    const result = previewAward(back, state.cardBacks.owned, state.cardBacks.fragments);
+    commitAwards([result]);
+    return result;
+  };
+
+  /** Direct-buy: costs the full listed price and forfeits any partial fragment progress.
+      If already owned, this just equips it — no cost. Caller is responsible for
+      checking/deducting the drops balance before calling. */
+  const buyOrEquipCardBack = (id: string) => {
+    setState((prev) => {
+      if (prev.cardBacks.owned.includes(id)) {
+        return { ...prev, cardBacks: { ...prev.cardBacks, equipped: id } };
+      }
+      const fragments = { ...prev.cardBacks.fragments };
+      delete fragments[id];
+      return {
+        ...prev,
+        cardBacks: { ...prev.cardBacks, fragments, owned: [...prev.cardBacks.owned, id], equipped: id }
+      };
+    });
+  };
+
+  const equipCardBack = (id: string) => {
+    setState((prev) => ({ ...prev, cardBacks: { ...prev.cardBacks, equipped: id } }));
+  };
+
+  const setAutoEquip = (value: boolean) => {
+    setState((prev) => ({ ...prev, autoEquipNewBacks: value }));
+  };
+
+  const markAdWatched = () => {
+    const today = todayStr();
+    setState((prev) => {
+      const count = prev.adWatch.date === today ? prev.adWatch.count + 1 : 1;
+      return { ...prev, adWatch: { count, date: today } };
+    });
+  };
+
+  const markSpinUsed = () => {
+    setState((prev) => ({ ...prev, spinWheel: { lastSpinDate: todayStr() } }));
+  };
+
+  /** Records `have` as the seen fragment count for `backId` (only ever moves forward). */
+  const markFragmentsSeen = (backId: string, have: number) => {
+    setState((prev) => {
+      if ((prev.lastSeenFragments[backId] || 0) >= have) return prev;
+      return { ...prev, lastSeenFragments: { ...prev.lastSeenFragments, [backId]: have } };
+    });
+  };
+
+  /** TEMPORARY debug helper: resets owned backs/fragments to the default (just
+      "classic"), so chests/wheel/Skill Chest have fresh backs to target again for
+      repeated testing. Returns the total listed price of everything sold, for the
+      caller to refund via DropsContext's addDrops. Remove once the fragment economy is
+      done being tested. */
+  const sellAllCardBacks = (): number => {
+    let refund = 0;
+    setState((prev) => {
+      refund = prev.cardBacks.owned.reduce((sum, id) => sum + (id === 'classic' ? 0 : findCardBack(id).price), 0);
+      return { ...prev, cardBacks: { owned: ['classic'], equipped: 'classic', fragments: {} } };
+    });
+    return refund;
+  };
+
+  const hasRedeemed = (code: string) => state.redeemedCodes.includes(code.trim().toUpperCase());
+
+  const markCodeRedeemed = (code: string) => {
+    const normalized = code.trim().toUpperCase();
+    setState((prev) => prev.redeemedCodes.includes(normalized) ? prev : { ...prev, redeemedCodes: [...prev.redeemedCodes, normalized] });
+  };
+
+  const claimDailyBonus = () => {
+    const today = todayStr();
+    setState((prev) => {
+      if (prev.dailyBonus.lastClaimDate === today) return prev;
+      let streak = 1;
+      if (prev.dailyBonus.lastClaimDate) {
+        const last = new Date(prev.dailyBonus.lastClaimDate);
+        const now = new Date(today);
+        const days = Math.round((now.getTime() - last.getTime()) / 86400000);
+        streak = days > 1 ? 1 : prev.dailyBonus.streak + 1;
+      }
+      return { ...prev, dailyBonus: { streak, lastClaimDate: today } };
+    });
+  };
+
+  const equippedBack = findCardBack(state.cardBacks.equipped);
+  const adWatchCountToday = state.adWatch.date === todayStr() ? state.adWatch.count : 0;
+  const spinAvailableToday = state.spinWheel.lastSpinDate !== todayStr();
+  const dailyBonusAvailableToday = state.dailyBonus.lastClaimDate !== todayStr();
+  const nextStreak = dailyBonusAvailableToday ? state.dailyBonus.streak + 1 : state.dailyBonus.streak;
+  const dailyBonusAmount = Math.min(200 + (Math.max(1, nextStreak) - 1) * 50, 500);
+
+  return {
+    ...state,
+    equippedBack,
+    adWatchCountToday,
+    spinAvailableToday,
+    dailyBonusAvailableToday,
+    dailyBonusAmount,
+    awardFragment,
+    previewAward,
+    commitAwards,
+    buyOrEquipCardBack,
+    equipCardBack,
+    setAutoEquip,
+    markAdWatched,
+    markSpinUsed,
+    claimDailyBonus,
+    hasRedeemed,
+    markCodeRedeemed,
+    markFragmentsSeen,
+    sellAllCardBacks
+  };
+}

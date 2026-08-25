@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" type="image/svg+xml" href="/static/icon.svg">
+<title>Direct Bill Reconciliation — Match Carrier Statements to AMS360</title>
+<meta name="description" content="Drop in a carrier statement and an AMS360 export — Direct Bill Reconciliation matches every policy, flags what doesn't line up, and keeps a full audit history.">
+<script>(function(){var t=localStorage.getItem('iama_theme')||'dark';document.documentElement.setAttribute('data-theme',t);})();</script>
+<style>
+  :root {
+    --bg: #0f1420; --panel: #171e2e; --panel2: #1d2536; --border: #2a3346;
+    --text: #e8ecf4; --muted: #9aa5b8; --accent: #4f8cff; --accent-ink: #ffffff;
+    --good: #2fbf71; --good-bg: #123322; --warn: #e0a02f; --warn-bg: #332a12;
+    --bad: #e0523f; --bad-bg: #331815;
+    --shadow-sm: 0 1px 3px rgba(0,0,0,0.3);
+    --shadow-md: 0 4px 16px rgba(0,0,0,0.35);
+    --shadow-lg: 0 16px 40px rgba(0,0,0,0.45);
+    --r: 10px; --r-sm: 6px; --r-lg: 16px;
+  }
+  :root[data-theme="light"] {
+    --bg: #f4f6fb; --panel: #ffffff; --panel2: #eef1f8; --border: #d8dfec;
+    --text: #1b2436; --muted: #5b6478; --accent: #2f6fe0; --accent-ink: #ffffff;
+    --good: #1f9d5c; --good-bg: #e3f7ec; --warn: #b5790a; --warn-bg: #fdf1de;
+    --bad: #c23c2b; --bad-bg: #fbe9e6;
+    --shadow-sm: 0 1px 3px rgba(20,30,60,0.08);
+    --shadow-md: 0 4px 16px rgba(20,30,60,0.10);
+    --shadow-lg: 0 16px 40px rgba(20,30,60,0.14);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    font-family: -apple-system, 'Segoe UI', Roboto, Arial, sans-serif;
+    background: var(--bg); color: var(--text);
+    -webkit-font-smoothing: antialiased; overflow-x: hidden;
+  }
+  a { color: inherit; }
+  img, svg { max-width: 100%; display: block; }
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 0 24px; }
+
+  /* ---------- Nav ---------- */
+  .nav { position: sticky; top: 0; z-index: 200; background: var(--panel); border-bottom: 1px solid var(--border); }
+  .nav-inner { display: flex; align-items: center; justify-content: space-between; height: 64px; gap: 16px; }
+  .brand { display: flex; align-items: center; gap: 10px; text-decoration: none; }
+  .brand-name { color: var(--text); font-weight: 700; font-size: 16px; line-height: 1.1; }
+  .brand-sub  { color: var(--muted); font-size: 10.5px; letter-spacing: 0.3px; }
+  .nav-links { display: flex; align-items: center; gap: 6px; }
+  .nav-link { color: var(--muted); text-decoration: none; font-size: 14px; font-weight: 500; padding: 9px 14px; border-radius: var(--r-sm); transition: background .15s, color .15s; }
+  .nav-link:hover { background: var(--panel2); color: var(--text); }
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; border: none; border-radius: var(--r-sm); font-family: inherit; font-weight: 600; cursor: pointer; text-decoration: none; transition: background .15s, transform .1s, box-shadow .15s; min-height: 44px; }
+  .btn-primary { background: var(--accent); color: var(--accent-ink); padding: 11px 22px; font-size: 15px; }
+  .btn-primary:hover { filter: brightness(1.08); box-shadow: var(--shadow-md); }
+  .btn-ghost { background: transparent; color: var(--text); padding: 10px 20px; font-size: 14px; border: 1px solid var(--border); }
+  .btn-ghost:hover { background: var(--panel2); }
+  .btn-nav { background: var(--accent); color: var(--accent-ink); padding: 9px 18px; font-size: 14px; min-height: 38px; }
+  .btn-nav:hover { filter: brightness(1.08); }
+  .theme-toggle { padding: 8px 11px; border-radius: var(--r-sm); font-size: 14px; line-height: 1; background: transparent; border: 1px solid var(--border); color: var(--text); cursor: pointer; }
+  .theme-toggle:hover { background: var(--panel2); }
+  .nav-toggle { display: none; background: none; border: none; color: var(--text); padding: 8px; cursor: pointer; }
+  .nav-toggle svg { width: 24px; height: 24px; }
+
+  /* ---------- Hero ---------- */
+  .hero {
+    background: radial-gradient(1100px 480px at 85% -10%, color-mix(in srgb, var(--accent) 22%, transparent), transparent 60%), var(--bg);
+    padding: 76px 0 90px; position: relative; overflow: hidden;
+  }
+  .hero-grid { display: grid; grid-template-columns: 1.05fr 0.95fr; gap: 56px; align-items: center; }
+  .eyebrow {
+    display: inline-flex; align-items: center; gap: 8px; color: var(--accent);
+    font-size: 12.5px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase;
+    background: color-mix(in srgb, var(--accent) 14%, transparent);
+    border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent);
+    padding: 6px 12px; border-radius: 999px; margin-bottom: 20px;
+  }
+  .hero h1 { color: var(--text); font-size: 42px; line-height: 1.16; font-weight: 800; letter-spacing: -0.5px; }
+  .hero h1 span { color: var(--accent); }
+  .hero p.lead { color: var(--muted); font-size: 17px; line-height: 1.6; margin-top: 18px; max-width: 540px; }
+  .hero-cta { display: flex; gap: 14px; margin-top: 30px; flex-wrap: wrap; }
+  .hero-note { margin-top: 16px; color: var(--muted); font-size: 12.5px; }
+  .hero-note a { color: var(--accent); text-decoration: underline; }
+
+  /* mock product preview */
+  .preview-card { background: var(--panel); border: 1px solid var(--border); border-radius: var(--r-lg); box-shadow: var(--shadow-lg); overflow: hidden; }
+  .preview-head { background: var(--panel2); border-bottom: 1px solid var(--border); padding: 12px 16px; display: flex; align-items: center; gap: 8px; }
+  .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--border); }
+  .preview-title { color: var(--muted); font-size: 11.5px; margin-left: 4px; letter-spacing: 0.3px; }
+  .preview-body { padding: 18px; }
+  .p-drop-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
+  .p-drop { border: 2px solid var(--good); background: var(--good-bg); border-radius: var(--r-sm); padding: 12px; text-align: center; }
+  .p-drop-lbl { font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; color: var(--muted); }
+  .p-drop-file { font-size: 12px; color: var(--text); margin-top: 4px; }
+  .p-check { color: var(--good); font-weight: 700; }
+  .p-stats { display: grid; grid-template-columns: repeat(4,1fr); gap: 10px; margin-bottom: 16px; }
+  .p-stat { background: var(--panel2); border-radius: var(--r-sm); padding: 10px 12px; border-left: 3px solid var(--accent); }
+  .p-stat.g { border-left-color: var(--good); }
+  .p-stat.b { border-left-color: var(--bad); }
+  .p-stat-lbl { font-size: 9.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--muted); }
+  .p-stat-val { font-size: 19px; font-weight: 700; color: var(--text); margin-top: 2px; }
+  .p-table { border: 1px solid var(--border); border-radius: var(--r-sm); overflow: hidden; }
+  .p-row { display: grid; grid-template-columns: 1.3fr 1fr 1fr; gap: 8px; padding: 9px 12px; font-size: 12px; border-bottom: 1px solid var(--border); align-items: center; }
+  .p-row:last-child { border-bottom: none; }
+  .p-row.head { background: var(--panel2); font-weight: 700; color: var(--muted); font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.4px; }
+  .p-badge { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 10.5px; font-weight: 700; }
+  .p-badge.match { background: var(--good-bg); color: var(--good); }
+  .p-badge.mismatch { background: var(--bad-bg); color: var(--bad); }
+  .p-badge.missing { background: var(--warn-bg); color: var(--warn); }
+  .p-caption { text-align: center; color: var(--muted); font-size: 11.5px; margin-top: 14px; }
+
+  /* ---------- Sections ---------- */
+  section { padding: 88px 0; }
+  .section-head { text-align: center; max-width: 640px; margin: 0 auto 52px; }
+  .section-eyebrow { color: var(--accent); font-size: 12.5px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; }
+  .section-head h2 { font-size: 32px; color: var(--text); font-weight: 800; margin-top: 10px; letter-spacing: -0.3px; }
+  .section-head p { color: var(--muted); font-size: 15.5px; margin-top: 12px; line-height: 1.6; }
+
+  /* pain points */
+  .pain-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 24px; }
+  .pain-card { background: var(--panel); border: 1px solid var(--border); border-radius: var(--r); padding: 26px; border-top: 3px solid var(--bad); }
+  .pain-card h3 { font-size: 16px; color: var(--text); margin-bottom: 8px; }
+  .pain-card p { font-size: 14px; color: var(--muted); line-height: 1.55; }
+
+  /* features */
+  .features { background: var(--panel); }
+  .feat-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 22px; }
+  .feat-card { border: 1px solid var(--border); border-radius: var(--r); padding: 26px; background: var(--bg); transition: box-shadow .18s, transform .18s, border-color .18s; }
+  .feat-card:hover { box-shadow: var(--shadow-md); transform: translateY(-3px); border-color: var(--accent); }
+  .feat-icon { width: 44px; height: 44px; border-radius: 10px; background: var(--accent); display: flex; align-items: center; justify-content: center; margin-bottom: 16px; }
+  .feat-icon svg { width: 22px; height: 22px; stroke: var(--accent-ink); }
+  .feat-card h3 { font-size: 16.5px; color: var(--text); margin-bottom: 8px; font-weight: 700; }
+  .feat-card p { font-size: 14px; color: var(--muted); line-height: 1.6; }
+
+  /* how it works */
+  .steps { display: grid; grid-template-columns: repeat(4,1fr); gap: 22px; }
+  .step { background: var(--panel); border: 1px solid var(--border); border-radius: var(--r); padding: 24px 20px; }
+  .step-num { width: 34px; height: 34px; border-radius: 50%; background: var(--accent); color: var(--accent-ink); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 15px; margin-bottom: 14px; }
+  .step h3 { font-size: 15.5px; color: var(--text); margin-bottom: 7px; }
+  .step p { font-size: 13.5px; color: var(--muted); line-height: 1.55; }
+
+  /* cta banner */
+  .cta-band { background: var(--panel); border: 1px solid var(--border); border-radius: var(--r-lg); padding: 52px 40px; text-align: center; }
+  .cta-band h2 { color: var(--text); font-size: 27px; font-weight: 800; }
+  .cta-band p { color: var(--muted); font-size: 15px; margin-top: 10px; }
+  .cta-band .hero-cta { justify-content: center; margin-top: 26px; }
+
+  /* footer */
+  footer { background: var(--panel); border-top: 1px solid var(--border); padding: 40px 0 28px; }
+  .foot-inner { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; }
+  .foot-brand { display: flex; align-items: center; gap: 10px; }
+  .foot-brand-name { color: var(--text); font-size: 14px; font-weight: 700; }
+  .foot-brand-sub { color: var(--muted); font-size: 11.5px; }
+  .foot-links { display: flex; gap: 22px; flex-wrap: wrap; }
+  .foot-links a { color: var(--muted); font-size: 13px; text-decoration: none; }
+  .foot-links a:hover { color: var(--text); }
+  .foot-bottom { margin-top: 26px; padding-top: 20px; border-top: 1px solid var(--border); text-align: center; color: var(--muted); font-size: 12px; }
+
+  /* ---------- Responsive ---------- */
+  @media (max-width: 1024px) {
+    .hero h1 { font-size: 34px; }
+    .pain-grid, .feat-grid { grid-template-columns: repeat(2,1fr); }
+    .steps { grid-template-columns: repeat(2,1fr); }
+  }
+  @media (max-width: 900px) {
+    .hero-grid { grid-template-columns: 1fr; }
+    .hero { padding: 52px 0 60px; text-align: center; }
+    .hero p.lead { margin-left: auto; margin-right: auto; }
+    .hero-cta { justify-content: center; }
+  }
+  @media (max-width: 720px) {
+    .nav-links .nav-link { display: none; }
+    .nav-toggle { display: inline-flex; }
+    .p-stats { grid-template-columns: repeat(2,1fr); }
+  }
+  @media (max-width: 640px) {
+    .pain-grid, .feat-grid, .steps { grid-template-columns: 1fr; }
+    .hero h1 { font-size: 28px; }
+    section { padding: 60px 0; }
+    .cta-band { padding: 40px 22px; }
+    .section-head h2 { font-size: 26px; }
+    .p-row { grid-template-columns: 1fr 1fr; font-size: 11px; }
+    .p-row span:nth-child(3) { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<nav class="nav">
+  <div class="wrap nav-inner">
+    <a class="brand" href="#top">
+      <svg width="30" height="30" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <rect width="512" height="512" rx="80" fill="#0f1420"/>
+        <g transform="translate(118,86) rotate(-8 100 130)">
+          <rect x="0" y="0" width="200" height="260" rx="14" fill="#1d2536" stroke="#2a3346" stroke-width="3"/>
+          <rect x="26" y="38" width="148" height="12" rx="6" fill="#3a4560"/>
+          <rect x="26" y="66" width="112" height="10" rx="5" fill="#3a4560"/>
+          <rect x="26" y="92" width="132" height="10" rx="5" fill="#3a4560"/>
+        </g>
+        <g transform="translate(196,150) rotate(7 100 130)">
+          <rect x="0" y="0" width="200" height="260" rx="14" fill="#171e2e" stroke="#4f8cff" stroke-width="4"/>
+          <rect x="26" y="38" width="148" height="12" rx="6" fill="#4f8cff" opacity="0.9"/>
+          <rect x="26" y="66" width="112" height="10" rx="5" fill="#4f8cff" opacity="0.5"/>
+        </g>
+        <circle cx="366" cy="366" r="76" fill="#2fbf71" stroke="#0f1420" stroke-width="10"/>
+        <path d="M330 368 L354 392 L402 342" fill="none" stroke="#0f1420" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <span>
+        <span class="brand-name" style="display:block;">Direct Bill Reconciliation</span>
+        <span class="brand-sub">Insurance Agency of Mid America</span>
+      </span>
+    </a>
+    <div class="nav-links">
+      <a class="nav-link" href="#features">Features</a>
+      <a class="nav-link" href="#how">How It Works</a>
+      <button class="theme-toggle" id="themeToggle" onclick="toggleTheme()" title="Toggle light/dark theme"></button>
+      <a class="btn btn-nav" href="{{ url_for('login') }}">Sign In</a>
+    </div>
+    <button class="nav-toggle" aria-label="Open menu" onclick="document.getElementById('mnav').classList.toggle('open')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+    </button>
+  </div>
+  <div id="mnav" style="display:none;" class="wrap">
+    <div style="display:flex;flex-direction:column;gap:4px;padding:8px 0 16px;">
+      <a class="nav-link" href="#features">Features</a>
+      <a class="nav-link" href="#how">How It Works</a>
+      <button class="theme-toggle" style="width:fit-content;" onclick="toggleTheme()">Toggle theme</button>
+      <a class="btn btn-nav" style="width:fit-content;" href="{{ url_for('login') }}">Sign In</a>
+    </div>
+  </div>
+</nav>
+<style>#mnav.open{display:block !important;}</style>
+
+<header class="hero" id="top">
+  <div class="wrap hero-grid">
+    <div>
+      <div class="eyebrow">Direct bill reconciliation for agencies</div>
+      <h1>Match carrier statements to AMS360 — <span>in minutes, not hours.</span></h1>
+      <p class="lead">Drop in a carrier statement and your AMS360 export. The matching engine lines up every policy by number — or by name and amount when it has to — flags anything that doesn't reconcile cleanly, and keeps a full history you can pull up any time.</p>
+      <div class="hero-cta">
+        <a class="btn btn-primary" href="mailto:councilcomputing@gmail.com?subject=Interested%20in%20Direct%20Bill%20Reconciliation">Make It Yours Today</a>
+        <a class="btn btn-ghost" href="#how">See How It Works</a>
+      </div>
+      <div class="hero-note">Already using it? <a href="{{ url_for('login') }}">Sign in here</a>.</div>
+    </div>
+    <div>
+      <div class="preview-card" aria-hidden="true">
+        <div class="preview-head">
+          <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+          <span class="preview-title">RECONCILE — SAMPLE VIEW</span>
+        </div>
+        <div class="preview-body">
+          <div class="p-drop-row">
+            <div class="p-drop"><div class="p-drop-lbl">Carrier Statement</div><div class="p-drop-file"><span class="p-check">&#10003;</span> cna_statement.pdf</div></div>
+            <div class="p-drop"><div class="p-drop-lbl">AMS360 Export</div><div class="p-drop-file"><span class="p-check">&#10003;</span> ams360_export.xlsx</div></div>
+          </div>
+          <div class="p-stats">
+            <div class="p-stat"><div class="p-stat-lbl">Items</div><div class="p-stat-val">86</div></div>
+            <div class="p-stat g"><div class="p-stat-lbl">Matched</div><div class="p-stat-val">79</div></div>
+            <div class="p-stat b"><div class="p-stat-lbl">Issues</div><div class="p-stat-val">7</div></div>
+            <div class="p-stat"><div class="p-stat-lbl">Net Diff</div><div class="p-stat-val">$212</div></div>
+          </div>
+          <div class="p-table">
+            <div class="p-row head"><span>Client</span><span>Policy</span><span>Status</span></div>
+            <div class="p-row"><span>Sample Contracting Co.</span><span>#88213-04</span><span><span class="p-badge match">Match</span></span></div>
+            <div class="p-row"><span>Example Builders LLC</span><span>#77120-11</span><span><span class="p-badge mismatch">Amount mismatch</span></span></div>
+            <div class="p-row"><span>Demo Site Services</span><span>&mdash;</span><span><span class="p-badge missing">Missing from AMS360</span></span></div>
+          </div>
+        </div>
+      </div>
+      <div class="p-caption">Illustrative preview — not real client data</div>
+    </div>
+  </div>
+</header>
+
+<section class="pain">
+  <div class="wrap">
+    <div class="section-head">
+      <div class="section-eyebrow">The problem</div>
+      <h2>Direct bill statements don't reconcile themselves</h2>
+      <p>Every statement cycle turns into the same manual slog — and the two systems rarely speak the same language.</p>
+    </div>
+    <div class="pain-grid">
+      <div class="pain-card">
+        <h3>Line-by-line by hand</h3>
+        <p>Comparing a PDF carrier statement against an AMS360 export one row at a time, every single cycle.</p>
+      </div>
+      <div class="pain-card">
+        <h3>Policy numbers never quite match</h3>
+        <p>Carrier IDs and AMS360 policy numbers are formatted differently, so simple lookups miss real matches.</p>
+      </div>
+      <div class="pain-card">
+        <h3>Scanned statements, no clean data</h3>
+        <p>Some carriers still send image-only PDFs that won't paste into a spreadsheet at all.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="features" id="features">
+  <div class="wrap">
+    <div class="section-head">
+      <div class="section-eyebrow">What it does</div>
+      <h2>Built specifically for direct bill reconciliation</h2>
+      <p>Not a spreadsheet macro — a matching engine that understands how carrier and agency management data actually differ.</p>
+    </div>
+    <div class="feat-grid">
+      <div class="feat-card">
+        <div class="feat-icon"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg></div>
+        <h3>Two-File Matching</h3>
+        <p>Drop a carrier statement and an AMS360 export — PDF, Excel, or CSV — and the engine reconciles every policy automatically.</p>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="3"/><circle cx="18" cy="18" r="3"/><path d="M8.5 7.5l7 9"/></svg></div>
+        <h3>Smart Fallback Matching</h3>
+        <p>Matches by policy number first, then by client name and dollar amount when the numbers don't line up — and flags every fallback match for a quick check.</p>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M4 10h16M10 4v16"/></svg></div>
+        <h3>Six-Way Status Detail</h3>
+        <p>Match, Amount Mismatch, Policy # Differs, Verify Detail, Missing from AMS360, Missing from Carrier — never a vague "discrepancy" bucket.</p>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg></div>
+        <h3>Built-In OCR</h3>
+        <p>Reads scanned, image-only carrier PDFs when there's no text layer to parse, and flags OCR-uncertain lines for a human glance.</p>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg></div>
+        <h3>Full Run History</h3>
+        <p>Every reconciliation is saved with its totals and full line-item detail, so past runs are always one click away.</p>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg></div>
+        <h3>One-Click CSV Export</h3>
+        <p>Export any run's complete item-level detail for records, follow-up, or your accounting team.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="how" id="how">
+  <div class="wrap">
+    <div class="section-head">
+      <div class="section-eyebrow">How it works</div>
+      <h2>From two files to a reconciled report</h2>
+    </div>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <h3>Drop the files</h3>
+        <p>Upload the carrier statement and the AMS360 export — PDF, Excel, or CSV.</p>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <h3>Let it match</h3>
+        <p>The engine lines up every policy by number, falling back to name and amount when it has to.</p>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <h3>Review what's flagged</h3>
+        <p>Mismatched amounts, missing policies, and OCR-uncertain lines are called out by name, not buried in a total.</p>
+      </div>
+      <div class="step">
+        <div class="step-num">4</div>
+        <h3>Export and keep the record</h3>
+        <p>Pull a CSV of the full run, and come back to any past reconciliation whenever you need it.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <div class="cta-band">
+      <h2>Ready to stop reconciling by hand?</h2>
+      <p>Email us and we'll get Direct Bill Reconciliation set up for your agency.</p>
+      <div class="hero-cta">
+        <a class="btn btn-primary" href="mailto:councilcomputing@gmail.com?subject=Interested%20in%20Direct%20Bill%20Reconciliation">Make It Yours Today</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <div class="foot-inner">
+      <div class="foot-brand">
+        <svg width="24" height="24" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <rect width="512" height="512" rx="80" fill="#0f1420"/>
+          <circle cx="366" cy="366" r="76" fill="#2fbf71" stroke="#0f1420" stroke-width="10"/>
+          <path d="M330 368 L354 392 L402 342" fill="none" stroke="#0f1420" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/>
+          <g transform="translate(118,86) rotate(-8 100 130)">
+            <rect x="0" y="0" width="200" height="260" rx="14" fill="#1d2536" stroke="#2a3346" stroke-width="3"/>
+          </g>
+          <g transform="translate(196,150) rotate(7 100 130)">
+            <rect x="0" y="0" width="200" height="260" rx="14" fill="#171e2e" stroke="#4f8cff" stroke-width="4"/>
+          </g>
+        </svg>
+        <span>
+          <span class="foot-brand-name" style="display:block;">Direct Bill Reconciliation</span>
+          <span class="foot-brand-sub">Insurance Agency of Mid America</span>
+        </span>
+      </div>
+      <div class="foot-links">
+        <a href="#features">Features</a>
+        <a href="#how">How It Works</a>
+        <a href="mailto:councilcomputing@gmail.com?subject=Interested%20in%20Direct%20Bill%20Reconciliation">Contact</a>
+        <a href="{{ url_for('login') }}">Sign In</a>
+      </div>
+    </div>
+    <div class="foot-bottom">&copy; <span id="yr"></span> Insurance Agency of Mid America. Internal bill reconciliation tool.</div>
+  </div>
+</footer>
+
+<script>
+document.getElementById('yr').textContent = new Date().getFullYear();
+function applyTheme(t) {
+    document.documentElement.setAttribute('data-theme', t);
+    var btns = document.querySelectorAll('#themeToggle');
+    btns.forEach(function(b){ b.textContent = t === 'light' ? '🌙' : '☀️'; });
+}
+function toggleTheme() {
+    var next = (localStorage.getItem('iama_theme') || 'dark') === 'dark' ? 'light' : 'dark';
+    localStorage.setItem('iama_theme', next);
+    applyTheme(next);
+}
+applyTheme(localStorage.getItem('iama_theme') || 'dark');
+</script>
+</body>
+</html>
