@@ -3022,12 +3022,16 @@
   if (!IS_NATIVE && 'serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => {});
 
   // ── Offline state ──
+  // Guarded with ?. because this element is declared further down the page
+  // than this <script> tag — at the moment this script block first runs, the
+  // browser hasn't parsed that far yet, so the element doesn't exist until
+  // the full document has loaded.
   function updateOfflineBanner() {
-    document.getElementById('offline-banner').classList.toggle('show', !navigator.onLine);
+    document.getElementById('offline-banner')?.classList.toggle('show', !navigator.onLine);
   }
   window.addEventListener('online',  updateOfflineBanner);
   window.addEventListener('offline', updateOfflineBanner);
-  updateOfflineBanner();
+  document.addEventListener('DOMContentLoaded', updateOfflineBanner);
 
   // ── Native push (APNs) — one-time listener setup ──
   if (IS_NATIVE) {
