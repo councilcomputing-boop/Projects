@@ -7,6 +7,7 @@ const https      = require('https');
 const crypto     = require('crypto');
 const { URL }    = require('url');
 const multer     = require('multer');
+const cors       = require('cors');
 const sharp      = require('sharp');
 const bcrypt     = require('bcryptjs');
 const jwt        = require('jsonwebtoken');
@@ -55,6 +56,15 @@ app.use(helmet({
   },
   crossOriginEmbedderPolicy: false,
 }));
+
+// ── CORS ──────────────────────────────────────────────────────────────────────
+// The web app and Electron load this server's own pages, so requests from them
+// are same-origin and never touch CORS at all. This exists for the Capacitor
+// iOS app, whose pages load from capacitor://localhost and call this server as
+// a separate, cross-origin API — an explicit allowlist, never a wildcard, since
+// Authorization headers are in play.
+const ALLOWED_ORIGINS = ['capacitor://localhost', 'https://prayer-profiles.fly.dev'];
+app.use(cors({ origin: ALLOWED_ORIGINS, credentials: true }));
 
 // ── Rate limiting ─────────────────────────────────────────────────────────────
 const skipForElectron = () => IS_ELECTRON;
@@ -168,6 +178,78 @@ if (PUSH_ENABLED) {
   console.warn('[WARN]  Web push disabled — set VAPID_PUBLIC_KEY / VAPID_PRIVATE_KEY to enable reminders.');
 }
 
+// ── APNs push (optional — enabled when APNS_* env vars are set) ───────────────
+// This is a completely separate delivery system from the Web Push above — it's
+// how the native iOS app (Capacitor) receives reminder notifications, since
+// WKWebView doesn't support the browser Push API the way Safari/Chrome do.
+const http2          = require('http2');
+const APNS_KEY_ID     = process.env.APNS_KEY_ID;
+const APNS_TEAM_ID    = process.env.APNS_TEAM_ID;
+const APNS_KEY        = process.env.APNS_KEY ? process.env.APNS_KEY.replace(/\\n/g, '\n') : null;
+const APNS_BUNDLE_ID  = process.env.APNS_BUNDLE_ID || 'com.prayer.profiles';
+const APNS_PRODUCTION = process.env.APNS_PRODUCTION === '1';
+const APNS_HOST       = APNS_PRODUCTION ? 'api.push.apple.com' : 'api.sandbox.push.apple.com';
+const APNS_ENABLED    = !!(APNS_KEY_ID && APNS_TEAM_ID && APNS_KEY);
+if (!APNS_ENABLED) {
+  console.warn('[WARN]  APNs push disabled — set APNS_KEY_ID / APNS_TEAM_ID / APNS_KEY to enable iOS app reminders.');
+}
+
+// APNs provider tokens are meant to be reused for up to an hour, not re-signed per request.
+let _apnsJwt = null, _apnsJwtIssuedAt = 0;
+function getApnsJwt() {
+  const now = Date.now();
+  if (_apnsJwt && (now - _apnsJwtIssuedAt) < 50 * 60 * 1000) return _apnsJwt;
+  _apnsJwt = jwt.sign({ iss: APNS_TEAM_ID, iat: Math.floor(now / 1000) }, APNS_KEY, {
+    algorithm: 'ES256',
+    header: { alg: 'ES256', kid: APNS_KEY_ID },
+  });
+  _apnsJwtIssuedAt = now;
+  return _apnsJwt;
+}
+
+function sendApnsNotification(deviceToken, payload) {
+  return new Promise((resolve, reject) => {
+    const client = http2.connect(`https://${APNS_HOST}`);
+    client.on('error', reject);
+    const body = JSON.stringify({
+      aps: { alert: { title: payload.title, body: payload.body }, sound: 'default' },
+      url: payload.url || '/',
+    });
+    const req = client.request({
+      ':method':          'POST',
+      ':path':             `/3/device/${deviceToken}`,
+      'authorization':     `bearer ${getApnsJwt()}`,
+      'apns-topic':        APNS_BUNDLE_ID,
+      'apns-push-type':    'alert',
+      'content-type':      'application/json',
+    });
+    let status = 0;
+    req.on('response', headers => { status = headers[':status']; });
+    let raw = '';
+    req.on('data', chunk => { raw += chunk; });
+    req.on('end', () => { client.close(); resolve({ status, body: raw }); });
+    req.on('error', err => { client.close(); reject(err); });
+    req.write(body);
+    req.end();
+  });
+}
+
+// Removes device tokens Apple has told us are no longer valid (app uninstalled,
+// user revoked permission, etc.) — same dead-subscription-pruning idea as Web Push.
+async function sendApnsToUser(db, userId, payload) {
+  const tokens = (db.apn_tokens || []).filter(t => t.userId === userId);
+  const dead = [];
+  for (const t of tokens) {
+    try {
+      const { status } = await sendApnsNotification(t.deviceToken, payload);
+      if (status === 410 || status === 400) dead.push(t.deviceToken);
+    } catch (err) {
+      console.error('[apns] send failed:', err.message);
+    }
+  }
+  if (dead.length) db.apn_tokens = (db.apn_tokens || []).filter(t => !dead.includes(t.deviceToken));
+}
+
 // ── Transactional email (optional — enabled when RESEND_API_KEY is set) ───────
 // Used only for password-reset links. Without a key configured, the reset link
 // is logged to the server console instead — lets reset work in dev/Electron
@@ -231,6 +313,7 @@ function readDB() {
   if (!db.prayer_log)     db.prayer_log     = [];
   if (!db.reminders)      db.reminders      = [];
   if (!db.push_subs)      db.push_subs      = [];
+  if (!db.apn_tokens)     db.apn_tokens     = [];
   if (!db.metrics)        db.metrics        = {};
   if (!db.refreshTokens)  db.refreshTokens  = [];
   if (!db.resetTokens)    db.resetTokens    = [];
@@ -885,19 +968,41 @@ app.post('/api/push/unsubscribe', requireAuth, (req, res) => {
   res.json({ success: true });
 });
 
+// APNs device-token registration — used only by the native iOS app, in place
+// of the Web Push subscribe/unsubscribe pair above.
+app.post('/api/push/apn-register', requireAuth, (req, res) => {
+  const deviceToken = (req.body.deviceToken || '').trim();
+  if (!/^[0-9a-fA-F]{32,256}$/.test(deviceToken))
+    return res.status(400).json({ error: 'Invalid device token' });
+  const db = readDB();
+  db.apn_tokens = db.apn_tokens.filter(t => t.deviceToken !== deviceToken);
+  db.apn_tokens.push({ userId: req.user.id, deviceToken, created_at: new Date().toISOString() });
+  saveUserTZ(db, req.user.id, req.body.tz);
+  writeDB(db);
+  res.status(201).json({ success: true });
+});
+
+app.post('/api/push/apn-unregister', requireAuth, (req, res) => {
+  const db = readDB();
+  db.apn_tokens = db.apn_tokens.filter(t => !(t.userId === req.user.id && t.deviceToken === req.body.deviceToken));
+  writeDB(db);
+  res.json({ success: true });
+});
+
 async function sendPushToUser(db, userId, payload) {
-  if (!PUSH_ENABLED) return false;
-  const subs = db.push_subs.filter(s => s.userId === userId);
-  const dead = [];
-  for (const s of subs) {
-    try {
-      await webpush.sendNotification(s.subscription, JSON.stringify(payload));
-    } catch (err) {
-      if (err.statusCode === 404 || err.statusCode === 410) dead.push(s.subscription.endpoint);
+  if (PUSH_ENABLED) {
+    const subs = db.push_subs.filter(s => s.userId === userId);
+    const dead = [];
+    for (const s of subs) {
+      try {
+        await webpush.sendNotification(s.subscription, JSON.stringify(payload));
+      } catch (err) {
+        if (err.statusCode === 404 || err.statusCode === 410) dead.push(s.subscription.endpoint);
+      }
     }
+    if (dead.length) db.push_subs = db.push_subs.filter(s => !dead.includes(s.subscription.endpoint));
   }
-  if (dead.length) db.push_subs = db.push_subs.filter(s => !dead.includes(s.subscription.endpoint));
-  return dead.length > 0;
+  if (APNS_ENABLED) await sendApnsToUser(db, userId, payload);
 }
 
 // ── Reminder scheduler (runs every minute; times evaluated in each reminder's TZ)
@@ -986,7 +1091,7 @@ async function reminderTick() {
   if (dirty) writeDB(db);
 }
 
-if (PUSH_ENABLED) setInterval(() => reminderTick().catch(err => console.error('[reminders]', err.message)), 60 * 1000);
+if (PUSH_ENABLED || APNS_ENABLED) setInterval(() => reminderTick().catch(err => console.error('[reminders]', err.message)), 60 * 1000);
 
 // Constant-time string compare — a plain `!==` leaks timing information about
 // how many leading characters matched, which is avoidable for free here.
@@ -1017,6 +1122,7 @@ app.get('/api/admin/metrics', adminLimiter, (req, res) => {
       profiles:           db.profiles.length,
       reminders:          db.reminders.length,
       push_subscriptions: db.push_subs.length,
+      apn_tokens:         db.apn_tokens.length,
     },
   });
 });

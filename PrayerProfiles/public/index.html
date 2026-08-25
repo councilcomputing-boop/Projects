@@ -880,6 +880,16 @@
       letter-spacing: 0.06em; text-transform: uppercase; flex-shrink: 0; padding: 2px 0;
     }
 
+    /* ═══ OFFLINE BANNER ═══ */
+    .offline-banner {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 600;
+      background: var(--amber); color: #fff; text-align: center;
+      font-size: 12.5px; font-weight: 600; padding: 8px 16px;
+      padding-top: calc(8px + env(safe-area-inset-top));
+      transform: translateY(-100%); transition: transform 0.25s;
+    }
+    .offline-banner.show { transform: translateY(0); }
+
     /* ═══ REMINDERS (settings panel) ═══ */
     .rem-status { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 6px 0 10px; }
     .rem-status-text { font-size: 12.5px; color: var(--text2); line-height: 1.5; }
@@ -1432,7 +1442,7 @@
       <div class="or-divider">or fill in manually</div>
 
       <div class="avatar-upload-wrap">
-        <div class="avatar-upload" id="avatar-upload-area" onclick="document.getElementById('f-photo').click()">
+        <div class="avatar-upload" id="avatar-upload-area" onclick="choosePhoto()">
           <div class="avatar-upload-placeholder" id="avatar-upload-placeholder">
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
             <span>Add Photo</span>
@@ -1600,47 +1610,84 @@
 </div>
 
 <script>
+  // ── Server address ──
+  // On the web/PWA/Electron this page and the API are served from the same
+  // place, so relative paths like '/api/...' just work. Inside the Capacitor
+  // iOS app, the page itself lives at capacitor://localhost while the API is
+  // still the real server — so every server request needs the full address.
+  const IS_NATIVE = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
+  const API_BASE  = IS_NATIVE ? 'https://prayer-profiles.fly.dev' : '';
+  function withBase(path) { return path ? API_BASE + path : path; }
+
+  // A small bit of physical feedback on key moments — cheap, but it's one of
+  // the things that makes the app feel native rather than a website in a frame.
+  function hapticSuccess() { if (IS_NATIVE) window.Capacitor.Plugins.Haptics.notification({ type: 'SUCCESS' }).catch(() => {}); }
+  function hapticTap()     { if (IS_NATIVE) window.Capacitor.Plugins.Haptics.impact({ style: 'LIGHT' }).catch(() => {}); }
+
   // ── Auth ──
   // Access tokens are short-lived (15m) so they're kept in memory only — never
-  // written to localStorage/sessionStorage, since that's the thing an XSS bug
-  // would go looking for. The refresh token is what's persisted; it's opaque
-  // (not a JWT) and can be revoked server-side, which the access token can't be.
+  // written to persistent storage, since that's the thing an XSS bug would go
+  // looking for. The refresh token is what's persisted; it's opaque (not a
+  // JWT) and can be revoked server-side, which the access token can't be. On
+  // iOS it goes in the Keychain (via the SecureStorage plugin) instead of
+  // WebView local storage, which is just an unencrypted file on disk.
   const REFRESH_KEY = 'prayer_refresh';
   let accessToken = null;
-  function getRefreshToken()            { return localStorage.getItem(REFRESH_KEY) || sessionStorage.getItem(REFRESH_KEY); }
-  function setTokens(access, refresh, remember) {
+  const secureStorage = IS_NATIVE ? window.Capacitor.Plugins.SecureStorage : null;
+
+  async function getRefreshToken() {
+    if (secureStorage) return await secureStorage.getItem(REFRESH_KEY);
+    return localStorage.getItem(REFRESH_KEY) || sessionStorage.getItem(REFRESH_KEY);
+  }
+  async function setTokens(access, refresh, remember) {
     accessToken = access;
+    if (secureStorage) return void await secureStorage.setItem(REFRESH_KEY, refresh);
     if (remember) { localStorage.setItem(REFRESH_KEY, refresh); sessionStorage.removeItem(REFRESH_KEY); }
     else          { sessionStorage.setItem(REFRESH_KEY, refresh); localStorage.removeItem(REFRESH_KEY); }
   }
-  function clearTokens() { accessToken = null; localStorage.removeItem(REFRESH_KEY); sessionStorage.removeItem(REFRESH_KEY); }
+  async function clearTokens() {
+    accessToken = null;
+    if (secureStorage) return void await secureStorage.removeItem(REFRESH_KEY);
+    localStorage.removeItem(REFRESH_KEY); sessionStorage.removeItem(REFRESH_KEY);
+  }
 
   // Exchanges the stored refresh token for a new access token (and a rotated
   // refresh token). Returns true on success, false if the session is really gone.
   async function refreshAccessToken() {
-    const refreshToken = getRefreshToken();
+    const refreshToken = await getRefreshToken();
     if (!refreshToken) return false;
-    const remembered = !!localStorage.getItem(REFRESH_KEY);
+    // Native storage is always persistent (there's no browser-tab-only concept
+    // on iOS), so "remember me" only matters for the web's localStorage/sessionStorage split.
+    const remembered = secureStorage ? true : !!localStorage.getItem(REFRESH_KEY);
     try {
-      const r = await fetch('/api/auth/refresh', {
+      const r = await fetch(withBase('/api/auth/refresh'), {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ refreshToken }),
       });
       if (!r.ok) return false;
       const data = await r.json();
-      setTokens(data.token, data.refreshToken, remembered);
+      await setTokens(data.token, data.refreshToken, remembered);
       return true;
     } catch { return false; }
   }
 
   async function api(url, options = {}) {
-    const doFetch = () => fetch(url, {
+    const doFetch = () => fetch(withBase(url), {
       ...options,
       headers: { ...(accessToken ? { 'Authorization': `Bearer ${accessToken}` } : {}), ...(options.headers || {}) },
     });
-    let r = await doFetch();
-    if (r.status === 401 && await refreshAccessToken()) r = await doFetch();
-    if (r.status === 401) { clearTokens(); showAuth(); return null; }
+    let r;
+    try {
+      r = await doFetch();
+      if (r.status === 401 && await refreshAccessToken()) r = await doFetch();
+    } catch {
+      // fetch() itself throws when there's no connection at all — distinct from
+      // a server error response, and worth telling the user in the moment since
+      // whatever they just did (save, delete, etc.) silently didn't happen.
+      showToast("You're offline — that didn't save");
+      return null;
+    }
+    if (r.status === 401) { await clearTokens(); showAuth(); return null; }
     return r;
   }
 
@@ -1727,7 +1774,7 @@
     const msgEl = document.getElementById('f-msg');
     errEl.textContent = ''; msgEl.textContent = '';
     if (!email) { errEl.textContent = 'Enter your email'; return; }
-    const r    = await fetch('/api/auth/request-reset', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email }) });
+    const r    = await fetch(withBase('/api/auth/request-reset'), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email }) });
     const data = await r.json();
     msgEl.textContent = data.message || 'If an account exists for that email, a reset link has been sent.';
   }
@@ -1738,10 +1785,10 @@
     const errEl    = document.getElementById('l-err');
     errEl.textContent = '';
     if (!username || !password) { errEl.textContent = 'Enter your username and password'; return; }
-    const r    = await fetch('/api/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username, password }) });
+    const r    = await fetch(withBase('/api/auth/login'), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username, password }) });
     const data = await r.json();
     if (!r.ok) { errEl.textContent = data.error; return; }
-    setTokens(data.token, data.refreshToken, document.getElementById('l-remember').checked);
+    await setTokens(data.token, data.refreshToken, document.getElementById('l-remember').checked);
     showApp(data.username); load();
   }
 
@@ -1753,17 +1800,17 @@
     const errEl      = document.getElementById('r-err');
     errEl.textContent = '';
     if (!username || !email || !password || !inviteCode) { errEl.textContent = 'All fields are required'; return; }
-    const r    = await fetch('/api/auth/register', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username, email, password, inviteCode }) });
+    const r    = await fetch(withBase('/api/auth/register'), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username, email, password, inviteCode }) });
     const data = await r.json();
     if (!r.ok) { errEl.textContent = data.error; return; }
-    setTokens(data.token, data.refreshToken, true);
+    await setTokens(data.token, data.refreshToken, true);
     showApp(data.username); load();
   }
 
-  function logout() {
-    const refreshToken = getRefreshToken();
-    if (refreshToken) fetch('/api/auth/logout', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ refreshToken }) }).catch(() => {});
-    clearTokens(); profiles = []; prayerLog = []; selectedId = null; closePanels(); showAuth();
+  async function logout() {
+    const refreshToken = await getRefreshToken();
+    if (refreshToken) fetch(withBase('/api/auth/logout'), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ refreshToken }) }).catch(() => {});
+    await clearTokens(); profiles = []; prayerLog = []; selectedId = null; closePanels(); showAuth();
   }
 
   async function doExportData() {
@@ -1778,9 +1825,9 @@
   }
 
   async function initApp() {
-    if (!getRefreshToken() || !(await refreshAccessToken())) { clearTokens(); showAuth(); return; }
-    const r = await fetch('/api/auth/me', { headers: { 'Authorization': `Bearer ${accessToken}` } });
-    if (!r.ok) { clearTokens(); showAuth(); return; }
+    if (!(await getRefreshToken()) || !(await refreshAccessToken())) { await clearTokens(); showAuth(); return; }
+    const r = await fetch(withBase('/api/auth/me'), { headers: { 'Authorization': `Bearer ${accessToken}` } });
+    if (!r.ok) { await clearTokens(); showAuth(); return; }
     const me = await r.json();
     showApp(me.username); load();
   }
@@ -2016,7 +2063,7 @@
       const prayed   = p.last_prayed_date === today;
       const last     = fmtLastPrayed(p);
       const av = p.photo_url
-        ? `<img src="${p.photo_url}" alt="">`
+        ? `<img src="${withBase(p.photo_url)}" alt="">`
         : `<span style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;border-radius:50%;background:${bg};color:${fg}">${initials(p.name)}</span>`;
 
       const pills = [
@@ -2082,6 +2129,7 @@
     if (p.last_prayed_date !== todayStr()) {
       const r = await api(`/api/profiles/${p.id}/pray`, { method: 'PUT' });
       if (!r) return;
+      hapticSuccess();
       showToast(`Marked ${p.name} as prayed`, 'Undo', async () => {
         await api(`/api/profiles/${p.id}/pray`, { method: 'PUT' }); // toggles back off
         await load();
@@ -2135,7 +2183,7 @@
     // Avatar
     const av = document.getElementById('cc-avatar');
     if (p.photo_url) {
-      av.innerHTML = `<img src="${p.photo_url}" style="width:100%;height:100%;object-fit:cover">`;
+      av.innerHTML = `<img src="${withBase(p.photo_url)}" style="width:100%;height:100%;object-fit:cover">`;
       av.style.background = ''; av.style.color = '';
     } else {
       const [fg, bg] = palette(p.name);
@@ -2209,7 +2257,7 @@
 
   async function togglePrayToday() {
     const r = await api(`/api/profiles/${selectedId}/pray`, { method: 'PUT' });
-    if (r) await load();
+    if (r) { hapticSuccess(); await load(); }
   }
 
   function renderPrayers(p) {
@@ -2433,10 +2481,29 @@
 
   function previewPhoto(e) {
     const file = e.target.files[0]; if (!file) return;
+    setModalPhoto(file);
+  }
+
+  function setModalPhoto(file) {
     modalPhotoFile = file; modalPhotoRemoved = false;
     const reader = new FileReader();
     reader.onload = ev => updateAvatarUI(ev.target.result);
     reader.readAsDataURL(file);
+  }
+
+  // On iOS this opens the native photo-library picker instead of an HTML file
+  // input. Falls back to the ordinary file picker everywhere else.
+  async function choosePhoto() {
+    if (!IS_NATIVE) { document.getElementById('f-photo').click(); return; }
+    try {
+      const { results } = await window.Capacitor.Plugins.Camera.chooseFromGallery({ mediaType: 0, allowMultipleSelection: false });
+      const picked = results && results[0];
+      if (!picked || !picked.webPath) return;
+      const blob = await (await fetch(picked.webPath)).blob();
+      setModalPhoto(new File([blob], 'photo.jpg', { type: blob.type || 'image/jpeg' }));
+    } catch {
+      // user cancelled the picker, or permission was denied — nothing to do
+    }
   }
 
   function removePhoto() {
@@ -2508,6 +2575,7 @@
     if (!r.ok) { const e = await r.json(); alert('Error: ' + e.error); return; }
     const saved = await r.json();
     if (!editId) selectedId = saved.id;
+    hapticTap();
     closeModal(); await load();
   }
 
@@ -2823,12 +2891,18 @@
     const statusEl = document.getElementById('push-status');
     const btn      = document.getElementById('push-enable-btn');
     btn.style.display = 'none';
+    if (IS_NATIVE) {
+      const perm = await window.Capacitor.Plugins.PushNotifications.checkPermissions();
+      if (perm.receive === 'granted') { statusEl.textContent = 'Notifications are on for this device.'; }
+      else { statusEl.textContent = 'Turn on notifications to receive reminders on this device.'; btn.style.display = ''; }
+      return;
+    }
     if (!('serviceWorker' in navigator) || !('PushManager' in window) || !('Notification' in window)) {
       statusEl.textContent = 'Notifications need the installed app. On iPhone, use Add to Home Screen first.';
       return;
     }
     let keyInfo = null;
-    try { keyInfo = await (await fetch('/api/push/public-key')).json(); } catch {}
+    try { keyInfo = await (await fetch(withBase('/api/push/public-key'))).json(); } catch {}
     if (!keyInfo || !keyInfo.enabled) { statusEl.textContent = 'Reminder notifications aren’t enabled on the server yet.'; return; }
     if (Notification.permission === 'denied') { statusEl.textContent = 'Notifications are blocked — allow them in your device settings.'; return; }
     const reg = await navigator.serviceWorker.ready;
@@ -2842,10 +2916,23 @@
   }
 
   async function enableNotifications() {
+    if (IS_NATIVE) {
+      try {
+        const perm = await window.Capacitor.Plugins.PushNotifications.requestPermissions();
+        if (perm.receive === 'granted') await window.Capacitor.Plugins.PushNotifications.register();
+        // The 'registration' listener (set up once at startup) sends the resulting
+        // device token to the server and shows the "enabled" toast once it arrives.
+      } catch (err) {
+        console.error('push register:', err);
+        showToast('Could not enable notifications');
+      }
+      initPushStatus();
+      return;
+    }
     try {
       const perm = await Notification.requestPermission();
       if (perm !== 'granted') { initPushStatus(); return; }
-      const keyInfo = await (await fetch('/api/push/public-key')).json();
+      const keyInfo = await (await fetch(withBase('/api/push/public-key'))).json();
       const reg = await navigator.serviceWorker.ready;
       const sub = await reg.pushManager.subscribe({
         userVisibleOnly: true,
@@ -2864,6 +2951,15 @@
   }
 
   // ── Deep links (?profile=ID / ?group=NAME from reminder notifications) ──
+  function goToDeepLink(group, profileId) {
+    if (group !== null && group !== undefined) {
+      setFilterUI(group);
+      openProfilesPanel();
+    } else if (profileId && profiles.some(p => p.id === profileId)) {
+      selectProfile(profileId);
+    }
+  }
+
   let _deepLinked = false;
   function handleDeepLink() {
     if (_deepLinked) return;
@@ -2871,13 +2967,18 @@
     const params    = new URLSearchParams(location.search);
     const group     = params.get('group');
     const profileId = Number(params.get('profile'));
-    if (group !== null) {
-      setFilterUI(group);
-      openProfilesPanel();
-    } else if (profileId && profiles.some(p => p.id === profileId)) {
-      selectProfile(profileId);
-    }
+    goToDeepLink(group, profileId);
     if (group !== null || params.get('profile')) history.replaceState(null, '', location.pathname);
+  }
+
+  // Same idea as the above, but for a tap on a native APNs notification —
+  // there's no URL to read from, just the "url" field we sent in the payload.
+  function handleNativePushTap(urlStr) {
+    if (!urlStr) return;
+    try {
+      const params = new URLSearchParams(urlStr.split('?')[1] || '');
+      goToDeepLink(params.get('group'), Number(params.get('profile')));
+    } catch {}
   }
 
   // ── Utilities ──
@@ -2918,7 +3019,36 @@
         document.activeElement?.closest('#register-form')) doRegister();
   });
 
-  if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => {});
+  if (!IS_NATIVE && 'serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => {});
+
+  // ── Offline state ──
+  function updateOfflineBanner() {
+    document.getElementById('offline-banner').classList.toggle('show', !navigator.onLine);
+  }
+  window.addEventListener('online',  updateOfflineBanner);
+  window.addEventListener('offline', updateOfflineBanner);
+  updateOfflineBanner();
+
+  // ── Native push (APNs) — one-time listener setup ──
+  if (IS_NATIVE) {
+    const PN = window.Capacitor.Plugins.PushNotifications;
+    PN.addListener('registration', async (token) => {
+      const r = await api('/api/push/apn-register', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ deviceToken: token.value, tz: Intl.DateTimeFormat().resolvedOptions().timeZone }),
+      });
+      if (r && r.ok) showToast('Notifications enabled');
+      initPushStatus();
+    });
+    PN.addListener('registrationError', (err) => {
+      console.error('APNs registration error:', err);
+      showToast('Could not enable notifications');
+    });
+    // Tapping a notification (app was backgrounded or closed) — jump to what it's about.
+    PN.addListener('pushNotificationActionPerformed', (action) => {
+      handleNativePushTap(action.notification?.data?.url);
+    });
+  }
 
   initApp();
 </script>
@@ -2928,6 +3058,8 @@
   <span class="toast-msg" id="toast-msg"></span>
   <button type="button" id="toast-action"></button>
 </div>
+
+<div class="offline-banner" id="offline-banner" role="status">You're offline — changes won't be saved until you're back online</div>
 
 <!-- ── Phone Call/Text Popover ── -->
 <div id="phone-popover" class="phone-popover" style="display:none">
