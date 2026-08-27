@@ -1,0 +1,88 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isSignedIn()
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    function isGroupMember(groupId) {
+      return isSignedIn()
+        && exists(/databases/$(database)/documents/groups/$(groupId))
+        && request.auth.uid in get(/databases/$(database)/documents/groups/$(groupId)).data.memberIds;
+    }
+
+    // ── users/{uid} — global profile + role ─────────────────────
+    match /users/{uid} {
+      // any signed-in user can read (needed for the admin panel's user list,
+      // and for showing names on shared resources/outreach)
+      allow read: if isSignedIn();
+
+      // first-sign-in bootstrap always creates role:'member' — see ensureUserDoc()
+      allow create: if isSignedIn()
+        && request.auth.uid == uid
+        && request.resource.data.role == 'member';
+
+      // a user may update their own doc (name, sender profile, etc.) but never
+      // their own role -- only an existing admin can promote/demote anyone
+      allow update: if isSignedIn() && (
+        (request.auth.uid == uid
+          && !('role' in request.resource.data.diff(resource.data).affectedKeys()))
+        || isAdmin()
+      );
+
+      allow delete: if isAdmin();
+    }
+
+    // ── groups/{groupId} ─────────────────────────────────────────
+    match /groups/{groupId} {
+      // readable by any signed-in user: joinGroup() queries across all groups
+      // by inviteCode before the caller is a member, so membership-gated read
+      // would break the join flow entirely.
+      allow read: if isSignedIn();
+
+      allow create: if isSignedIn()
+        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.memberIds == [request.auth.uid]
+        && request.resource.data.members[request.auth.uid].role == 'owner';
+
+      // existing members can update freely (rename, sessions, leave, etc.);
+      // a non-member may only write an update that makes them a member
+      // (this is the join-by-invite-code flow).
+      allow update: if isSignedIn() && (
+        request.auth.uid in resource.data.memberIds
+        || request.auth.uid in request.resource.data.memberIds
+        || isAdmin()
+      );
+
+      allow delete: if isSignedIn() && (
+        (request.auth.uid in resource.data.members
+          && resource.data.members[request.auth.uid].role == 'owner')
+        || isAdmin()
+      );
+
+      // Everything nested under a group -- projects, sessions, notes, metrics,
+      // tasks, outreach -- is only visible/writable to members of that group
+      // (or a global admin, matching the Admin Panel's "browse/delete any
+      // group" capability).
+      match /{document=**} {
+        allow read, write: if isGroupMember(groupId) || isAdmin();
+      }
+    }
+
+    // ── resources/{id} — shared library, visible across every group ──
+    match /resources/{id} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && request.resource.data.createdBy == request.auth.uid;
+      allow update, delete: if isSignedIn() && (
+        resource.data.createdBy == request.auth.uid || isAdmin()
+      );
+    }
+  }
+}
