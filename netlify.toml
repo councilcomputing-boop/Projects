@@ -1,5 +1,5 @@
 [build]
-  publish = "golf bet app"
+  publish = "council-website"
   functions = "netlify/functions"
 
 [[plugins]]
