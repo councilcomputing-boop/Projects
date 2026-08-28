@@ -83,6 +83,20 @@ select.finput{cursor:pointer}
 .card{background:var(--surface);border-radius:var(--r);box-shadow:var(--shadow);padding:16px;margin-bottom:12px}
 .card-label{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:12px}
 
+/* ── Detail tabs ──────────────────────────────────────────── */
+.detail-tabs{display:flex;gap:4px;margin-bottom:12px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.detail-tabs::-webkit-scrollbar{display:none}
+.detail-tab{flex:1;min-width:62px;text-align:center;padding:9px 6px;border:none;background:var(--slate-light);color:var(--muted);font-size:12.5px;font-weight:700;border-radius:10px;cursor:pointer;transition:background .15s,color .15s;white-space:nowrap}
+.detail-tab.active{background:var(--ink);color:#fff}
+.tab-panel{display:none}
+.tab-panel.active{display:block}
+
+/* ── Kanban drag-and-drop ─────────────────────────────────── */
+.kanban-col{border-radius:10px;padding:6px;margin:-6px;transition:background .12s}
+.kanban-col.drag-over{background:var(--blue-light)}
+.task-chip.dragging{opacity:.35}
+.task-chip-ghost{position:fixed;z-index:999;pointer-events:none;box-shadow:var(--shadow-pop);border-radius:10px;opacity:.96;transform:rotate(-2deg)}
+
 /* ── Group cards ──────────────────────────────────────────── */
 .group-card{background:var(--surface);border-radius:var(--r);box-shadow:var(--shadow);margin-bottom:10px;cursor:pointer;overflow:hidden;border-left:5px solid transparent;transition:transform .12s,box-shadow .12s}
 .group-card:active{transform:scale(.98);box-shadow:var(--shadow-pop)}
@@ -254,7 +268,7 @@ select.finput{cursor:pointer}
 .kanban{display:grid;grid-template-columns:1fr;gap:16px;margin-top:4px}
 @media (min-width:560px){.kanban{grid-template-columns:1fr 1fr 1fr}}
 .kanban-col-title{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.7px;margin-bottom:8px}
-.task-chip{background:var(--slate-light);border-radius:9px;padding:10px 12px;margin-bottom:8px}
+.task-chip{background:var(--slate-light);border-radius:9px;padding:10px 12px;margin-bottom:8px;touch-action:none;cursor:grab}
 .task-chip-text{font-size:13.5px;color:var(--text);line-height:1.4;margin-bottom:8px;word-break:break-word}
 .task-chip-actions{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
 .task-move-btn{font-size:11px;font-weight:600;padding:4px 9px;border-radius:7px;border:1px solid var(--border);background:var(--surface);color:var(--muted);cursor:pointer}
@@ -393,13 +407,32 @@ select.finput{cursor:pointer}
   <!-- Project Detail -->
   <div class="view" id="viewDetail">
     <div class="card" id="detailHeader"></div>
-    <div class="card" id="detailClock"></div>
-    <div class="card" id="detailLinks"></div>
-    <div class="card" id="detailSoftware"></div>
-    <div class="card" id="detailSecrets"></div>
-    <div class="card" id="detailTasks"></div>
-    <div class="card" id="detailMetrics"></div>
-    <div class="card" id="detailNotes"></div>
+
+    <div class="detail-tabs" id="detailTabs">
+      <button class="detail-tab" data-tab="tasks" onclick="setDetailTab('tasks')">Tasks</button>
+      <button class="detail-tab" data-tab="time" onclick="setDetailTab('time')">Time</button>
+      <button class="detail-tab" data-tab="notes" onclick="setDetailTab('notes')">Notes</button>
+      <button class="detail-tab" data-tab="overview" onclick="setDetailTab('overview')">Metrics</button>
+      <button class="detail-tab" data-tab="setup" onclick="setDetailTab('setup')">Setup</button>
+    </div>
+
+    <div class="tab-panel" data-tab-panel="tasks">
+      <div class="card" id="detailTasks"></div>
+    </div>
+    <div class="tab-panel" data-tab-panel="time">
+      <div class="card" id="detailClock"></div>
+    </div>
+    <div class="tab-panel" data-tab-panel="notes">
+      <div class="card" id="detailNotes"></div>
+    </div>
+    <div class="tab-panel" data-tab-panel="overview">
+      <div class="card" id="detailMetrics"></div>
+    </div>
+    <div class="tab-panel" data-tab-panel="setup">
+      <div class="card" id="detailLinks"></div>
+      <div class="card" id="detailSoftware"></div>
+      <div class="card" id="detailSecrets"></div>
+    </div>
     <div class="btn-row" style="margin-top:4px">
       <button class="btn btn-ghost btn-sm" onclick="startEdit()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg> Edit</button>
       <button class="btn btn-red btn-sm" onclick="deleteProject()">Delete</button>
@@ -637,6 +670,7 @@ document.getElementById('hdrLogo').src=APP_LOGO;
 // ── State ─────────────────────────────────────────────────────────────────────
 let currentUser=null,groups=[],currentGroup=null,projects=[],currentSessions=[];
 let currentView='groups',currentProjectId=null,editingId=null,revealedSecretIds=new Set();
+let currentDetailTab='tasks';
 let timerInterval=null,clockOutPending=false;
 let unsubGroups=null,unsubProjects=null,unsubSessions=null,loginMode='in';
 let myRole='member',adminGroupsCache=[];
@@ -1273,12 +1307,12 @@ function renderTasksCard(){
     const items=currentTasks.filter(t=>t.status===col.key);
     const chips=items.length?items.map(t=>{
       const moveBtns=TASK_COLS.filter(c=>c.key!==col.key).map(o=>`<button class="task-move-btn" onclick="moveTask('${t.id}','${o.key}')">→ ${esc(o.label)}</button>`).join('');
-      return `<div class="task-chip">
+      return `<div class="task-chip" data-task-id="${t.id}" data-status="${col.key}">
         <div class="task-chip-text">${esc(t.text)}</div>
         <div class="task-chip-actions">${moveBtns}<button class="task-del" onclick="deleteTask('${t.id}')">${icon('x')}</button></div>
       </div>`;
     }).join(''):'<div class="empty-hint" style="padding:2px 0">Nothing here</div>';
-    return `<div><div class="kanban-col-title">${esc(col.label)} (${items.length})</div>${chips}</div>`;
+    return `<div class="kanban-col" data-col-key="${col.key}"><div class="kanban-col-title">${esc(col.label)} (${items.length})</div>${chips}</div>`;
   }).join('');
   el.innerHTML=`
     <div class="section-title" style="margin-bottom:10px">Tasks</div>
@@ -1288,7 +1322,74 @@ function renderTasksCard(){
       </div>
       <button class="btn btn-blue btn-sm" onclick="addTask()">+ Add Task</button>
     </div>
-    <div class="kanban">${colHtml}</div>`;
+    <div class="kanban" id="kanbanBoard">${colHtml}</div>`;
+  initKanbanDrag();
+}
+/** Pointer-events-based drag-and-drop between columns -- works for mouse and
+    touch alike, unlike native HTML5 drag-and-drop which touch browsers don't
+    support. Re-run after every render since re-rendering replaces the board's
+    DOM entirely (a fresh #kanbanBoard element each time). Starting a drag from
+    inside .task-chip-actions is ignored so the existing move/delete buttons
+    keep working untouched. */
+function initKanbanDrag(){
+  const board=document.getElementById('kanbanBoard');
+  if(!board)return;
+  board.querySelectorAll('.task-chip').forEach(chip=>{
+    let ghost=null,dragging=false,startX=0,startY=0,offX=0,offY=0,overCol=null;
+
+    chip.addEventListener('pointerdown',onDown);
+
+    function onDown(e){
+      if(e.target.closest('.task-chip-actions'))return;
+      if(e.pointerType==='mouse'&&e.button!==0)return;
+      startX=e.clientX;startY=e.clientY;dragging=false;
+      const rect=chip.getBoundingClientRect();
+      offX=e.clientX-rect.left;offY=e.clientY-rect.top;
+      chip.setPointerCapture(e.pointerId);
+      chip.addEventListener('pointermove',onMove);
+      chip.addEventListener('pointerup',onUp);
+      chip.addEventListener('pointercancel',onUp);
+    }
+    function onMove(e){
+      const dx=e.clientX-startX,dy=e.clientY-startY;
+      if(!dragging){
+        if(Math.hypot(dx,dy)<6)return;
+        dragging=true;
+        chip.classList.add('dragging');
+        const rect=chip.getBoundingClientRect();
+        ghost=chip.cloneNode(true);
+        ghost.classList.add('task-chip-ghost');
+        ghost.style.width=rect.width+'px';
+        ghost.style.margin='0';
+        document.body.appendChild(ghost);
+      }
+      if(!ghost)return;
+      ghost.style.left=(e.clientX-offX)+'px';
+      ghost.style.top=(e.clientY-offY)+'px';
+      ghost.style.display='none';
+      const under=document.elementFromPoint(e.clientX,e.clientY);
+      ghost.style.display='';
+      const col=under?under.closest('.kanban-col'):null;
+      if(overCol&&overCol!==col)overCol.classList.remove('drag-over');
+      if(col)col.classList.add('drag-over');
+      overCol=col;
+    }
+    function onUp(){
+      chip.removeEventListener('pointermove',onMove);
+      chip.removeEventListener('pointerup',onUp);
+      chip.removeEventListener('pointercancel',onUp);
+      if(dragging){
+        chip.classList.remove('dragging');
+        if(ghost){ghost.remove();ghost=null;}
+        if(overCol){
+          overCol.classList.remove('drag-over');
+          const newStatus=overCol.dataset.colKey,oldStatus=chip.dataset.status;
+          if(newStatus&&newStatus!==oldStatus)moveTask(chip.dataset.taskId,newStatus);
+        }
+      }
+      overCol=null;dragging=false;
+    }
+  });
 }
 async function addTask(){
   const el=document.getElementById('taskInput');
@@ -1352,11 +1453,13 @@ function renderList(){
 
 // ── Detail view ───────────────────────────────────────────────────────────────
 function showDetail(id){
+  if(id!==currentProjectId)currentDetailTab='tasks';
   currentProjectId=id;currentSessions=[];currentNotes=[];currentMetrics=[];currentTasks=[];clockOutPending=false;
   const p=projects.find(x=>x.id===id);
   if(!p){showView('list');return;}
   document.getElementById('hdrTitle').textContent=p.name;
   renderDetailAll(p);showView('detail');
+  setDetailTab(currentDetailTab);
   startListeningToSessions(id);
   startListeningToNotes(id);
   startListeningToMetrics(id);
@@ -1364,6 +1467,11 @@ function showDetail(id){
   const myActive=(p.activeSessions||{})[currentUser?.uid];
   if(myActive)startTimerTick();else stopTimerTick();
   renderList();
+}
+function setDetailTab(tab){
+  currentDetailTab=tab;
+  document.querySelectorAll('#detailTabs .detail-tab').forEach(b=>b.classList.toggle('active',b.dataset.tab===tab));
+  document.querySelectorAll('#viewDetail .tab-panel').forEach(p=>p.classList.toggle('active',p.dataset.tabPanel===tab));
 }
 function renderDetailAll(p){
   document.getElementById('detailHeader').innerHTML=`
