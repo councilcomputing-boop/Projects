@@ -820,11 +820,23 @@ with app.app_context():
                 conn.execute(text('ALTER TABLE bonds ADD COLUMN IF NOT EXISTS bid_bond_percent FLOAT'))
                 conn.execute(text('ALTER TABLE bonds ADD COLUMN IF NOT EXISTS work_on_hand TEXT'))
                 conn.execute(text('ALTER TABLE bonds ADD COLUMN IF NOT EXISTS work_on_hand_low BOOLEAN DEFAULT FALSE'))
-                conn.execute(text('ALTER TABLE bonds ADD COLUMN IF NOT EXISTS low_bid BOOLEAN'))
+                conn.execute(text('ALTER TABLE bonds ADD COLUMN IF NOT EXISTS low_bid VARCHAR(20)'))
                 conn.execute(text('ALTER TABLE bonds ADD COLUMN IF NOT EXISTS producer VARCHAR(200)'))
                 conn.execute(text('ALTER TABLE users ADD COLUMN IF NOT EXISTS invite_token VARCHAR(64)'))
                 conn.execute(text('ALTER TABLE users ADD COLUMN IF NOT EXISTS invite_expires TIMESTAMP'))
                 conn.commit()
+                # One-time: low_bid used to be BOOLEAN (True=Low/False=Not Low/NULL=No Result).
+                # Widen it to VARCHAR so it can also hold 'did-not-bid', converting existing data.
+                low_bid_type = conn.execute(text(
+                    "SELECT data_type FROM information_schema.columns "
+                    "WHERE table_name='bonds' AND column_name='low_bid'"
+                )).scalar()
+                if low_bid_type == 'boolean':
+                    conn.execute(text('''
+                        ALTER TABLE bonds ALTER COLUMN low_bid TYPE VARCHAR(20)
+                        USING (CASE WHEN low_bid IS TRUE THEN 'low' WHEN low_bid IS FALSE THEN 'not-low' ELSE NULL END)
+                    '''))
+                    conn.commit()
             else:
                 # SQLite has no "ADD COLUMN IF NOT EXISTS" — check PRAGMA table_info instead
                 bond_cols = {row[1] for row in conn.execute(text('PRAGMA table_info(bonds)'))}
@@ -835,7 +847,7 @@ with app.app_context():
                     ('bid_bond_percent',    'FLOAT'),
                     ('work_on_hand',        'TEXT'),
                     ('work_on_hand_low',    'BOOLEAN DEFAULT 0'),
-                    ('low_bid',             'BOOLEAN'),
+                    ('low_bid',             'VARCHAR(20)'),
                     ('producer',            'VARCHAR(200)'),
                 ]
                 for col_name, col_type in bond_migrations:
@@ -846,6 +858,10 @@ with app.app_context():
                     conn.execute(text('ALTER TABLE users ADD COLUMN invite_token VARCHAR(64)'))
                 if 'invite_expires' not in user_cols:
                     conn.execute(text('ALTER TABLE users ADD COLUMN invite_expires DATETIME'))
+                # SQLite has no strict column typing — old rows may still hold 1/0 from
+                # when low_bid was BOOLEAN. Rewrite them to the new text values.
+                conn.execute(text("UPDATE bonds SET low_bid='low' WHERE low_bid='1'"))
+                conn.execute(text("UPDATE bonds SET low_bid='not-low' WHERE low_bid='0'"))
                 conn.commit()
     except Exception:
         pass

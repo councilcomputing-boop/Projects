@@ -67,7 +67,7 @@ class Bond(db.Model):
     notes                = db.Column(db.Text)
     work_on_hand         = db.Column(db.Text)
     work_on_hand_low     = db.Column(db.Boolean, default=False)
-    low_bid              = db.Column(db.Boolean, nullable=True, default=None)
+    low_bid              = db.Column(db.String(20), nullable=True, default=None)  # 'low' | 'not-low' | 'did-not-bid' | None (no result)
     created_by           = db.Column(db.String(50))
     created_at           = db.Column(db.DateTime, default=datetime.utcnow)
     updated_by           = db.Column(db.String(50))
