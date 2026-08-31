@@ -868,7 +868,7 @@ function renderBonds() {
                 </select>`
                 : '';
             return `<tr>
-            <td><span class="principal">${esc(b.principal)}</span><div class="meta">Added by ${esc(b.created_by)} &middot; ${b.created_at}</div></td>
+            <td><span class="principal">${esc(b.principal)}</span><div class="meta">Added by ${esc(b.created_by)} &middot; ${fmtDateTime(b.created_at)}</div></td>
             <td>${esc(b.producer)||'&mdash;'}</td>
             <td>${esc(b.obligee)}</td>
             <td>${esc(b.project)||'&mdash;'}</td>
@@ -1075,9 +1075,9 @@ function openView(id) {
             ${b.notes?`<div class="fgrp full"><div class="flbl">Notes</div><div style="font-size:14px;white-space:pre-wrap;line-height:1.55;margin-top:2px;">${esc(b.notes)}</div></div>`:''}
             ${wohHtml}
             <div class="fsect">Record Info</div>
-            ${dv('Added By',b.created_by)} ${dv('Added At',b.created_at)}
+            ${dv('Added By',b.created_by)} ${dv('Added At',fmtDateTime(b.created_at))}
             ${b.updated_by?dv('Last Updated By',b.updated_by):''}
-            ${b.updated_at?dv('Last Updated At',b.updated_at):''}
+            ${b.updated_at?dv('Last Updated At',fmtDateTime(b.updated_at)):''}
         </div>`;
 
     const finalBtn = document.getElementById('viewFinalBtn');
@@ -1260,7 +1260,7 @@ async function loadActivity() {
             details=`<div class="diff-list"><span class="diff-field">Principal:</span> ${esc(l.old_values.principal||'')}</div>`;
         }
         return `<tr>
-            <td style="white-space:nowrap;font-size:12px;color:var(--gray-600);">${l.changed_at}</td>
+            <td style="white-space:nowrap;font-size:12px;color:var(--gray-600);">${fmtDateTime(l.changed_at)}</td>
             <td><span class="bond-num">${esc(l.bond_number)}</span></td>
             <td><span class="log-action ${cls}">${label}</span></td>
             <td style="font-weight:500;">${esc(l.changed_by)}</td>
@@ -1296,6 +1296,12 @@ function badge(s) {
 function fmtDate(d) {
     if(!d) return '&mdash;';
     const[y,m,day]=d.split('-'); return `${m}/${day}/${y}`;
+}
+function fmtDateTime(iso) {
+    if(!iso) return '&mdash;';
+    const d = new Date(iso);
+    if (isNaN(d)) return esc(iso);
+    return d.toLocaleString('en-US', {month:'2-digit',day:'2-digit',year:'numeric',hour:'numeric',minute:'2-digit'});
 }
 function esc(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function open_(id){ document.getElementById(id).classList.add('open'); }

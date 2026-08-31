@@ -8,7 +8,7 @@ db = SQLAlchemy()
 
 
 def fmt(dt):
-    return dt.strftime('%m/%d/%Y %I:%M %p') if dt else ''
+    return dt.strftime('%Y-%m-%dT%H:%M:%SZ') if dt else ''
 
 
 class User(UserMixin, db.Model):
