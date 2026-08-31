@@ -511,16 +511,28 @@ def generate_report():
     from fpdf import FPDF
     from flask import make_response
 
-    status_filter = request.args.get('status', '')
-    type_filter   = request.args.get('bond_type', '')
-    from_date     = request.args.get('from_date', '')
-    to_date       = request.args.get('to_date', '')
+    status_filter    = request.args.get('status', '')
+    type_filter      = request.args.get('bond_type', '')
+    producer_filter  = request.args.get('producer', '')
+    surety_filter    = request.args.get('surety', '')
+    principal_filter = request.args.get('principal', '')
+    low_bid_filter   = request.args.get('low_bid', '')
+    from_date        = request.args.get('from_date', '')
+    to_date          = request.args.get('to_date', '')
 
     query = Bond.query
     if status_filter:
         query = query.filter(Bond.status == status_filter)
     if type_filter:
         query = query.filter(Bond.bond_type == type_filter)
+    if producer_filter:
+        query = query.filter(Bond.producer == producer_filter)
+    if surety_filter:
+        query = query.filter(Bond.surety == surety_filter)
+    if principal_filter:
+        query = query.filter(Bond.principal == principal_filter)
+    if low_bid_filter:
+        query = query.filter(Bond.low_bid == None) if low_bid_filter == 'no-result' else query.filter(Bond.low_bid == low_bid_filter)
     if from_date:
         query = query.filter(Bond.bid_date >= from_date)
     if to_date:
@@ -547,6 +559,13 @@ def generate_report():
     pdf.ln(2)
 
     filter_parts = [status_filter if status_filter else 'All Statuses']
+    if type_filter:      filter_parts.append(type_filter)
+    if producer_filter:  filter_parts.append(f'Producer: {producer_filter}')
+    if surety_filter:    filter_parts.append(f'Surety: {surety_filter}')
+    if principal_filter: filter_parts.append(f'Principal: {principal_filter}')
+    if low_bid_filter:
+        bid_labels = {'low': 'Low', 'not-low': 'Not Low', 'did-not-bid': 'Did Not Bid', 'no-result': 'No Result'}
+        filter_parts.append(f'Bid Result: {bid_labels.get(low_bid_filter, low_bid_filter)}')
     if from_date or to_date:
         d = ''
         if from_date: d += f'From {from_date}'
@@ -582,6 +601,7 @@ def generate_report():
         'Approved':     (46, 125, 50),
         'Not Approved': (198, 40, 40),
         'Pending':      (230, 81, 0),
+        'Waived':       (84, 110, 122),
         'Final Bond':   (13, 71, 161),
     }
     pdf.set_font('Helvetica', '', 8)
@@ -632,9 +652,10 @@ def generate_report():
     approved = sum(1 for b in bonds if b.status == 'Approved')
     not_appr = sum(1 for b in bonds if b.status == 'Not Approved')
     pending  = sum(1 for b in bonds if b.status == 'Pending')
+    waived   = sum(1 for b in bonds if b.status == 'Waived')
     woh_low  = sum(1 for b in bonds if b.work_on_hand_low)
     pdf.cell(0, 6,
-        f'Total: {len(bonds)}   |   Approved: {approved}   |   Not Approved: {not_appr}   |   Pending: {pending}   |   Work on Hand Low: {woh_low}',
+        f'Total: {len(bonds)}   |   Approved: {approved}   |   Not Approved: {not_appr}   |   Pending: {pending}   |   Waived: {waived}   |   Work on Hand Low: {woh_low}',
         align='C')
 
     pdf_bytes = bytes(pdf.output())
@@ -653,16 +674,28 @@ def generate_excel():
     from flask import make_response
     import io
 
-    status_filter = request.args.get('status', '')
-    type_filter   = request.args.get('bond_type', '')
-    from_date     = request.args.get('from_date', '')
-    to_date       = request.args.get('to_date', '')
+    status_filter    = request.args.get('status', '')
+    type_filter      = request.args.get('bond_type', '')
+    producer_filter  = request.args.get('producer', '')
+    surety_filter    = request.args.get('surety', '')
+    principal_filter = request.args.get('principal', '')
+    low_bid_filter   = request.args.get('low_bid', '')
+    from_date        = request.args.get('from_date', '')
+    to_date          = request.args.get('to_date', '')
 
     query = Bond.query
     if status_filter:
         query = query.filter(Bond.status == status_filter)
     if type_filter:
         query = query.filter(Bond.bond_type == type_filter)
+    if producer_filter:
+        query = query.filter(Bond.producer == producer_filter)
+    if surety_filter:
+        query = query.filter(Bond.surety == surety_filter)
+    if principal_filter:
+        query = query.filter(Bond.principal == principal_filter)
+    if low_bid_filter:
+        query = query.filter(Bond.low_bid == None) if low_bid_filter == 'no-result' else query.filter(Bond.low_bid == low_bid_filter)
     if from_date:
         query = query.filter(Bond.bid_date >= from_date)
     if to_date:
@@ -689,6 +722,7 @@ def generate_excel():
         'Approved':     PatternFill(start_color='E8F5E9', end_color='E8F5E9', fill_type='solid'),
         'Not Approved': PatternFill(start_color='FFEBEE', end_color='FFEBEE', fill_type='solid'),
         'Pending':      PatternFill(start_color='FFF3E0', end_color='FFF3E0', fill_type='solid'),
+        'Waived':       PatternFill(start_color='ECEFF1', end_color='ECEFF1', fill_type='solid'),
     }
 
     for ri, bond in enumerate(bonds, 2):

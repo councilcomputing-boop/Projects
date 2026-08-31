@@ -126,6 +126,7 @@
         .b-approved     { background: var(--green-bg); color: var(--green); }
         .b-not-approved { background: var(--red-bg);   color: var(--red); }
         .b-pending      { background: var(--amber-bg); color: var(--amber); }
+        .b-waived       { background: var(--gray-200);  color: var(--gray-600); }
 
         /* Table footer */
         .tfooter { padding: 10px 16px; border-top: 1px solid var(--gray-200); font-size: 12px; color: var(--gray-600); display: flex; justify-content: space-between; align-items: center; }
@@ -346,6 +347,7 @@
                 <option>Approved</option>
                 <option>Not Approved</option>
                 <option>Pending</option>
+                <option>Waived</option>
             </select>
             <select class="flt" id="fltType" onchange="renderBonds()">
                 <option value="">All Bond Types</option>
@@ -614,7 +616,7 @@
                 <div class="fgrp full"><label class="flbl">Project Description</label><textarea class="fc" id="fProjectDesc" placeholder="Description of the project or work..."></textarea></div>
                 <div class="fsect">Decision</div>
                 <div class="fgrp"><label class="flbl">Status <span class="req">*</span></label>
-                    <select class="fc" id="fStatus" required><option value="">Select...</option><option>Pending</option><option>Approved</option><option>Not Approved</option></select>
+                    <select class="fc" id="fStatus" required><option value="">Select...</option><option>Pending</option><option>Approved</option><option>Not Approved</option><option>Waived</option></select>
                 </div>
                 <div class="fgrp"><label class="flbl">Decision Date</label><input type="date" class="fc" id="fDecDate"></div>
                 <div class="fgrp full"><label class="flbl">Notes / Reason</label><textarea class="fc" id="fNotes" placeholder="Reason for approval or denial, conditions, notes..."></textarea></div>
@@ -674,6 +676,7 @@
                     <option value="Pending">Pending</option>
                     <option value="Approved">Approved</option>
                     <option value="Not Approved">Not Approved</option>
+                    <option value="Waived">Waived</option>
                 </select>
             </div>
             <div class="fgrp">
@@ -685,6 +688,34 @@
                     <option value="License Bond">License Bond</option>
                     <option value="Maintenance Bond">Maintenance Bond</option>
                     <option value="Other">Other</option>
+                </select>
+            </div>
+            <div class="fgrp">
+                <label class="flbl">Producer</label>
+                <select class="fc" id="rProducer">
+                    <option value="">All Producers</option>
+                </select>
+            </div>
+            <div class="fgrp">
+                <label class="flbl">Surety</label>
+                <select class="fc" id="rSurety">
+                    <option value="">All Sureties</option>
+                </select>
+            </div>
+            <div class="fgrp">
+                <label class="flbl">Principal</label>
+                <select class="fc" id="rPrincipal">
+                    <option value="">All Principals</option>
+                </select>
+            </div>
+            <div class="fgrp">
+                <label class="flbl">Bid Result</label>
+                <select class="fc" id="rLowBid">
+                    <option value="">All Bids</option>
+                    <option value="low">Low</option>
+                    <option value="not-low">Not Low</option>
+                    <option value="did-not-bid">Did Not Bid</option>
+                    <option value="no-result">No Result</option>
                 </select>
             </div>
             <div class="fgrp">
@@ -816,6 +847,18 @@ function populatePrincipalFilter() {
     const prodCur = prodSel.value;
     prodSel.innerHTML = '<option value="">All Producers</option>' +
         PRODUCERS.map(p=>`<option value="${esc(p)}"${p===prodCur?' selected':''}>${esc(p)}</option>`).join('');
+
+    const rPrincipalSel = document.getElementById('rPrincipal');
+    rPrincipalSel.innerHTML = '<option value="">All Principals</option>' +
+        principals.map(p=>`<option value="${esc(p)}">${esc(p)}</option>`).join('');
+
+    const rSuretySel = document.getElementById('rSurety');
+    rSuretySel.innerHTML = '<option value="">All Sureties</option>' +
+        SURETIES.map(s=>`<option value="${esc(s)}">${esc(s)}</option>`).join('');
+
+    const rProducerSel = document.getElementById('rProducer');
+    rProducerSel.innerHTML = '<option value="">All Producers</option>' +
+        PRODUCERS.map(p=>`<option value="${esc(p)}">${esc(p)}</option>`).join('');
 }
 
 function expStyle(dateStr) {
@@ -965,13 +1008,13 @@ function loadStats() {
     }).join('') || '<tr><td colspan="4" style="color:var(--gray-600);">No data</td></tr>';
 
     // By Status
-    const statuses = ['Approved','Pending','Not Approved'];
+    const statuses = ['Approved','Pending','Not Approved','Waived'];
     const total = bonds.length;
     document.getElementById('stStatusBody').innerHTML = statuses.map(s=>{
         const sb = bonds.filter(b=>b.status===s);
         if (!sb.length) return '';
         const pct = Math.round(sb.length/total*100);
-        const color = s==='Approved'?'var(--green)':s==='Not Approved'?'var(--red)':'var(--amber)';
+        const color = s==='Approved'?'var(--green)':s==='Not Approved'?'var(--red)':s==='Waived'?'var(--gray-600)':'var(--amber)';
         return `<tr>
             <td><span style="color:${color};font-weight:600;">${s}</span></td>
             <td style="text-align:right;font-weight:600;">${sb.length}</td>
@@ -1294,7 +1337,7 @@ async function changePw(e) {
 
 // ── Helpers ─────────────────────────────────────────────────────────────
 function badge(s) {
-    const m={Approved:'b-approved','Not Approved':'b-not-approved',Pending:'b-pending'};
+    const m={Approved:'b-approved','Not Approved':'b-not-approved',Pending:'b-pending',Waived:'b-waived'};
     return `<span class="badge ${m[s]||'b-pending'}">${s||'Pending'}</span>`;
 }
 function fmtDate(d) {
@@ -1368,22 +1411,34 @@ async function handlePDFUpload(input) {
 
 
 function openReport() {
-    document.getElementById('rStatus').value = '';
-    document.getElementById('rType').value   = '';
-    document.getElementById('rFrom').value   = '';
-    document.getElementById('rTo').value     = '';
+    document.getElementById('rStatus').value    = '';
+    document.getElementById('rType').value      = '';
+    document.getElementById('rProducer').value  = '';
+    document.getElementById('rSurety').value    = '';
+    document.getElementById('rPrincipal').value = '';
+    document.getElementById('rLowBid').value    = '';
+    document.getElementById('rFrom').value      = '';
+    document.getElementById('rTo').value        = '';
     open_('reportModal');
 }
 function reportParams() {
-    const status = document.getElementById('rStatus').value;
-    const type   = document.getElementById('rType').value;
-    const from   = document.getElementById('rFrom').value;
-    const to     = document.getElementById('rTo').value;
+    const status    = document.getElementById('rStatus').value;
+    const type      = document.getElementById('rType').value;
+    const producer  = document.getElementById('rProducer').value;
+    const surety    = document.getElementById('rSurety').value;
+    const principal = document.getElementById('rPrincipal').value;
+    const lowBid    = document.getElementById('rLowBid').value;
+    const from      = document.getElementById('rFrom').value;
+    const to        = document.getElementById('rTo').value;
     const params = new URLSearchParams();
-    if (status) params.append('status',     status);
-    if (type)   params.append('bond_type',  type);
-    if (from)   params.append('from_date',  from);
-    if (to)     params.append('to_date',    to);
+    if (status)    params.append('status',    status);
+    if (type)      params.append('bond_type', type);
+    if (producer)  params.append('producer',  producer);
+    if (surety)    params.append('surety',    surety);
+    if (principal) params.append('principal', principal);
+    if (lowBid)    params.append('low_bid',   lowBid);
+    if (from)      params.append('from_date', from);
+    if (to)        params.append('to_date',   to);
     return params.toString();
 }
 
