@@ -698,7 +698,7 @@ def generate_excel():
             bond.surety,
             bond.bond_amount,
             f'{bond.bid_bond_percent}%' if bond.bid_bond_percent else '',
-            'Low' if bond.low_bid is True else 'Not Low' if bond.low_bid is False else 'No Result',
+            {'low': 'Low', 'not-low': 'Not Low', 'did-not-bid': 'Did Not Bid'}.get(bond.low_bid, 'No Result'),
             bond.bid_date, bond.decision_date,
             bond.status, bond.notes or '',
             bond.work_on_hand or '',
