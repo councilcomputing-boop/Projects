@@ -22,6 +22,7 @@ class User(UserMixin, db.Model):
     created_at     = db.Column(db.DateTime, default=datetime.utcnow)
     invite_token   = db.Column(db.String(64), unique=True, nullable=True)
     invite_expires = db.Column(db.DateTime, nullable=True)
+    last_seen_version = db.Column(db.String(20), nullable=True)  # last "What's New" version this user has dismissed
 
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)

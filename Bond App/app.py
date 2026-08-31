@@ -2,6 +2,7 @@ from flask import Flask, render_template, request, jsonify, redirect, url_for
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from database import db, User, Bond, AuditLog, Reconciliation, ReconciliationItem
 from email_service import send_invite_email
+from changelog import CHANGELOG
 from datetime import datetime, timedelta
 import os
 import json
@@ -838,6 +839,26 @@ def change_password():
     return jsonify({'ok': True})
 
 
+@app.route('/api/changelog', methods=['GET'])
+@login_required
+def get_changelog():
+    seen = current_user.last_seen_version
+    if seen:
+        idx = next((i for i, e in enumerate(CHANGELOG) if e['version'] == seen), None)
+        unseen = CHANGELOG[:idx] if idx is not None else CHANGELOG[:1]
+    else:
+        unseen = CHANGELOG[:1]
+    return jsonify({'latest_version': CHANGELOG[0]['version'], 'unseen': unseen})
+
+
+@app.route('/api/me/seen-version', methods=['POST'])
+@login_required
+def mark_version_seen():
+    current_user.last_seen_version = CHANGELOG[0]['version']
+    db.session.commit()
+    return jsonify({'ok': True})
+
+
 # ── Startup ────────────────────────────────────────────────────────────
 
 with app.app_context():
@@ -858,6 +879,7 @@ with app.app_context():
                 conn.execute(text('ALTER TABLE bonds ADD COLUMN IF NOT EXISTS producer VARCHAR(200)'))
                 conn.execute(text('ALTER TABLE users ADD COLUMN IF NOT EXISTS invite_token VARCHAR(64)'))
                 conn.execute(text('ALTER TABLE users ADD COLUMN IF NOT EXISTS invite_expires TIMESTAMP'))
+                conn.execute(text('ALTER TABLE users ADD COLUMN IF NOT EXISTS last_seen_version VARCHAR(20)'))
                 conn.commit()
                 # One-time: low_bid used to be BOOLEAN (True=Low/False=Not Low/NULL=No Result).
                 # Widen it to VARCHAR so it can also hold 'did-not-bid', converting existing data.
@@ -892,6 +914,8 @@ with app.app_context():
                     conn.execute(text('ALTER TABLE users ADD COLUMN invite_token VARCHAR(64)'))
                 if 'invite_expires' not in user_cols:
                     conn.execute(text('ALTER TABLE users ADD COLUMN invite_expires DATETIME'))
+                if 'last_seen_version' not in user_cols:
+                    conn.execute(text('ALTER TABLE users ADD COLUMN last_seen_version VARCHAR(20)'))
                 # SQLite has no strict column typing — old rows may still hold 1/0 from
                 # when low_bid was BOOLEAN. Rewrite them to the new text values.
                 conn.execute(text("UPDATE bonds SET low_bid='low' WHERE low_bid='1'"))
