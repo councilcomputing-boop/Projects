@@ -500,8 +500,8 @@ select.finput{cursor:pointer}
       </div>
       <div class="fg" id="oBulkGroup" style="display:none">
         <label class="flabel">Recipients *</label>
-        <textarea class="finput" id="oBulkRecipients" placeholder="One per line: Company Name, email@example.com"></textarea>
-        <div style="font-size:12px;color:var(--muted);margin-top:6px">One recipient per line — <b>Company Name, email@example.com</b>. Email is optional per line; you can add it later.</div>
+        <div id="oBulkRows"></div>
+        <button type="button" class="btn btn-ghost btn-sm" onclick="addBulkRecipientRow()">+ Add another</button>
       </div>
       <div class="fg" style="margin-bottom:0">
         <button type="button" class="btn btn-ghost btn-sm" id="oBulkToggleBtn" onclick="toggleBulkOutreach()">👥 Send to multiple companies</button>
@@ -2004,6 +2004,7 @@ function toggleBulkOutreach(){
   document.getElementById('oEmailGroup').style.display=bulkOutreachMode?'none':'';
   document.getElementById('oBulkGroup').style.display=bulkOutreachMode?'':'none';
   document.getElementById('oBulkToggleBtn').textContent=bulkOutreachMode?'👤 Switch back to a single company':'👥 Send to multiple companies';
+  if(bulkOutreachMode&&!document.getElementById('oBulkRows').children.length)resetBulkRows();
   updateOutreachSaveBtnLabel();
 }
 function updateOutreachSaveBtnLabel(){
@@ -2012,19 +2013,49 @@ function updateOutreachSaveBtnLabel(){
   if(bulkOutreachMode){btn.textContent=EMAILJS_READY?'Create & Send All':'Save as Drafts';return;}
   btn.textContent='Save as Draft';
 }
-function parseBulkRecipients(raw){
-  return raw.split('\n').map(l=>l.trim()).filter(Boolean).map(line=>{
-    const i=line.indexOf(',');
-    if(i===-1)return{company:line.trim(),email:''};
-    return{company:line.slice(0,i).trim(),email:line.slice(i+1).trim()};
+function addBulkRecipientRow(){
+  const row=document.createElement('div');
+  row.className='bulk-recipient-row';
+  row.style.cssText='border:1px solid var(--border);border-radius:10px;padding:10px;margin-bottom:10px';
+  row.innerHTML=`
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+      <span class="bulk-row-label" style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px"></span>
+      <button type="button" class="btn btn-ghost btn-sm" onclick="removeBulkRecipientRow(this)" style="padding:2px 8px">✕</button>
+    </div>
+    <div class="fg" style="margin-bottom:8px"><input class="finput" type="text" placeholder="Company name" data-field="company"></div>
+    <div class="fg" style="margin-bottom:0"><input class="finput" type="email" placeholder="contact@example.com" data-field="email"></div>`;
+  document.getElementById('oBulkRows').appendChild(row);
+  renumberBulkRows();
+}
+function removeBulkRecipientRow(btn){
+  const rows=document.getElementById('oBulkRows');
+  if(rows.children.length<=1)return;
+  btn.closest('.bulk-recipient-row').remove();
+  renumberBulkRows();
+}
+function renumberBulkRows(){
+  const rows=document.querySelectorAll('#oBulkRows .bulk-recipient-row');
+  rows.forEach((row,i)=>{
+    row.querySelector('.bulk-row-label').textContent='Recipient '+(i+1);
+    row.querySelector('button').style.visibility=rows.length>1?'visible':'hidden';
   });
+}
+function resetBulkRows(){
+  document.getElementById('oBulkRows').innerHTML='';
+  addBulkRecipientRow();
+}
+function collectBulkRecipients(){
+  return Array.from(document.querySelectorAll('#oBulkRows .bulk-recipient-row')).map(row=>({
+    company:row.querySelector('[data-field="company"]').value.trim(),
+    email:row.querySelector('[data-field="email"]').value.trim()
+  })).filter(r=>r.company||r.email);
 }
 function startAddOutreach(){
   editingOutreachId=null;
   bulkOutreachMode=false;
   document.getElementById('oCompany').value='';
   document.getElementById('oEmail').value='';
-  document.getElementById('oBulkRecipients').value='';
+  resetBulkRows();
   document.getElementById('oCompanyGroup').style.display='';
   document.getElementById('oEmailGroup').style.display='';
   document.getElementById('oBulkGroup').style.display='none';
@@ -2063,9 +2094,9 @@ async function saveOutreach(){
   const btn=document.getElementById('oSaveBtn');
 
   if(bulkOutreachMode&&!editingOutreachId){
-    const recipients=parseBulkRecipients(document.getElementById('oBulkRecipients').value);
-    if(!recipients.length){alert('Enter at least one recipient — one per line as "Company Name, email@example.com".');return;}
-    if(recipients.some(r=>!r.company)){alert('Each line needs a company name before the comma.');return;}
+    const recipients=collectBulkRecipients();
+    if(!recipients.length){alert('Enter at least one recipient.');return;}
+    if(recipients.some(r=>!r.company)){alert('Each recipient needs a company name.');return;}
     btn.disabled=true;btn.textContent='Saving…';
     try{
       const created=[];
