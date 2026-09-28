@@ -521,6 +521,7 @@ select.finput{cursor:pointer}
       <div class="fg" style="margin-bottom:0">
         <label class="flabel">Message</label>
         <textarea class="finput" id="oMessage" placeholder="Write the outreach message..."></textarea>
+        <div id="oMessageBulkHint" style="display:none;font-size:12px;color:var(--muted);margin-top:6px">Tip: use <b>{{company}}</b> anywhere in the message — it's swapped for each recipient's actual company name when sent (e.g. "Hi {{company}},").</div>
         <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap">
           <button type="button" class="btn btn-ghost btn-sm" id="aiDraftBtn" onclick="openDraftModal()">✨ Draft with AI</button>
           <button type="button" class="btn btn-ghost btn-sm" id="aiReviseBtn" onclick="openReviseModal()">🔄 Revise with AI</button>
@@ -1957,10 +1958,13 @@ async function confirmOutreachResponse(id){
     showDetail(ref.id);
   }catch(e){alert('Error: '+e.message);}
 }
+function applyOutreachTemplate(text,o){
+  return String(text||'').replace(/\{\{\s*company\s*\}\}/gi,o.company||'');
+}
 async function deliverOutreachEmail(o){
   if(!o.contactEmail)return{ok:false,error:'No contact email'};
   const sigLines=[senderProfile.name||myName(),senderProfile.company,senderProfile.email].filter(Boolean);
-  const body=(o.message||'')+(sigLines.length?`\n\n—\n${sigLines.join('\n')}`:'')+'\n\nSent via Project Organizer';
+  const body=applyOutreachTemplate(o.message,o)+(sigLines.length?`\n\n—\n${sigLines.join('\n')}`:'')+'\n\nSent via Project Organizer';
   try{
     await emailjs.send(EMAILJS_SERVICE_ID,EMAILJS_TEMPLATE_ID,{
       to_email:o.contactEmail,company:o.company,subject:o.subject||'',message:body,from_name:senderProfile.name||myName()
@@ -2004,7 +2008,10 @@ function toggleBulkOutreach(){
   document.getElementById('oEmailGroup').style.display=bulkOutreachMode?'none':'';
   document.getElementById('oBulkGroup').style.display=bulkOutreachMode?'':'none';
   document.getElementById('oBulkToggleBtn').textContent=bulkOutreachMode?'👤 Switch back to a single company':'👥 Send to multiple companies';
+  document.getElementById('oMessageBulkHint').style.display=bulkOutreachMode?'':'none';
   if(bulkOutreachMode&&!document.getElementById('oBulkRows').children.length)resetBulkRows();
+  const msgEl=document.getElementById('oMessage');
+  if(bulkOutreachMode&&!msgEl.value.trim())msgEl.value='Hi {{company}},\n\n';
   updateOutreachSaveBtnLabel();
 }
 function updateOutreachSaveBtnLabel(){
@@ -2059,6 +2066,7 @@ function startAddOutreach(){
   document.getElementById('oCompanyGroup').style.display='';
   document.getElementById('oEmailGroup').style.display='';
   document.getElementById('oBulkGroup').style.display='none';
+  document.getElementById('oMessageBulkHint').style.display='none';
   document.getElementById('oBulkToggleBtn').style.display='';
   document.getElementById('oBulkToggleBtn').textContent='👥 Send to multiple companies';
   document.getElementById('oType').value='company';
@@ -2078,6 +2086,7 @@ function startEditOutreach(){
   document.getElementById('oCompanyGroup').style.display='';
   document.getElementById('oEmailGroup').style.display='';
   document.getElementById('oBulkGroup').style.display='none';
+  document.getElementById('oMessageBulkHint').style.display='none';
   document.getElementById('oBulkToggleBtn').style.display='none';
   document.getElementById('oType').value=o.type||'company';
   document.getElementById('oSubject').value=o.subject||'';

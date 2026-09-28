@@ -41,7 +41,7 @@ exports.draftOutreachEmail = onCall({secrets: [anthropicApiKey]}, async (request
 
   const recipientLine = company ?
     `Recipient: ${company} (a ${type || "company"}).` :
-    `Recipient: this same email will be sent to multiple different companies/organizations — keep it generic, do not address or name a specific recipient.`;
+    `Recipient: this same email will be sent to many different companies/organizations. Use the literal placeholder token {{company}} everywhere you would normally name the recipient (e.g. the greeting should be "Hi {{company}},") — it gets swapped for each real company name when sent. Do not invent or guess an actual company name.`;
 
   const prompt = `Write a short, direct cold-outreach email.
 
