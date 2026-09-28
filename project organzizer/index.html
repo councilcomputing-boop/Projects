@@ -490,13 +490,21 @@ select.finput{cursor:pointer}
   <!-- Add/Edit Outreach -->
   <div class="view" id="viewOutreachForm">
     <div class="form-section">
-      <div class="fg">
+      <div class="fg" id="oCompanyGroup">
         <label class="flabel">Company / Organization *</label>
         <input class="finput" id="oCompany" type="text" placeholder="e.g. Acme Ventures" maxlength="80">
       </div>
-      <div class="fg">
+      <div class="fg" id="oEmailGroup">
         <label class="flabel">Contact Email</label>
         <input class="finput" id="oEmail" type="email" placeholder="contact@example.com">
+      </div>
+      <div class="fg" id="oBulkGroup" style="display:none">
+        <label class="flabel">Recipients *</label>
+        <textarea class="finput" id="oBulkRecipients" placeholder="One per line: Company Name, email@example.com"></textarea>
+        <div style="font-size:12px;color:var(--muted);margin-top:6px">One recipient per line — <b>Company Name, email@example.com</b>. Email is optional per line; you can add it later.</div>
+      </div>
+      <div class="fg" style="margin-bottom:0">
+        <button type="button" class="btn btn-ghost btn-sm" id="oBulkToggleBtn" onclick="toggleBulkOutreach()">👥 Send to multiple companies</button>
       </div>
       <div class="fg">
         <label class="flabel">Type</label>
@@ -1949,11 +1957,8 @@ async function confirmOutreachResponse(id){
     showDetail(ref.id);
   }catch(e){alert('Error: '+e.message);}
 }
-async function sendOutreachEmail(){
-  if(!EMAILJS_READY)return;
-  const o=outreachItems.find(x=>x.id===currentOutreachId);if(!o||!o.contactEmail)return;
-  const btn=document.getElementById('sendEmailBtn');
-  if(btn){btn.disabled=true;btn.textContent='Sending…';}
+async function deliverOutreachEmail(o){
+  if(!o.contactEmail)return{ok:false,error:'No contact email'};
   const sigLines=[senderProfile.name||myName(),senderProfile.company,senderProfile.email].filter(Boolean);
   const body=(o.message||'')+(sigLines.length?`\n\n—\n${sigLines.join('\n')}`:'');
   try{
@@ -1961,43 +1966,129 @@ async function sendOutreachEmail(){
       to_email:o.contactEmail,company:o.company,subject:o.subject||'',message:body,from_name:senderProfile.name||myName()
     });
     await outreachCol().doc(o.id).update({sentAt:Date.now()});
-    toast('Email sent!');
+    return{ok:true};
   }catch(e){
-    alert('Error sending email: '+(e?.text||e?.message||JSON.stringify(e)));
+    return{ok:false,error:e?.text||e?.message||JSON.stringify(e)};
+  }
+}
+async function sendOutreachEmail(){
+  if(!EMAILJS_READY)return;
+  const o=outreachItems.find(x=>x.id===currentOutreachId);if(!o||!o.contactEmail)return;
+  const btn=document.getElementById('sendEmailBtn');
+  if(btn){btn.disabled=true;btn.textContent='Sending…';}
+  const res=await deliverOutreachEmail(o);
+  if(res.ok){
+    toast('Email sent!');
+  }else{
+    alert('Error sending email: '+res.error);
     if(btn){btn.disabled=false;btn.textContent='✉️ Send Email';}
   }
 }
+async function sendBulkOutreachEmails(items){
+  const withEmail=items.filter(o=>o.contactEmail);
+  const skipped=items.length-withEmail.length;
+  let sent=0,failed=0;
+  for(const o of withEmail){
+    const res=await deliverOutreachEmail(o);
+    if(res.ok)sent++;else failed++;
+  }
+  const parts=[`${sent} email${sent===1?'':'s'} sent`];
+  if(failed)parts.push(`${failed} failed`);
+  if(skipped)parts.push(`${skipped} skipped (no email)`);
+  toast(parts.join(', ')+'.');
+}
+let bulkOutreachMode=false;
+function toggleBulkOutreach(){
+  bulkOutreachMode=!bulkOutreachMode;
+  document.getElementById('oCompanyGroup').style.display=bulkOutreachMode?'none':'';
+  document.getElementById('oEmailGroup').style.display=bulkOutreachMode?'none':'';
+  document.getElementById('oBulkGroup').style.display=bulkOutreachMode?'':'none';
+  document.getElementById('oBulkToggleBtn').textContent=bulkOutreachMode?'👤 Switch back to a single company':'👥 Send to multiple companies';
+  updateOutreachSaveBtnLabel();
+}
+function updateOutreachSaveBtnLabel(){
+  const btn=document.getElementById('oSaveBtn');
+  if(editingOutreachId){btn.textContent='Save Changes';return;}
+  if(bulkOutreachMode){btn.textContent=EMAILJS_READY?'Create & Send All':'Save as Drafts';return;}
+  btn.textContent='Save as Draft';
+}
+function parseBulkRecipients(raw){
+  return raw.split('\n').map(l=>l.trim()).filter(Boolean).map(line=>{
+    const i=line.indexOf(',');
+    if(i===-1)return{company:line.trim(),email:''};
+    return{company:line.slice(0,i).trim(),email:line.slice(i+1).trim()};
+  });
+}
 function startAddOutreach(){
   editingOutreachId=null;
+  bulkOutreachMode=false;
   document.getElementById('oCompany').value='';
   document.getElementById('oEmail').value='';
+  document.getElementById('oBulkRecipients').value='';
+  document.getElementById('oCompanyGroup').style.display='';
+  document.getElementById('oEmailGroup').style.display='';
+  document.getElementById('oBulkGroup').style.display='none';
+  document.getElementById('oBulkToggleBtn').style.display='';
+  document.getElementById('oBulkToggleBtn').textContent='👥 Send to multiple companies';
   document.getElementById('oType').value='company';
   document.getElementById('oSubject').value='';
   document.getElementById('oMessage').value='';
-  document.getElementById('oSaveBtn').disabled=false;document.getElementById('oSaveBtn').textContent='Save as Draft';
+  document.getElementById('oSaveBtn').disabled=false;
+  updateOutreachSaveBtnLabel();
   document.getElementById('hdrTitle').textContent='New Outreach';
   showView('outreachForm');
 }
 function startEditOutreach(){
   const o=outreachItems.find(x=>x.id===currentOutreachId);if(!o)return;
   editingOutreachId=o.id;
+  bulkOutreachMode=false;
   document.getElementById('oCompany').value=o.company||'';
   document.getElementById('oEmail').value=o.contactEmail||'';
+  document.getElementById('oCompanyGroup').style.display='';
+  document.getElementById('oEmailGroup').style.display='';
+  document.getElementById('oBulkGroup').style.display='none';
+  document.getElementById('oBulkToggleBtn').style.display='none';
   document.getElementById('oType').value=o.type||'company';
   document.getElementById('oSubject').value=o.subject||'';
   document.getElementById('oMessage').value=o.message||'';
-  document.getElementById('oSaveBtn').disabled=false;document.getElementById('oSaveBtn').textContent='Save Changes';
+  document.getElementById('oSaveBtn').disabled=false;
+  updateOutreachSaveBtnLabel();
   document.getElementById('hdrTitle').textContent='Edit Outreach';
   showView('outreachForm');
 }
 async function saveOutreach(){
-  const company=document.getElementById('oCompany').value.trim();
-  if(!company){document.getElementById('oCompany').focus();alert('Please enter a company/organization name.');return;}
-  const contactEmail=document.getElementById('oEmail').value.trim();
   const type=document.getElementById('oType').value;
   const subject=document.getElementById('oSubject').value.trim();
   const message=document.getElementById('oMessage').value.trim();
   const btn=document.getElementById('oSaveBtn');
+
+  if(bulkOutreachMode&&!editingOutreachId){
+    const recipients=parseBulkRecipients(document.getElementById('oBulkRecipients').value);
+    if(!recipients.length){alert('Enter at least one recipient — one per line as "Company Name, email@example.com".');return;}
+    if(recipients.some(r=>!r.company)){alert('Each line needs a company name before the comma.');return;}
+    btn.disabled=true;btn.textContent='Saving…';
+    try{
+      const created=[];
+      for(const r of recipients){
+        const data={company:r.company,contactEmail:r.email,type,subject,message,status:'pending',sentAt:null,createdAt:Date.now(),createdBy:currentUser.uid,createdByName:myName()};
+        const ref=await outreachCol().add(data);
+        created.push({id:ref.id,...data});
+      }
+      if(EMAILJS_READY){
+        btn.textContent='Sending…';
+        await sendBulkOutreachEmails(created);
+      }else{
+        toast(`Created ${created.length} outreach draft${created.length===1?'':'s'}.`);
+      }
+      bulkOutreachMode=false;
+      showView('outreach');
+    }catch(e){alert('Error: '+e.message);btn.disabled=false;updateOutreachSaveBtnLabel();}
+    return;
+  }
+
+  const company=document.getElementById('oCompany').value.trim();
+  if(!company){document.getElementById('oCompany').focus();alert('Please enter a company/organization name.');return;}
+  const contactEmail=document.getElementById('oEmail').value.trim();
   btn.disabled=true;btn.textContent='Saving…';
   try{
     if(editingOutreachId){
@@ -2008,7 +2099,7 @@ async function saveOutreach(){
       currentOutreachId=ref.id;
     }
     editingOutreachId=null;showOutreachDetail(currentOutreachId);
-  }catch(e){alert('Error: '+e.message);btn.disabled=false;btn.textContent=editingOutreachId?'Save Changes':'Save as Draft';}
+  }catch(e){alert('Error: '+e.message);btn.disabled=false;updateOutreachSaveBtnLabel();}
 }
 let aiModalMode=null;
 function openDraftModal(){
