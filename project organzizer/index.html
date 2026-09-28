@@ -1960,7 +1960,7 @@ async function confirmOutreachResponse(id){
 async function deliverOutreachEmail(o){
   if(!o.contactEmail)return{ok:false,error:'No contact email'};
   const sigLines=[senderProfile.name||myName(),senderProfile.company,senderProfile.email].filter(Boolean);
-  const body=(o.message||'')+(sigLines.length?`\n\n—\n${sigLines.join('\n')}`:'');
+  const body=(o.message||'')+(sigLines.length?`\n\n—\n${sigLines.join('\n')}`:'')+'\n\nSent via Project Organizer';
   try{
     await emailjs.send(EMAILJS_SERVICE_ID,EMAILJS_TEMPLATE_ID,{
       to_email:o.contactEmail,company:o.company,subject:o.subject||'',message:body,from_name:senderProfile.name||myName()
@@ -2134,8 +2134,10 @@ async function saveOutreach(){
 }
 let aiModalMode=null;
 function openDraftModal(){
-  const company=document.getElementById('oCompany').value.trim();
-  if(!company){alert('Enter a company/organization name first.');document.getElementById('oCompany').focus();return;}
+  if(!bulkOutreachMode){
+    const company=document.getElementById('oCompany').value.trim();
+    if(!company){alert('Enter a company/organization name first.');document.getElementById('oCompany').focus();return;}
+  }
   aiModalMode='draft';
   document.getElementById('aiModalTitle').textContent='Draft with AI';
   document.getElementById('aiModalBody').innerHTML=`
@@ -2185,7 +2187,7 @@ async function submitAiModal(){
     if(!topic){document.getElementById('aiTopic').focus();return;}
     const tone=document.getElementById('aiTone').value;
     const keyPoints=document.getElementById('aiKeyPoints').value.trim();
-    const company=document.getElementById('oCompany').value.trim();
+    const company=bulkOutreachMode?'':document.getElementById('oCompany').value.trim();
     const type=document.getElementById('oType').value;
     btn.disabled=true;btn.textContent='Drafting…';
     try{

@@ -30,8 +30,8 @@ exports.draftOutreachEmail = onCall({secrets: [anthropicApiKey]}, async (request
   await enforceDailyLimit(request.auth.uid);
 
   const {company, type, topic, tone, keyPoints, senderName, senderCompany} = request.data || {};
-  if (!company || typeof company !== "string") {
-    throw new HttpsError("invalid-argument", "Missing company name.");
+  if (company !== undefined && company !== null && typeof company !== "string") {
+    throw new HttpsError("invalid-argument", "Invalid company name.");
   }
   if (!topic || typeof topic !== "string") {
     throw new HttpsError("invalid-argument", "Missing topic.");
@@ -39,9 +39,13 @@ exports.draftOutreachEmail = onCall({secrets: [anthropicApiKey]}, async (request
 
   const client = new Anthropic({apiKey: anthropicApiKey.value()});
 
+  const recipientLine = company ?
+    `Recipient: ${company} (a ${type || "company"}).` :
+    `Recipient: this same email will be sent to multiple different companies/organizations — keep it generic, do not address or name a specific recipient.`;
+
   const prompt = `Write a short, direct cold-outreach email.
 
-Recipient: ${company} (a ${type || "company"}).
+${recipientLine}
 Sender: ${senderName || "the sender"}${senderCompany ? `, ${senderCompany}` : ""}.
 What this email is about: ${topic}
 Tone: ${tone || "professional"}
