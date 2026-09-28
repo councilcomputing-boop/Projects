@@ -19,6 +19,11 @@ db_url = os.environ.get('DATABASE_URL', 'sqlite:///bonds.db')
 # Railway PostgreSQL URLs start with postgres://, SQLAlchemy needs postgresql://
 if db_url.startswith('postgres://'):
     db_url = db_url.replace('postgres://', 'postgresql://', 1)
+# Pin the driver to psycopg2 (what's actually installed via psycopg2-binary) —
+# without a driver suffix, SQLAlchemy's default dialect resolution can pick
+# psycopg (v3), which isn't installed, crashing every worker on boot.
+if db_url.startswith('postgresql://'):
+    db_url = db_url.replace('postgresql://', 'postgresql+psycopg2://', 1)
 app.config['SQLALCHEMY_DATABASE_URI'] = db_url
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
