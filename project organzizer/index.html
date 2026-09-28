@@ -40,6 +40,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 .hdr-ctx-btn:active{background:rgba(255,255,255,.2)}
 .hdr-avatar{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;cursor:pointer;flex-shrink:0;color:#fff;border:2px solid rgba(255,255,255,.25);transition:border-color .15s}
 .hdr-avatar:active{border-color:rgba(255,255,255,.6)}
+.hdr-reload-btn{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.15);color:#fff;font-size:16px;width:32px;height:32px;border-radius:50%;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;line-height:1;transition:transform .3s,background .15s}
+.hdr-reload-btn:active{background:rgba(255,255,255,.22);transform:rotate(80deg)}
 
 /* ── Content ──────────────────────────────────────────────── */
 #C{padding:16px 14px 110px}
@@ -323,6 +325,7 @@ select.finput{cursor:pointer}
   <button class="hdr-ctx-btn" id="hdrCtx" onclick="hdrCtxClick()"></button>
   <button class="hdr-ctx-btn" id="hdrActivityBtn" onclick="showView('activity')" style="display:none">📋 Activity</button>
   <button class="hdr-admin-btn" id="hdrAdminBtn" onclick="showView('admin')">🛡️ Admin</button>
+  <button class="hdr-reload-btn" onclick="location.reload()" title="Reload" aria-label="Reload">⟳</button>
   <div class="hdr-avatar" id="hdrAvatar" onclick="signOut()" title="Sign out"></div>
 </div>
 
