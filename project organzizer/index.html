@@ -394,6 +394,11 @@ select.finput{cursor:pointer}
       <div><div class="new-group-text">Resource Library</div><div class="new-group-sub">Shared tools &amp; templates for every group</div></div>
       <div class="new-group-arrow">›</div>
     </div>
+    <div class="new-group-card" onclick="showView('snippets')">
+      <div class="new-group-ring" style="background:#0ea5e918">✂️</div>
+      <div><div class="new-group-text">Email Snippets</div><div class="new-group-sub">Your saved message templates &amp; signatures for outreach</div></div>
+      <div class="new-group-arrow">›</div>
+    </div>
   </div>
 
   <!-- Projects list -->
@@ -525,7 +530,10 @@ select.finput{cursor:pointer}
         <label class="flabel">Message</label>
         <textarea class="finput" id="oMessage" placeholder="Write the outreach message..."></textarea>
         <div id="oMessageBulkHint" style="display:none;font-size:12px;color:var(--muted);margin-top:6px">Tip: use <b>{{company}}</b> anywhere in the message — it's swapped for each recipient's actual company name when sent (e.g. "Hi {{company}},").</div>
-        <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap">
+        <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+          <button type="button" class="btn btn-ghost btn-sm" onclick="insertCompanyToken()">+ {{company}}</button>
+          <select class="finput" id="oTemplatePicker" onchange="insertSnippetTemplate(this.value)" style="width:auto;max-width:170px;padding:7px 10px;font-size:13px"><option value="">📋 Insert Template…</option></select>
+          <select class="finput" id="oSignaturePicker" onchange="insertSnippetSignature(this.value)" style="width:auto;max-width:170px;padding:7px 10px;font-size:13px"><option value="">✍️ Insert Signature…</option></select>
           <button type="button" class="btn btn-ghost btn-sm" id="aiDraftBtn" onclick="openDraftModal()">✨ Draft with AI</button>
           <button type="button" class="btn btn-ghost btn-sm" id="aiReviseBtn" onclick="openReviseModal()">🔄 Revise with AI</button>
         </div>
@@ -550,6 +558,10 @@ select.finput{cursor:pointer}
       <div class="fg" style="margin-bottom:0">
         <label class="flabel">Company Name</label>
         <input class="finput" id="spCompany" type="text" placeholder="e.g. Council Computing" maxlength="80">
+      </div>
+      <div class="fg" style="margin-bottom:0;margin-top:14px;display:flex;align-items:center;gap:8px">
+        <input type="checkbox" id="spSendFooter" style="width:auto">
+        <label class="flabel" style="margin-bottom:0" for="spSendFooter">Add "Sent via Project Organizer" to outgoing emails</label>
       </div>
     </div>
     <div style="margin-top:4px">
@@ -609,6 +621,35 @@ select.finput{cursor:pointer}
     </div>
   </div>
 
+  <!-- Email Snippets -->
+  <div class="view" id="viewSnippets">
+    <div id="snippetList"></div>
+  </div>
+
+  <!-- Add/Edit Snippet -->
+  <div class="view" id="viewSnippetForm">
+    <div class="form-section">
+      <div class="fg">
+        <label class="flabel">Type *</label>
+        <select class="finput" id="snType">
+          <option value="template">Message Template</option>
+          <option value="signature">Signature</option>
+        </select>
+      </div>
+      <div class="fg">
+        <label class="flabel">Label *</label>
+        <input class="finput" id="snLabel" type="text" placeholder="e.g. Investor intro, Standard sign-off" maxlength="60">
+      </div>
+      <div class="fg" style="margin-bottom:0">
+        <label class="flabel">Text *</label>
+        <textarea class="finput" id="snText" placeholder="Write the reusable text..."></textarea>
+      </div>
+    </div>
+    <div style="margin-top:4px">
+      <button class="btn btn-ink" id="snSaveBtn" onclick="saveSnippet()">Save Snippet</button>
+    </div>
+  </div>
+
   <!-- Admin Panel -->
   <div class="view" id="viewAdmin">
     <div class="card-label" style="margin-top:4px">Users</div>
@@ -660,6 +701,7 @@ const notesCol=pid=>db.collection('groups').doc(currentGroup.id).collection('pro
 const metricsCol=pid=>db.collection('groups').doc(currentGroup.id).collection('projects').doc(pid).collection('metrics');
 const tasksCol=pid=>db.collection('groups').doc(currentGroup.id).collection('projects').doc(pid).collection('tasks');
 const resourcesCol=()=>db.collection('resources');
+const snippetsCol=()=>usersCol().doc(currentUser.uid).collection('snippets');
 const outreachCol=()=>db.collection('groups').doc(currentGroup.id).collection('outreach');
 
 // ── Logo ──────────────────────────────────────────────────────────────────────
@@ -698,9 +740,10 @@ let currentNotes=[],unsubNotes=null;
 let currentMetrics=[],unsubMetrics=null;
 let currentTasks=[],unsubTasks=null;
 let resources=[],unsubResources=null,editingResourceId=null;
+let snippets=[],unsubSnippets=null,editingSnippetId=null;
 let outreachItems=[],unsubOutreach=null,currentOutreachId=null,editingOutreachId=null,preMembersView='list';
 let activityFeedItems=[];
-let senderProfile={name:'',email:'',company:''};
+let senderProfile={name:'',email:'',company:'',sendFooter:true};
 let respondingOutreachId=null;
 const OUTREACH_STATUS_LABEL={draft:'Draft',pending:'Pending',responded:'Responded',no_response:'No Response'};
 const OUTREACH_STATUS_BADGE={draft:'done',pending:'paused',responded:'active',no_response:'done'};
@@ -764,6 +807,7 @@ auth.onAuthStateChanged(user=>{
     av.style.background=avColor(hash(user.uid));
     startListeningToGroups();
     startListeningToResources();
+    startListeningToSnippets();
     showView('groups');
     ensureUserDoc(user).then(role=>{
       myRole=role;
@@ -785,7 +829,7 @@ async function ensureUserDoc(user){
     const snap=await ref.get();
     if(snap.exists){
       const d=snap.data();
-      senderProfile={name:d.senderName||'',email:d.senderEmail||'',company:d.senderCompany||''};
+      senderProfile={name:d.senderName||'',email:d.senderEmail||'',company:d.senderCompany||'',sendFooter:d.sendFooter!==false};
       return d.role||'member';
     }
     await ref.set({name:myName(),email:user.email,role:'member',createdAt:Date.now()});
@@ -796,9 +840,9 @@ async function ensureUserDoc(user){
   }
 }
 function cleanup(){
-  [unsubGroups,unsubProjects,unsubSessions,unsubNotes,unsubMetrics,unsubTasks,unsubResources,unsubOutreach].forEach(u=>{if(u)u();});
-  unsubGroups=unsubProjects=unsubSessions=unsubNotes=unsubMetrics=unsubTasks=unsubResources=unsubOutreach=null;
-  stopTimerTick();groups=[];projects=[];currentSessions=[];currentNotes=[];currentMetrics=[];currentTasks=[];resources=[];outreachItems=[];currentGroup=null;myRole='member';
+  [unsubGroups,unsubProjects,unsubSessions,unsubNotes,unsubMetrics,unsubTasks,unsubResources,unsubOutreach,unsubSnippets].forEach(u=>{if(u)u();});
+  unsubGroups=unsubProjects=unsubSessions=unsubNotes=unsubMetrics=unsubTasks=unsubResources=unsubOutreach=unsubSnippets=null;
+  stopTimerTick();groups=[];projects=[];currentSessions=[];currentNotes=[];currentMetrics=[];currentTasks=[];resources=[];outreachItems=[];snippets=[];currentGroup=null;myRole='member';
 }
 
 // ── Navigation ────────────────────────────────────────────────────────────────
@@ -872,6 +916,11 @@ function showView(name){
     renderResources();
   }else if(name==='resourceForm'){
     back.style.display='block';
+  }else if(name==='snippets'){
+    title.textContent='Email Snippets';back.style.display='block';
+    renderSnippets();
+  }else if(name==='snippetForm'){
+    back.style.display='block';
   }else if(name==='senderProfile'){
     title.textContent='Sender Info';back.style.display='block';
   }else if(name==='activity'){
@@ -911,6 +960,8 @@ function goBack(){
   else if(currentView==='admin')showView('groups');
   else if(currentView==='resources')showView('groups');
   else if(currentView==='resourceForm')showView('resources');
+  else if(currentView==='snippets')showView('groups');
+  else if(currentView==='snippetForm')showView('snippets');
   else if(currentView==='senderProfile')showView('outreach');
   else if(currentView==='activity')showView('list');
 }
@@ -1167,6 +1218,113 @@ async function saveResource(){
 async function deleteResource(id){
   if(!confirm('Delete this resource?'))return;
   try{await resourcesCol().doc(id).delete();}catch(e){alert('Error: '+e.message);}
+}
+
+// ── Email snippets (personal templates & signatures for outreach) ──────────────
+function startListeningToSnippets(){
+  if(unsubSnippets)unsubSnippets();
+  unsubSnippets=snippetsCol().orderBy('createdAt','desc').onSnapshot(snap=>{
+    snippets=snap.docs.map(d=>({id:d.id,...d.data()}));
+    if(currentView==='snippets')renderSnippets();
+    renderSnippetPickers();
+  },err=>console.error(err));
+}
+function renderSnippets(){
+  const el=document.getElementById('snippetList');
+  const card=s=>`<div class="resource-card">
+    <div class="resource-card-top"><div class="resource-card-name">${esc(s.label)}</div></div>
+    <div class="resource-card-desc" style="white-space:pre-wrap">${esc(s.text)}</div>
+    <div class="resource-card-meta"><span></span><div class="resource-card-actions"><button onclick="startEditSnippet('${s.id}')">${icon('edit')} Edit</button><button onclick="deleteSnippet('${s.id}')">${icon('trash')}</button></div></div>
+  </div>`;
+  const templates=snippets.filter(s=>s.type==='template');
+  const sigs=snippets.filter(s=>s.type==='signature');
+  let html='';
+  if(!snippets.length){
+    html='<div class="empty-state"><div class="empty-icon">✂️</div><div class="empty-title">No snippets yet</div><div class="empty-sub">Save a reusable message template or signature below.</div></div>';
+  }else{
+    if(templates.length)html+=`<div class="section-title">Templates</div>`+templates.map(card).join('');
+    if(sigs.length)html+=`<div class="section-title" style="margin-top:${templates.length?'18px':'0'}">Signatures</div>`+sigs.map(card).join('');
+  }
+  html+=`<div class="new-group-card" onclick="startAddSnippet()">
+    <div class="new-group-ring" style="background:var(--blue-light);color:var(--blue)">+</div>
+    <div><div class="new-group-text">Add Snippet</div><div class="new-group-sub">Save a template or signature to reuse in outreach emails</div></div>
+    <div class="new-group-arrow">›</div>
+  </div>`;
+  el.innerHTML=html;
+}
+function startAddSnippet(){
+  editingSnippetId=null;
+  document.getElementById('snType').value='template';
+  document.getElementById('snLabel').value='';
+  document.getElementById('snText').value='';
+  document.getElementById('snSaveBtn').disabled=false;document.getElementById('snSaveBtn').textContent='Save Snippet';
+  document.getElementById('hdrTitle').textContent='New Snippet';
+  showView('snippetForm');
+}
+function startEditSnippet(id){
+  const s=snippets.find(x=>x.id===id);if(!s)return;
+  editingSnippetId=id;
+  document.getElementById('snType').value=s.type||'template';
+  document.getElementById('snLabel').value=s.label||'';
+  document.getElementById('snText').value=s.text||'';
+  document.getElementById('snSaveBtn').disabled=false;document.getElementById('snSaveBtn').textContent='Save Changes';
+  document.getElementById('hdrTitle').textContent='Edit Snippet';
+  showView('snippetForm');
+}
+async function saveSnippet(){
+  const type=document.getElementById('snType').value;
+  const label=document.getElementById('snLabel').value.trim();
+  if(!label){document.getElementById('snLabel').focus();alert('Please enter a label.');return;}
+  const text=document.getElementById('snText').value.trim();
+  if(!text){document.getElementById('snText').focus();alert('Please enter the snippet text.');return;}
+  const btn=document.getElementById('snSaveBtn');
+  btn.disabled=true;btn.textContent='Saving…';
+  try{
+    if(editingSnippetId){
+      await snippetsCol().doc(editingSnippetId).update({type,label,text});
+    }else{
+      await snippetsCol().add({type,label,text,createdAt:Date.now()});
+    }
+    editingSnippetId=null;showView('snippets');
+  }catch(e){alert('Error: '+e.message);btn.disabled=false;btn.textContent=editingSnippetId?'Save Changes':'Save Snippet';}
+}
+async function deleteSnippet(id){
+  if(!confirm('Delete this snippet?'))return;
+  try{await snippetsCol().doc(id).delete();}catch(e){alert('Error: '+e.message);}
+}
+function renderSnippetPickers(){
+  const tplSel=document.getElementById('oTemplatePicker');
+  const sigSel=document.getElementById('oSignaturePicker');
+  if(!tplSel||!sigSel)return;
+  const templates=snippets.filter(s=>s.type==='template');
+  const sigs=snippets.filter(s=>s.type==='signature');
+  tplSel.innerHTML='<option value="">📋 Insert Template…</option>'+templates.map(s=>`<option value="${s.id}">${esc(s.label)}</option>`).join('');
+  sigSel.innerHTML='<option value="">✍️ Insert Signature…</option>'+sigs.map(s=>`<option value="${s.id}">${esc(s.label)}</option>`).join('');
+}
+function insertAtCursor(el,text){
+  const start=el.selectionStart??el.value.length;
+  const end=el.selectionEnd??el.value.length;
+  el.value=el.value.slice(0,start)+text+el.value.slice(end);
+  const pos=start+text.length;
+  el.focus();el.setSelectionRange(pos,pos);
+}
+function insertCompanyToken(){
+  insertAtCursor(document.getElementById('oMessage'),'{{company}}');
+}
+function insertSnippetTemplate(id){
+  if(!id)return;
+  const s=snippets.find(x=>x.id===id);if(!s)return;
+  insertAtCursor(document.getElementById('oMessage'),s.text);
+  document.getElementById('oTemplatePicker').value='';
+}
+function insertSnippetSignature(id){
+  if(!id)return;
+  const s=snippets.find(x=>x.id===id);if(!s)return;
+  const el=document.getElementById('oMessage');
+  const sep=el.value.trim()?'\n\n':'';
+  el.value=el.value+sep+s.text;
+  el.focus();el.setSelectionRange(el.value.length,el.value.length);
+  document.getElementById('oSignaturePicker').value='';
 }
 
 // ── Projects listener ─────────────────────────────────────────────────────────
@@ -1839,6 +1997,7 @@ function startEditSenderProfile(){
   document.getElementById('spName').value=senderProfile.name||'';
   document.getElementById('spEmail').value=senderProfile.email||'';
   document.getElementById('spCompany').value=senderProfile.company||'';
+  document.getElementById('spSendFooter').checked=senderProfile.sendFooter!==false;
   document.getElementById('spSaveBtn').disabled=false;document.getElementById('spSaveBtn').textContent='Save';
   showView('senderProfile');
 }
@@ -1846,11 +2005,12 @@ async function saveSenderProfile(){
   const name=document.getElementById('spName').value.trim();
   const email=document.getElementById('spEmail').value.trim();
   const company=document.getElementById('spCompany').value.trim();
+  const sendFooter=document.getElementById('spSendFooter').checked;
   const btn=document.getElementById('spSaveBtn');
   btn.disabled=true;btn.textContent='Saving…';
   try{
-    await usersCol().doc(currentUser.uid).set({senderName:name,senderEmail:email,senderCompany:company},{merge:true});
-    senderProfile={name,email,company};
+    await usersCol().doc(currentUser.uid).set({senderName:name,senderEmail:email,senderCompany:company,sendFooter},{merge:true});
+    senderProfile={name,email,company,sendFooter};
     toast('Sender info saved.');
     goBack();
     renderOutreachList();
@@ -1967,7 +2127,7 @@ function applyOutreachTemplate(text,o){
 async function deliverOutreachEmail(o){
   if(!o.contactEmail)return{ok:false,error:'No contact email'};
   const sigLines=[senderProfile.name||myName(),senderProfile.company,senderProfile.email].filter(Boolean);
-  const body=applyOutreachTemplate(o.message,o)+(sigLines.length?`\n\n—\n${sigLines.join('\n')}`:'')+'\n\nSent via Project Organizer';
+  const body=applyOutreachTemplate(o.message,o)+(sigLines.length?`\n\n—\n${sigLines.join('\n')}`:'')+(senderProfile.sendFooter!==false?'\n\nSent via Project Organizer':'');
   try{
     await emailjs.send(EMAILJS_SERVICE_ID,EMAILJS_TEMPLATE_ID,{
       to_email:o.contactEmail,company:o.company,subject:o.subject||'',message:body,from_name:senderProfile.name||myName()

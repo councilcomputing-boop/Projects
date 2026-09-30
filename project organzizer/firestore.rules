@@ -38,6 +38,11 @@ service cloud.firestore {
       );
 
       allow delete: if isAdmin();
+
+      // personal reusable message templates & signatures for outreach — owner only
+      match /snippets/{id} {
+        allow read, write: if isSignedIn() && request.auth.uid == uid;
+      }
     }
 
     // ── groups/{groupId} ─────────────────────────────────────────
