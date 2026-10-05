@@ -21,6 +21,8 @@ REQUEST_TIMEOUT = 20     # seconds
 MAX_ROWS = 1000          # rows returned to the page per query
 HOST = "127.0.0.1"
 PORT = int(os.getenv("PORT", "5000"))
+# Member user IDs never listed under "Hasn't liked" (comma-separated)
+NOT_LIKED_EXCLUDE = {u.strip() for u in os.getenv("NOT_LIKED_EXCLUDE", "").split(",") if u.strip()}
 
 app = Flask(__name__)
 
@@ -205,15 +207,17 @@ def api_messages():
         where.append("m.created_at < ?")
         params.append(end)
     if liker and not_liked:
-        # A matching current member (not the sender) who hasn't liked the message
+        # A matching current member (not the sender, not excluded) who hasn't liked the message
+        excluded = sorted(NOT_LIKED_EXCLUDE)
+        exclude_sql = f"AND u.user_id NOT IN ({','.join('?' * len(excluded))})" if excluded else ""
         where.append(
-            """EXISTS (SELECT 1 FROM members u
-                       WHERE u.source = 'member' AND u.name LIKE ?
-                         AND u.user_id IS NOT COALESCE(m.user_id, '')
-                         AND NOT EXISTS (SELECT 1 FROM likes l
-                                         WHERE l.message_id = m.id AND l.user_id = u.user_id))"""
+            f"""EXISTS (SELECT 1 FROM members u
+                        WHERE u.source = 'member' AND u.name LIKE ? {exclude_sql}
+                          AND u.user_id IS NOT COALESCE(m.user_id, '')
+                          AND NOT EXISTS (SELECT 1 FROM likes l
+                                          WHERE l.message_id = m.id AND l.user_id = u.user_id))"""
         )
-        params.append(f"%{liker}%")
+        params += [f"%{liker}%"] + excluded
     elif liker:
         where.append(
             """EXISTS (SELECT 1 FROM likes l JOIN members u ON u.user_id = l.user_id
@@ -250,7 +254,8 @@ def api_messages():
         if not_liked:
             likers = set((r["liker_ids"] or "").split(""))
             names = [u["name"] for u in current
-                     if u["user_id"] not in likers and u["user_id"] != r["user_id"]]
+                     if u["user_id"] not in likers and u["user_id"] != r["user_id"]
+                     and u["user_id"] not in NOT_LIKED_EXCLUDE]
             out["not_liked_by"] = ", ".join(sorted(names, key=last_name_key))
         del out["liker_ids"], out["user_id"]
         return out
