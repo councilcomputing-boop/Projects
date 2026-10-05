@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GroupMe Likes</title>
+<style>
+  :root { --bg:#f6f7f9; --card:#fff; --text:#1d2330; --muted:#677084; --line:#e2e5eb; --accent:#00aff0; }
+  * { box-sizing: border-box; }
+  body { margin:0; font:15px/1.45 system-ui, -apple-system, Segoe UI, sans-serif; background:var(--bg); color:var(--text); }
+  main { max-width:1200px; margin:0 auto; padding:20px 16px 40px; }
+  header { display:flex; flex-wrap:wrap; gap:12px; align-items:center; justify-content:space-between; margin-bottom:16px; }
+  h1 { font-size:22px; margin:0; }
+  .status { color:var(--muted); font-size:13px; }
+  .controls { display:flex; flex-wrap:wrap; gap:10px; align-items:end; background:var(--card); border:1px solid var(--line); border-radius:10px; padding:12px; margin-bottom:12px; }
+  label { display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--muted); }
+  label.check { flex-direction:row; align-items:center; font-size:14px; color:var(--text); min-height:38px; }
+  input[type=search], select { font:inherit; font-size:16px; padding:7px 9px; border:1px solid var(--line); border-radius:7px; min-width:170px; }
+  button { font:inherit; padding:8px 14px; border-radius:7px; border:1px solid var(--accent); background:var(--accent); color:#fff; cursor:pointer; min-height:38px; }
+  button.secondary { background:#fff; color:var(--accent); }
+  button:disabled { opacity:.55; cursor:wait; }
+  .error { background:#fdecec; color:#9b1c1c; border:1px solid #f5c2c2; padding:10px 12px; border-radius:8px; margin-bottom:12px; }
+  .table-wrap { overflow-x:auto; background:var(--card); border:1px solid var(--line); border-radius:10px; }
+  table { width:100%; border-collapse:collapse; }
+  th, td { text-align:left; padding:8px 10px; border-bottom:1px solid var(--line); vertical-align:top; }
+  th { font-size:12px; text-transform:uppercase; letter-spacing:.03em; color:var(--muted); background:#fafbfc; position:sticky; top:0; }
+  th.sortable { cursor:pointer; user-select:none; }
+  th.sortable:hover { color:var(--text); }
+  td.time { white-space:nowrap; color:var(--muted); font-size:13px; }
+  td.sender { white-space:nowrap; font-weight:600; }
+  td.text { overflow-wrap:anywhere; min-width:240px; }
+  td.likes { text-align:right; font-variant-numeric:tabular-nums; }
+  td.likedby { color:var(--muted); font-size:13px; min-width:160px; }
+  .empty { padding:30px; text-align:center; color:var(--muted); }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <div>
+      <h1 id="title">GroupMe Likes</h1>
+      <div class="status" id="status" aria-live="polite"></div>
+    </div>
+    <div style="display:flex; gap:8px; flex-wrap:wrap">
+      <button id="refresh" type="button">Refresh</button>
+      <button id="resync" type="button" class="secondary" title="Re-download all history to update like counts on older messages">Re-sync all</button>
+    </div>
+  </header>
+
+  {% if not configured %}
+  <div class="error" role="alert">GROUPME_TOKEN and GROUPME_GROUP_ID are not set. Copy <code>.env.example</code> to <code>.env</code>, fill them in, and restart the app.</div>
+  {% endif %}
+  <div class="error" id="error" role="alert" hidden></div>
+
+  <form class="controls" id="filters" onsubmit="return false">
+    <label>Sender <input type="search" id="sender" placeholder="name contains…"></label>
+    <label>Liked by <input type="search" id="liker" placeholder="name contains…"></label>
+    <label>Sort
+      <select id="sort">
+        <option value="time:desc">Newest first</option>
+        <option value="time:asc">Oldest first</option>
+        <option value="likes:desc">Most likes</option>
+        <option value="likes:asc">Fewest likes</option>
+      </select>
+    </label>
+    <label class="check"><input type="checkbox" id="zero"> Zero likes only</label>
+  </form>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th class="sortable" data-sort="time">Time</th>
+          <th>Sender</th>
+          <th>Text</th>
+          <th class="sortable" data-sort="likes">Likes</th>
+          <th>Liked by</th>
+        </tr>
+      </thead>
+      <tbody id="rows"></tbody>
+    </table>
+    <div class="empty" id="empty" hidden></div>
+  </div>
+</main>
+
+<script>
+const $ = id => document.getElementById(id);
+let debounce;
+
+function showError(msg) { $('error').textContent = msg || ''; $('error').hidden = !msg; }
+
+function fmtTime(ts) {
+  return new Date(ts * 1000).toLocaleString(undefined, {
+    year:'numeric', month:'short', day:'numeric', hour:'numeric', minute:'2-digit'
+  });
+}
+
+function td(cls, text) {
+  const el = document.createElement('td');
+  el.className = cls;
+  el.textContent = text ?? '';
+  return el;
+}
+
+async function load() {
+  const [sort, dir] = $('sort').value.split(':');
+  const params = new URLSearchParams({ sort, dir });
+  if ($('zero').checked) params.set('zero', '1');
+  if ($('sender').value.trim()) params.set('sender', $('sender').value.trim());
+  if ($('liker').value.trim()) params.set('liker', $('liker').value.trim());
+
+  try {
+    const res = await fetch('/api/messages?' + params);
+    const data = await res.json();
+    const tbody = $('rows');
+    tbody.replaceChildren();
+    for (const r of data.rows) {
+      const tr = document.createElement('tr');
+      tr.append(
+        td('time', fmtTime(r.created_at)),
+        td('sender', r.name),
+        td('text', r.text || '(no text — attachment)'),
+        td('likes', r.like_count),
+        td('likedby', r.liked_by || '—'),
+      );
+      tbody.append(tr);
+    }
+    const empty = $('empty');
+    if (data.cached === 0) {
+      empty.textContent = 'No messages cached yet. Click Refresh to download the group history.';
+    } else if (data.rows.length === 0) {
+      empty.textContent = 'No messages match these filters.';
+    }
+    empty.hidden = data.rows.length > 0;
+
+    const shown = data.rows.length < data.total
+      ? `Showing first ${data.rows.length} of ${data.total} matches`
+      : `${data.total} match${data.total === 1 ? '' : 'es'}`;
+    $('status').textContent = `${shown} · ${data.cached} messages cached`;
+  } catch (e) {
+    showError('Could not load messages: ' + e.message);
+  }
+}
+
+async function refresh(full) {
+  const btns = [$('refresh'), $('resync')];
+  btns.forEach(b => b.disabled = true);
+  showError('');
+  $('status').textContent = full ? 'Re-downloading all history… (may take a while)' : 'Fetching new messages…';
+  try {
+    const res = await fetch('/api/refresh' + (full ? '?full=1' : ''), { method: 'POST' });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || res.statusText);
+    if (data.group) { $('title').textContent = data.group; document.title = data.group + ' · Likes'; }
+    await load();
+    $('status').textContent += ` · fetched ${data.fetched}`;
+  } catch (e) {
+    showError(e.message);
+    await load();
+  } finally {
+    btns.forEach(b => b.disabled = false);
+  }
+}
+
+$('refresh').addEventListener('click', () => refresh(false));
+$('resync').addEventListener('click', () => refresh(true));
+['sort', 'zero'].forEach(id => $(id).addEventListener('change', load));
+['sender', 'liker'].forEach(id => $(id).addEventListener('input', () => {
+  clearTimeout(debounce);
+  debounce = setTimeout(load, 250);
+}));
+document.querySelectorAll('th.sortable').forEach(th => th.addEventListener('click', () => {
+  const [cur, dir] = $('sort').value.split(':');
+  const key = th.dataset.sort;
+  $('sort').value = `${key}:${cur === key && dir === 'desc' ? 'asc' : 'desc'}`;
+  load();
+}));
+
+load();
+</script>
+</body>
+</html>
