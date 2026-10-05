@@ -1,6 +1,7 @@
 """GroupMe Likes — local viewer for who liked what in one GroupMe group."""
 import json
 import os
+import re
 import sqlite3
 from contextlib import closing
 
@@ -218,8 +219,7 @@ def api_messages():
         total = conn.execute(f"SELECT COUNT(*) FROM messages m {where_sql}", params).fetchone()[0]
         rows = conn.execute(
             f"""SELECT m.id, m.created_at, m.name, m.text, m.like_count,
-                       (SELECT group_concat(COALESCE(u.name, l.user_id), ', '
-                                            ORDER BY COALESCE(u.name, l.user_id) COLLATE NOCASE)
+                       (SELECT group_concat(COALESCE(u.name, l.user_id), char(31))
                           FROM likes l LEFT JOIN members u ON u.user_id = l.user_id
                          WHERE l.message_id = m.id) AS liked_by
                   FROM messages m {where_sql}
@@ -233,8 +233,20 @@ def api_messages():
         "total": total,
         "cached": cached,
         "limit": MAX_ROWS,
-        "rows": [dict(r) for r in rows],
+        "rows": [dict(r, liked_by=sort_names(r["liked_by"])) for r in rows],
     })
+
+
+def last_name_key(name):
+    """Sort key: last word, ignoring a trailing "(...)" nickname; full name breaks ties."""
+    words = re.sub(r"\s*\(.*\)\s*$", "", name).split() or [name]
+    return (words[-1].lower(), name.lower())
+
+
+def sort_names(joined):
+    if not joined:
+        return joined
+    return ", ".join(sorted(joined.split("\x1f"), key=last_name_key))
 
 
 @app.route("/api/refresh", methods=["POST"])
