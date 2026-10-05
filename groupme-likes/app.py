@@ -191,6 +191,7 @@ def api_messages():
     start = request.args.get("start", type=int)  # epoch seconds, inclusive
     end = request.args.get("end", type=int)      # epoch seconds, exclusive
     liker = request.args.get("liker", "").strip()
+    not_liked = request.args.get("notliked") == "1"  # show/search who hasn't liked
     sort = request.args.get("sort", "time")
     direction = "ASC" if request.args.get("dir") == "asc" else "DESC"
 
@@ -203,7 +204,17 @@ def api_messages():
     if end is not None:
         where.append("m.created_at < ?")
         params.append(end)
-    if liker:
+    if liker and not_liked:
+        # A matching current member (not the sender) who hasn't liked the message
+        where.append(
+            """EXISTS (SELECT 1 FROM members u
+                       WHERE u.source = 'member' AND u.name LIKE ?
+                         AND u.user_id IS NOT COALESCE(m.user_id, '')
+                         AND NOT EXISTS (SELECT 1 FROM likes l
+                                         WHERE l.message_id = m.id AND l.user_id = u.user_id))"""
+        )
+        params.append(f"%{liker}%")
+    elif liker:
         where.append(
             """EXISTS (SELECT 1 FROM likes l JOIN members u ON u.user_id = l.user_id
                        WHERE l.message_id = m.id AND u.name LIKE ?)"""
@@ -218,22 +229,37 @@ def api_messages():
     with closing(get_db()) as conn:
         total = conn.execute(f"SELECT COUNT(*) FROM messages m {where_sql}", params).fetchone()[0]
         rows = conn.execute(
-            f"""SELECT m.id, m.created_at, m.name, m.text, m.like_count,
+            f"""SELECT m.id, m.created_at, m.user_id, m.name, m.text, m.like_count,
                        (SELECT group_concat(COALESCE(u.name, l.user_id), char(31))
                           FROM likes l LEFT JOIN members u ON u.user_id = l.user_id
-                         WHERE l.message_id = m.id) AS liked_by
+                         WHERE l.message_id = m.id) AS liked_by,
+                       (SELECT group_concat(l.user_id, char(31))
+                          FROM likes l WHERE l.message_id = m.id) AS liker_ids
                   FROM messages m {where_sql}
                  ORDER BY {order_sql}
                  LIMIT ?""",
             params + [MAX_ROWS],
         ).fetchall()
         cached = conn.execute("SELECT COUNT(*) FROM messages").fetchone()[0]
+        current = conn.execute(
+            "SELECT user_id, name FROM members WHERE source = 'member'"
+        ).fetchall()
+
+    def row_out(r):
+        out = dict(r, liked_by=sort_names(r["liked_by"]))
+        if not_liked:
+            likers = set((r["liker_ids"] or "").split(""))
+            names = [u["name"] for u in current
+                     if u["user_id"] not in likers and u["user_id"] != r["user_id"]]
+            out["not_liked_by"] = ", ".join(sorted(names, key=last_name_key))
+        del out["liker_ids"], out["user_id"]
+        return out
 
     return jsonify({
         "total": total,
         "cached": cached,
         "limit": MAX_ROWS,
-        "rows": [dict(r, liked_by=sort_names(r["liked_by"])) for r in rows],
+        "rows": [row_out(r) for r in rows],
     })
 
 

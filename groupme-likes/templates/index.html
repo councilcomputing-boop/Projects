@@ -55,7 +55,7 @@
   <form class="controls" id="filters" onsubmit="return false">
     <label>From <input type="date" id="from"></label>
     <label>To <input type="date" id="to"></label>
-    <label>Liked by <input type="search" id="liker" placeholder="name contains…"></label>
+    <label><span id="likerLabel">Liked by</span> <input type="search" id="liker" placeholder="name contains…"></label>
     <label>Sort
       <select id="sort">
         <option value="time:desc">Newest first</option>
@@ -65,6 +65,7 @@
       </select>
     </label>
     <label class="check"><input type="checkbox" id="zero"> Zero likes only</label>
+    <label class="check"><input type="checkbox" id="notliked"> Show who hasn't liked</label>
   </form>
 
   <div class="table-wrap">
@@ -75,7 +76,7 @@
           <th>Sender</th>
           <th>Text</th>
           <th class="sortable" data-sort="likes">Likes</th>
-          <th>Liked by</th>
+          <th id="likedHeader">Liked by</th>
         </tr>
       </thead>
       <tbody id="rows"></tbody>
@@ -116,6 +117,11 @@ async function load() {
     params.set('end', end.getTime() / 1000);
   }
   if ($('liker').value.trim()) params.set('liker', $('liker').value.trim());
+  const notLiked = $('notliked').checked;
+  if (notLiked) params.set('notliked', '1');
+  const label = notLiked ? "Hasn't liked" : 'Liked by';
+  $('likedHeader').textContent = label;
+  $('likerLabel').textContent = label;
 
   try {
     const res = await fetch('/api/messages?' + params);
@@ -129,7 +135,7 @@ async function load() {
         td('sender', r.name),
         td('text', r.text || '(no text — attachment)'),
         td('likes', r.like_count),
-        td('likedby', r.liked_by || '—'),
+        td('likedby', (notLiked ? r.not_liked_by : r.liked_by) || '—'),
       );
       tbody.append(tr);
     }
@@ -172,7 +178,7 @@ async function refresh(full) {
 
 $('refresh').addEventListener('click', () => refresh(false));
 $('resync').addEventListener('click', () => refresh(true));
-['sort', 'zero', 'from', 'to'].forEach(id => $(id).addEventListener('change', load));
+['sort', 'zero', 'notliked', 'from', 'to'].forEach(id => $(id).addEventListener('change', load));
 ['liker'].forEach(id => $(id).addEventListener('input', () => {
   clearTimeout(debounce);
   debounce = setTimeout(load, 250);
