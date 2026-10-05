@@ -4,7 +4,7 @@ A small local web app that downloads one GroupMe group's message history and sho
 
 - Flask backend, SQLite cache (`groupme.db`)
 - Table: time, sender, text, like count, liked by
-- Filters: zero likes only, sender name, liked-by name
+- Filters: zero likes only, date range (From/To, inclusive), liked-by name
 - Sort by time or like count (use the dropdown or click a column header)
 - Runs on `127.0.0.1` only
 

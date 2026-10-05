@@ -15,7 +15,7 @@
   .controls { display:flex; flex-wrap:wrap; gap:10px; align-items:end; background:var(--card); border:1px solid var(--line); border-radius:10px; padding:12px; margin-bottom:12px; }
   label { display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--muted); }
   label.check { flex-direction:row; align-items:center; font-size:14px; color:var(--text); min-height:38px; }
-  input[type=search], select { font:inherit; font-size:16px; padding:7px 9px; border:1px solid var(--line); border-radius:7px; min-width:170px; }
+  input[type=search], input[type=date], select { font:inherit; font-size:16px; padding:7px 9px; border:1px solid var(--line); border-radius:7px; min-width:170px; }
   button { font:inherit; padding:8px 14px; border-radius:7px; border:1px solid var(--accent); background:var(--accent); color:#fff; cursor:pointer; min-height:38px; }
   button.secondary { background:#fff; color:var(--accent); }
   button:disabled { opacity:.55; cursor:wait; }
@@ -53,7 +53,8 @@
   <div class="error" id="error" role="alert" hidden></div>
 
   <form class="controls" id="filters" onsubmit="return false">
-    <label>Sender <input type="search" id="sender" placeholder="name contains…"></label>
+    <label>From <input type="date" id="from"></label>
+    <label>To <input type="date" id="to"></label>
     <label>Liked by <input type="search" id="liker" placeholder="name contains…"></label>
     <label>Sort
       <select id="sort">
@@ -106,7 +107,14 @@ async function load() {
   const [sort, dir] = $('sort').value.split(':');
   const params = new URLSearchParams({ sort, dir });
   if ($('zero').checked) params.set('zero', '1');
-  if ($('sender').value.trim()) params.set('sender', $('sender').value.trim());
+  // Dates are converted to epoch seconds in the browser's local time zone.
+  // "To" is inclusive: it covers the whole selected day.
+  if ($('from').value) params.set('start', new Date($('from').value + 'T00:00').getTime() / 1000);
+  if ($('to').value) {
+    const end = new Date($('to').value + 'T00:00');
+    end.setDate(end.getDate() + 1);
+    params.set('end', end.getTime() / 1000);
+  }
   if ($('liker').value.trim()) params.set('liker', $('liker').value.trim());
 
   try {
@@ -164,8 +172,8 @@ async function refresh(full) {
 
 $('refresh').addEventListener('click', () => refresh(false));
 $('resync').addEventListener('click', () => refresh(true));
-['sort', 'zero'].forEach(id => $(id).addEventListener('change', load));
-['sender', 'liker'].forEach(id => $(id).addEventListener('input', () => {
+['sort', 'zero', 'from', 'to'].forEach(id => $(id).addEventListener('change', load));
+['liker'].forEach(id => $(id).addEventListener('input', () => {
   clearTimeout(debounce);
   debounce = setTimeout(load, 250);
 }));

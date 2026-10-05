@@ -187,7 +187,8 @@ def index():
 @app.route("/api/messages")
 def api_messages():
     zero_only = request.args.get("zero") == "1"
-    sender = request.args.get("sender", "").strip()
+    start = request.args.get("start", type=int)  # epoch seconds, inclusive
+    end = request.args.get("end", type=int)      # epoch seconds, exclusive
     liker = request.args.get("liker", "").strip()
     sort = request.args.get("sort", "time")
     direction = "ASC" if request.args.get("dir") == "asc" else "DESC"
@@ -195,9 +196,12 @@ def api_messages():
     where, params = [], []
     if zero_only:
         where.append("m.like_count = 0")
-    if sender:
-        where.append("m.name LIKE ?")
-        params.append(f"%{sender}%")
+    if start is not None:
+        where.append("m.created_at >= ?")
+        params.append(start)
+    if end is not None:
+        where.append("m.created_at < ?")
+        params.append(end)
     if liker:
         where.append(
             """EXISTS (SELECT 1 FROM likes l JOIN members u ON u.user_id = l.user_id
