@@ -218,7 +218,8 @@ def api_messages():
         total = conn.execute(f"SELECT COUNT(*) FROM messages m {where_sql}", params).fetchone()[0]
         rows = conn.execute(
             f"""SELECT m.id, m.created_at, m.name, m.text, m.like_count,
-                       (SELECT group_concat(COALESCE(u.name, l.user_id), ', ')
+                       (SELECT group_concat(COALESCE(u.name, l.user_id), ', '
+                                            ORDER BY COALESCE(u.name, l.user_id) COLLATE NOCASE)
                           FROM likes l LEFT JOIN members u ON u.user_id = l.user_id
                          WHERE l.message_id = m.id) AS liked_by
                   FROM messages m {where_sql}
