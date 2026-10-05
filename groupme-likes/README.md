@@ -42,6 +42,18 @@ Open <http://127.0.0.1:5000>.
 - **Refresh** fetches new messages. The first time, it pages through the whole history with `before_id`, which can take a minute for large groups. After that, it only fetches messages newer than the newest one in the cache.
 - **Re-sync all** downloads the full history again. Use it to update like counts on older messages, because likes added after a message was cached don't show up through Refresh.
 
+## Publish a snapshot to Netlify (drag and drop)
+
+```
+python export_static.py
+```
+
+This writes `netlify-drop/index.html`: one page with the cached messages built in. Filters, sorting and Hasn't liked all work in the browser. Drag the `netlify-drop` folder onto <https://app.netlify.com/drop>.
+
+- The snapshot has no Refresh button. To update it, click Refresh in the local app, run the export again, and drag the folder onto your site's **Deploys** page.
+- The GroupMe token is never included. But **anyone with the site link can read the messages**, so share it carefully.
+- `netlify-drop/` is git-ignored so your messages don't end up on GitHub.
+
 ## Notes
 
 - GroupMe reports likes as user IDs. They're turned into names using the group's current member list. People who have left the group fall back to the name they last posted under, or to their raw ID if they never posted.
