@@ -45,5 +45,6 @@ Open <http://127.0.0.1:5000>.
 ## Notes
 
 - GroupMe reports likes as user IDs. They're turned into names using the group's current member list. People who have left the group fall back to the name they last posted under, or to their raw ID if they never posted.
+- **Show who hasn't liked** lists current members who didn't like a message. It leaves out the sender, group admins and the owner, and any user IDs listed in `NOT_LIKED_EXCLUDE` in `.env`.
 - The table shows up to 1,000 rows at a time. Use the filters to narrow it down.
 - To start over, delete `groupme.db`.

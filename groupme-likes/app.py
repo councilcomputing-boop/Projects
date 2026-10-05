@@ -21,8 +21,9 @@ REQUEST_TIMEOUT = 20     # seconds
 MAX_ROWS = 1000          # rows returned to the page per query
 HOST = "127.0.0.1"
 PORT = int(os.getenv("PORT", "5000"))
-# Member user IDs never listed under "Hasn't liked" (comma-separated)
+# Never listed under "Hasn't liked": these member user IDs (comma-separated) plus anyone with these roles
 NOT_LIKED_EXCLUDE = {u.strip() for u in os.getenv("NOT_LIKED_EXCLUDE", "").split(",") if u.strip()}
+NOT_LIKED_EXCLUDE_ROLES = {"admin", "owner"}
 
 app = Flask(__name__)
 
@@ -62,10 +63,15 @@ def init_db():
             CREATE TABLE IF NOT EXISTS members (
                 user_id     TEXT PRIMARY KEY,
                 name        TEXT NOT NULL,
-                source      TEXT NOT NULL
+                source      TEXT NOT NULL,
+                roles       TEXT NOT NULL DEFAULT ''   -- comma-separated GroupMe roles
             );
             """
         )
+        # Databases created before the roles column existed
+        cols = {r["name"] for r in conn.execute("PRAGMA table_info(members)")}
+        if "roles" not in cols:
+            conn.execute("ALTER TABLE members ADD COLUMN roles TEXT NOT NULL DEFAULT ''")
 
 
 def upsert_messages(conn, messages):
@@ -123,9 +129,11 @@ def sync_members(conn):
     group = api_get(f"/groups/{GROUP_ID}")
     for mem in (group or {}).get("members", []):
         conn.execute(
-            """INSERT INTO members (user_id, name, source) VALUES (?, ?, 'member')
-               ON CONFLICT(user_id) DO UPDATE SET name = excluded.name, source = 'member'""",
-            (mem["user_id"], mem.get("nickname") or mem.get("name") or mem["user_id"]),
+            """INSERT INTO members (user_id, name, source, roles) VALUES (?, ?, 'member', ?)
+               ON CONFLICT(user_id) DO UPDATE SET
+                   name = excluded.name, source = 'member', roles = excluded.roles""",
+            (mem["user_id"], mem.get("nickname") or mem.get("name") or mem["user_id"],
+             ",".join(mem.get("roles") or [])),
         )
     return (group or {}).get("name")
 
@@ -197,6 +205,19 @@ def api_messages():
     sort = request.args.get("sort", "time")
     direction = "ASC" if request.args.get("dir") == "asc" else "DESC"
 
+    with closing(get_db()) as conn:
+        current = conn.execute(
+            "SELECT user_id, name, roles FROM members WHERE source = 'member'"
+        ).fetchall()
+        excluded = sorted(
+            NOT_LIKED_EXCLUDE
+            | {u["user_id"] for u in current if set(u["roles"].split(",")) & NOT_LIKED_EXCLUDE_ROLES}
+        )
+        return query_messages(conn, current, excluded, zero_only, start, end,
+                              liker, not_liked, sort, direction)
+
+
+def query_messages(conn, current, excluded, zero_only, start, end, liker, not_liked, sort, direction):
     where, params = [], []
     if zero_only:
         where.append("m.like_count = 0")
@@ -208,7 +229,6 @@ def api_messages():
         params.append(end)
     if liker and not_liked:
         # A matching current member (not the sender, not excluded) who hasn't liked the message
-        excluded = sorted(NOT_LIKED_EXCLUDE)
         exclude_sql = f"AND u.user_id NOT IN ({','.join('?' * len(excluded))})" if excluded else ""
         where.append(
             f"""EXISTS (SELECT 1 FROM members u
@@ -230,32 +250,29 @@ def api_messages():
         "time": f"m.created_at {direction}",
     }.get(sort, f"m.created_at {direction}")
 
-    with closing(get_db()) as conn:
-        total = conn.execute(f"SELECT COUNT(*) FROM messages m {where_sql}", params).fetchone()[0]
-        rows = conn.execute(
-            f"""SELECT m.id, m.created_at, m.user_id, m.name, m.text, m.like_count,
-                       (SELECT group_concat(COALESCE(u.name, l.user_id), char(31))
-                          FROM likes l LEFT JOIN members u ON u.user_id = l.user_id
-                         WHERE l.message_id = m.id) AS liked_by,
-                       (SELECT group_concat(l.user_id, char(31))
-                          FROM likes l WHERE l.message_id = m.id) AS liker_ids
-                  FROM messages m {where_sql}
-                 ORDER BY {order_sql}
-                 LIMIT ?""",
-            params + [MAX_ROWS],
-        ).fetchall()
-        cached = conn.execute("SELECT COUNT(*) FROM messages").fetchone()[0]
-        current = conn.execute(
-            "SELECT user_id, name FROM members WHERE source = 'member'"
-        ).fetchall()
+    total = conn.execute(f"SELECT COUNT(*) FROM messages m {where_sql}", params).fetchone()[0]
+    rows = conn.execute(
+        f"""SELECT m.id, m.created_at, m.user_id, m.name, m.text, m.like_count,
+                   (SELECT group_concat(COALESCE(u.name, l.user_id), char(31))
+                      FROM likes l LEFT JOIN members u ON u.user_id = l.user_id
+                     WHERE l.message_id = m.id) AS liked_by,
+                   (SELECT group_concat(l.user_id, char(31))
+                      FROM likes l WHERE l.message_id = m.id) AS liker_ids
+              FROM messages m {where_sql}
+             ORDER BY {order_sql}
+             LIMIT ?""",
+        params + [MAX_ROWS],
+    ).fetchall()
+    cached = conn.execute("SELECT COUNT(*) FROM messages").fetchone()[0]
+    excluded_set = set(excluded)
 
     def row_out(r):
         out = dict(r, liked_by=sort_names(r["liked_by"]))
         if not_liked:
-            likers = set((r["liker_ids"] or "").split(""))
+            likers = set((r["liker_ids"] or "").split("\x1f"))
             names = [u["name"] for u in current
                      if u["user_id"] not in likers and u["user_id"] != r["user_id"]
-                     and u["user_id"] not in NOT_LIKED_EXCLUDE]
+                     and u["user_id"] not in excluded_set]
             out["not_liked_by"] = ", ".join(sorted(names, key=last_name_key))
         del out["liker_ids"], out["user_id"]
         return out
