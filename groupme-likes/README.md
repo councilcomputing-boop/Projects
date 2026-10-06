@@ -44,7 +44,7 @@ Open <http://127.0.0.1:5000>.
 
 ## Live version on Netlify
 
-`public/` (the page) and `netlify/` (two functions) make a password-protected copy that refreshes from GroupMe on its own. Messages are stored in Netlify Blobs.
+`public/` (the page) and `netlify/` (two functions) make a copy that refreshes from GroupMe on its own. Messages are stored in Netlify Blobs.
 
 **One-time setup**
 1. In Netlify: **Add new site → Import an existing project → GitHub**, then pick the `Projects` repo.
@@ -57,13 +57,13 @@ Open <http://127.0.0.1:5000>.
    | `GROUPME_GROUP_ID` | the group ID |
    | `NOT_LIKED_EXCLUDE` | user IDs to leave out of Hasn't liked (comma-separated) |
    | `HIDE_USERS` | user IDs to hide everywhere and not count (comma-separated) |
-   | `APP_PASSWORD` | the password people type to open the site |
+   | `APP_PASSWORD` | *optional:* a password people must type to open the site |
 
-4. Deploy, open the site and enter the password. The first load downloads the whole history.
+4. Deploy and open the site. The first load downloads the whole history.
 
-After setup, every push to GitHub redeploys the site. Opening the page fetches new messages and updates likes on the newest 100. **Re-sync all** updates likes on older messages. The functions refuse all requests if `APP_PASSWORD` isn't set.
+After setup, every push to GitHub redeploys the site. Opening the page fetches new messages and updates likes on the newest 100. **Re-sync all** updates likes on older messages. **Without `APP_PASSWORD`, anyone with the link can read the messages.**
 
-Test locally with `npm install`, then `netlify dev`. It reads `.env`, so also add `APP_PASSWORD=...` there.
+Test locally with `npm install`, then `netlify dev`. It reads `.env`.
 
 ## Publish a snapshot to Netlify (drag and drop)
 

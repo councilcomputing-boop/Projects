@@ -197,6 +197,7 @@ function render() {
 
 async function loadData() {
   DATA = await api('/api/data');
+  $('logout').hidden = !getPw();  // only useful when the site has a password
   if (DATA.group) { $('title').textContent = DATA.group; document.title = DATA.group + ' · Likes'; }
   render();
 }
@@ -255,7 +256,8 @@ document.querySelectorAll('th.sortable').forEach(th => th.addEventListener('clic
   render();
 }));
 
-getPw() ? start() : showLogin();
+// Try without asking; the login box only appears if the site has a password set (401).
+start();
 </script>
 </body>
 </html>

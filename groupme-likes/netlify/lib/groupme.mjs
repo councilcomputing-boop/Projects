@@ -30,7 +30,7 @@ const sha = s => createHash("sha256").update(s).digest();
 
 export function checkPassword(req) {
   const expected = process.env.APP_PASSWORD || "";
-  if (!expected) throw new HttpError(500, "APP_PASSWORD is not set in Netlify environment variables.");
+  if (!expected) return;  // no APP_PASSWORD set: site is open to anyone with the link
   const given = req.headers.get("x-app-password") || "";
   if (!timingSafeEqual(sha(given), sha(expected))) throw new HttpError(401, "Wrong password.");
 }
