@@ -16,7 +16,7 @@
   .controls { display:flex; flex-wrap:wrap; gap:10px; align-items:end; background:var(--card); border:1px solid var(--line); border-radius:10px; padding:12px; margin-bottom:12px; }
   label { display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--muted); }
   label.check { flex-direction:row; align-items:center; font-size:14px; color:var(--text); min-height:38px; }
-  input[type=search], input[type=date], input[type=password], select { font:inherit; font-size:16px; padding:7px 9px; border:1px solid var(--line); border-radius:7px; min-width:170px; }
+  input[type=search], input[type=date], select { font:inherit; font-size:16px; padding:7px 9px; border:1px solid var(--line); border-radius:7px; min-width:170px; }
   button { font:inherit; padding:8px 14px; border-radius:7px; border:1px solid var(--accent); background:var(--accent); color:#fff; cursor:pointer; min-height:38px; }
   button.secondary { background:#fff; color:var(--accent); }
   button:disabled { opacity:.55; cursor:wait; }
@@ -33,20 +33,11 @@
   td.likes { text-align:right; font-variant-numeric:tabular-nums; }
   td.likedby { color:var(--muted); font-size:13px; min-width:160px; }
   .empty { padding:30px; text-align:center; color:var(--muted); }
-  #login { max-width:360px; margin:12vh auto 0; background:var(--card); border:1px solid var(--line); border-radius:12px; padding:20px; display:flex; flex-direction:column; gap:12px; }
-  #login h1 { font-size:20px; }
 </style>
 </head>
 <body>
 <main>
-  <form id="login" hidden>
-    <h1>GroupMe Likes</h1>
-    <label>Password <input type="password" id="password" autocomplete="current-password" required></label>
-    <div class="error" id="loginError" role="alert" hidden></div>
-    <button type="submit">Open</button>
-  </form>
-
-  <div id="app" hidden>
+  <div id="app">
     <header>
       <div>
         <h1 id="title">GroupMe Likes</h1>
@@ -55,7 +46,6 @@
       <div style="display:flex; gap:8px; flex-wrap:wrap">
         <button id="refresh" type="button">Refresh</button>
         <button id="resync" type="button" class="secondary" title="Re-download all history to update like counts on older messages">Re-sync all</button>
-        <button id="logout" type="button" class="secondary">Log out</button>
       </div>
     </header>
 
@@ -99,29 +89,17 @@
 // rows from /api/data: t = epoch seconds, s = sender, x = text, n = like count,
 // l = liked by, nl = hasn't liked (already excludes sender, admins, NOT_LIKED_EXCLUDE)
 const MAX_ROWS = 1000;
-const PW_KEY = 'groupmeLikesPassword';
 const $ = id => document.getElementById(id);
 let DATA = null;
 let debounce;
 
-function getPw() { try { return localStorage.getItem(PW_KEY) || ''; } catch { return ''; } }
-function setPw(v) { try { v ? localStorage.setItem(PW_KEY, v) : localStorage.removeItem(PW_KEY); } catch {} }
 
 function showError(msg) { $('error').textContent = msg || ''; $('error').hidden = !msg; }
 
-function showLogin(msg) {
-  $('app').hidden = true;
-  $('login').hidden = false;
-  $('loginError').textContent = msg || '';
-  $('loginError').hidden = !msg;
-  $('password').focus();
-}
-
 async function api(path, options = {}) {
-  const res = await fetch(path, { ...options, headers: { 'x-app-password': getPw() } });
+  const res = await fetch(path, options);
   let body;
   try { body = await res.json(); } catch { body = {}; }
-  if (res.status === 401) { setPw(''); showLogin(body.error || 'Wrong password.'); throw new Error('locked'); }
   if (!res.ok) throw new Error(body.error || `Request failed (${res.status})`);
   return body;
 }
@@ -197,7 +175,6 @@ function render() {
 
 async function loadData() {
   DATA = await api('/api/data');
-  $('logout').hidden = !getPw();  // only useful when the site has a password
   if (DATA.group) { $('title').textContent = DATA.group; document.title = DATA.group + ' · Likes'; }
   render();
 }
@@ -221,30 +198,21 @@ async function refresh(full) {
     } while (cursor);
     await loadData();
   } catch (e) {
-    if (e.message !== 'locked') showError(e.message);
+    showError(e.message);
   } finally {
     btns.forEach(b => b.disabled = false);
   }
 }
 
 async function start() {
-  $('login').hidden = true;
-  $('app').hidden = false;
   try {
     await loadData();     // show what's saved right away
     await refresh(false); // then pull anything new from GroupMe
   } catch (e) {
-    if (e.message !== 'locked') showError(e.message);
+    showError(e.message);
   }
 }
 
-$('login').addEventListener('submit', e => {
-  e.preventDefault();
-  setPw($('password').value);
-  $('password').value = '';
-  start();
-});
-$('logout').addEventListener('click', () => { setPw(''); DATA = null; $('rows').replaceChildren(); showLogin(); });
 $('refresh').addEventListener('click', () => refresh(false));
 $('resync').addEventListener('click', () => refresh(true));
 ['sort', 'zero', 'notliked', 'from', 'to'].forEach(id => $(id).addEventListener('change', render));
@@ -256,7 +224,6 @@ document.querySelectorAll('th.sortable').forEach(th => th.addEventListener('clic
   render();
 }));
 
-// Try without asking; the login box only appears if the site has a password set (401).
 start();
 </script>
 </body>

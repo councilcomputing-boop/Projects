@@ -57,11 +57,10 @@ Open <http://127.0.0.1:5000>.
    | `GROUPME_GROUP_ID` | the group ID |
    | `NOT_LIKED_EXCLUDE` | user IDs to leave out of Hasn't liked (comma-separated) |
    | `HIDE_USERS` | user IDs to hide everywhere and not count (comma-separated) |
-   | `APP_PASSWORD` | *optional:* a password people must type to open the site |
 
 4. Deploy and open the site. The first load downloads the whole history.
 
-After setup, every push to GitHub redeploys the site. Opening the page fetches new messages and updates likes on the newest 100. **Re-sync all** updates likes on older messages. **Without `APP_PASSWORD`, anyone with the link can read the messages.**
+After setup, every push to GitHub redeploys the site. Opening the page fetches new messages and updates likes on the newest 100. **Re-sync all** updates likes on older messages. **There is no password: anyone with the link can read the messages.**
 
 Test locally with `npm install`, then `netlify dev`. It reads `.env`.
 

@@ -1,9 +1,8 @@
 import { getStore } from "@netlify/blobs";
-import { buildData, checkPassword, errorResponse, json } from "../lib/groupme.mjs";
+import { buildData, errorResponse, json } from "../lib/groupme.mjs";
 
-export default async (req) => {
+export default async () => {
   try {
-    checkPassword(req);
     return json(await buildData(getStore("groupme")));
   } catch (e) {
     return errorResponse(e);

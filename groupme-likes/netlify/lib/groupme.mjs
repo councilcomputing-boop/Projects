@@ -3,8 +3,6 @@
 //   "messages" -> { [id]: { id, t, uid, s, x, likes: [user_id] } }
 //   "members"  -> { [user_id]: { name, roles: [..], current: bool } }
 //   "meta"     -> { group, lastSync }
-import { createHash, timingSafeEqual } from "node:crypto";
-
 const API_BASE = "https://api.groupme.com/v3";
 const PAGE_SIZE = 100;            // GroupMe max per request
 const TIME_BUDGET_MS = 7000;      // stay under Netlify's 10s function limit
@@ -23,16 +21,6 @@ export function config() {
   const ids = name => new Set((process.env[name] || "").split(",").map(s => s.trim()).filter(Boolean));
   // NOT_LIKED_EXCLUDE: left out of "Hasn't liked". HIDE_USERS: hidden everywhere and not counted.
   return { token, groupId, exclude: ids("NOT_LIKED_EXCLUDE"), hide: ids("HIDE_USERS") };
-}
-
-// --- Password check ------------------------------------------------------
-const sha = s => createHash("sha256").update(s).digest();
-
-export function checkPassword(req) {
-  const expected = process.env.APP_PASSWORD || "";
-  if (!expected) return;  // no APP_PASSWORD set: site is open to anyone with the link
-  const given = req.headers.get("x-app-password") || "";
-  if (!timingSafeEqual(sha(given), sha(expected))) throw new HttpError(401, "Wrong password.");
 }
 
 export function json(body, status = 200) {
