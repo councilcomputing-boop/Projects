@@ -42,6 +42,28 @@ Open <http://127.0.0.1:5000>.
 - **Refresh** fetches new messages. The first time, it pages through the whole history with `before_id`, which can take a minute for large groups. After that, it only fetches messages newer than the newest one in the cache.
 - **Re-sync all** downloads the full history again. Use it to update like counts on older messages, because likes added after a message was cached don't show up through Refresh.
 
+## Live version on Netlify
+
+`public/` (the page) and `netlify/` (two functions) make a password-protected copy that refreshes from GroupMe on its own. Messages are stored in Netlify Blobs.
+
+**One-time setup**
+1. In Netlify: **Add new site → Import an existing project → GitHub**, then pick the `Projects` repo.
+2. Set **Base directory** to `groupme-likes`. The rest is read from `groupme-likes/netlify.toml`.
+3. Before deploying, add these under **Environment variables**:
+
+   | Key | Value |
+   |-----|-------|
+   | `GROUPME_TOKEN` | your GroupMe access token |
+   | `GROUPME_GROUP_ID` | the group ID |
+   | `NOT_LIKED_EXCLUDE` | user IDs to leave out of Hasn't liked (comma-separated) |
+   | `APP_PASSWORD` | the password people type to open the site |
+
+4. Deploy, open the site and enter the password. The first load downloads the whole history.
+
+After setup, every push to GitHub redeploys the site. Opening the page fetches new messages and updates likes on the newest 100. **Re-sync all** updates likes on older messages. The functions refuse all requests if `APP_PASSWORD` isn't set.
+
+Test locally with `npm install`, then `netlify dev`. It reads `.env`, so also add `APP_PASSWORD=...` there.
+
 ## Publish a snapshot to Netlify (drag and drop)
 
 ```
