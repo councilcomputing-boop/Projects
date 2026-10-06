@@ -8,3 +8,4 @@ netlify-drop/
 netlify-drop.zip
 node_modules/
 .netlify/
+deno.lock
