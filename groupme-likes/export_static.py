@@ -9,7 +9,7 @@ import os
 import time
 from contextlib import closing
 
-from app import (GROUP_ID, NOT_LIKED_EXCLUDE, NOT_LIKED_EXCLUDE_ROLES, GroupMeError,
+from app import (GROUP_ID, HIDE_USERS, NOT_LIKED_EXCLUDE, NOT_LIKED_EXCLUDE_ROLES, GroupMeError,
                  api_get, get_db, last_name_key)
 import requests
 
@@ -21,7 +21,7 @@ def build_rows(conn):
     members = conn.execute("SELECT user_id, name, roles, source FROM members").fetchall()
     names = {m["user_id"]: m["name"] for m in members}
     current = [m for m in members if m["source"] == "member"]
-    excluded = NOT_LIKED_EXCLUDE | {
+    excluded = NOT_LIKED_EXCLUDE | HIDE_USERS | {
         m["user_id"] for m in current if set(m["roles"].split(",")) & NOT_LIKED_EXCLUDE_ROLES
     }
 
@@ -33,7 +33,7 @@ def build_rows(conn):
     for m in conn.execute(
         "SELECT id, created_at, user_id, name, text, like_count FROM messages ORDER BY created_at DESC"
     ):
-        likers = likes.get(m["id"], set())
+        likers = likes.get(m["id"], set()) - HIDE_USERS
         not_liked = [u["name"] for u in current
                      if u["user_id"] not in likers and u["user_id"] != m["user_id"]
                      and u["user_id"] not in excluded]
@@ -41,7 +41,7 @@ def build_rows(conn):
             "t": m["created_at"],
             "s": m["name"],
             "x": m["text"],
-            "n": m["like_count"],
+            "n": len(likers),
             "l": sorted((names.get(u, u) for u in likers), key=last_name_key),
             "nl": sorted(not_liked, key=last_name_key),
         })

@@ -20,8 +20,9 @@ export function config() {
   if (!token || !groupId) {
     throw new HttpError(500, "GROUPME_TOKEN and GROUPME_GROUP_ID must be set in Netlify environment variables.");
   }
-  const exclude = new Set((process.env.NOT_LIKED_EXCLUDE || "").split(",").map(s => s.trim()).filter(Boolean));
-  return { token, groupId, exclude };
+  const ids = name => new Set((process.env[name] || "").split(",").map(s => s.trim()).filter(Boolean));
+  // NOT_LIKED_EXCLUDE: left out of "Hasn't liked". HIDE_USERS: hidden everywhere and not counted.
+  return { token, groupId, exclude: ids("NOT_LIKED_EXCLUDE"), hide: ids("HIDE_USERS") };
 }
 
 // --- Password check ------------------------------------------------------
@@ -134,22 +135,23 @@ export function byLastName(a, b) {
 }
 
 export async function buildData(store) {
-  const { exclude } = config();
+  const { exclude, hide } = config();
   const messages = (await store.get("messages", { type: "json" })) || {};
   const members = (await store.get("members", { type: "json" })) || {};
   const meta = (await store.get("meta", { type: "json" })) || {};
 
   const current = Object.entries(members).filter(([, m]) => m.current);
-  const excluded = new Set(exclude);
+  const excluded = new Set([...exclude, ...hide]);
   for (const [id, m] of current) if (m.roles.some(r => EXCLUDE_ROLES.has(r))) excluded.add(id);
 
   const rows = Object.values(messages)
     .sort((a, b) => b.t - a.t)
     .map(m => {
+      const likes = m.likes.filter(id => !hide.has(id));
       const likers = new Set(m.likes);
       return {
-        t: m.t, s: m.s, x: m.x, n: m.likes.length,
-        l: m.likes.map(id => members[id]?.name || id).sort(byLastName),
+        t: m.t, s: m.s, x: m.x, n: likes.length,
+        l: likes.map(id => members[id]?.name || id).sort(byLastName),
         nl: current
           .filter(([id]) => !likers.has(id) && id !== m.uid && !excluded.has(id))
           .map(([, u]) => u.name)

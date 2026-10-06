@@ -24,6 +24,11 @@ PORT = int(os.getenv("PORT", "5000"))
 # Never listed under "Hasn't liked": these member user IDs (comma-separated) plus anyone with these roles
 NOT_LIKED_EXCLUDE = {u.strip() for u in os.getenv("NOT_LIKED_EXCLUDE", "").split(",") if u.strip()}
 NOT_LIKED_EXCLUDE_ROLES = {"admin", "owner"}
+# Member user IDs hidden everywhere: not shown in Liked by / Hasn't liked, not counted in Likes
+HIDE_USERS = {u.strip() for u in os.getenv("HIDE_USERS", "").split(",") if u.strip()}
+# SQL filter for a likes alias "l" that drops hidden users (see temp.hidden in api_messages)
+VISIBLE = "l.user_id NOT IN (SELECT user_id FROM temp.hidden)"
+LIKE_COUNT = f"(SELECT COUNT(*) FROM likes l WHERE l.message_id = m.id AND {VISIBLE})"
 
 app = Flask(__name__)
 
@@ -206,11 +211,13 @@ def api_messages():
     direction = "ASC" if request.args.get("dir") == "asc" else "DESC"
 
     with closing(get_db()) as conn:
+        conn.execute("CREATE TEMP TABLE hidden (user_id TEXT PRIMARY KEY)")
+        conn.executemany("INSERT INTO temp.hidden VALUES (?)", [(u,) for u in HIDE_USERS])
         current = conn.execute(
             "SELECT user_id, name, roles FROM members WHERE source = 'member'"
         ).fetchall()
         excluded = sorted(
-            NOT_LIKED_EXCLUDE
+            NOT_LIKED_EXCLUDE | HIDE_USERS
             | {u["user_id"] for u in current if set(u["roles"].split(",")) & NOT_LIKED_EXCLUDE_ROLES}
         )
         return query_messages(conn, current, excluded, zero_only, start, end,
@@ -220,7 +227,7 @@ def api_messages():
 def query_messages(conn, current, excluded, zero_only, start, end, liker, not_liked, sort, direction):
     where, params = [], []
     if zero_only:
-        where.append("m.like_count = 0")
+        where.append(f"{LIKE_COUNT} = 0")
     if start is not None:
         where.append("m.created_at >= ?")
         params.append(start)
@@ -240,22 +247,22 @@ def query_messages(conn, current, excluded, zero_only, start, end, liker, not_li
         params += [f"%{liker}%"] + excluded
     elif liker:
         where.append(
-            """EXISTS (SELECT 1 FROM likes l JOIN members u ON u.user_id = l.user_id
-                       WHERE l.message_id = m.id AND u.name LIKE ?)"""
+            f"""EXISTS (SELECT 1 FROM likes l JOIN members u ON u.user_id = l.user_id
+                        WHERE l.message_id = m.id AND {VISIBLE} AND u.name LIKE ?)"""
         )
         params.append(f"%{liker}%")
     where_sql = ("WHERE " + " AND ".join(where)) if where else ""
     order_sql = {
-        "likes": f"m.like_count {direction}, m.created_at DESC",
+        "likes": f"{LIKE_COUNT} {direction}, m.created_at DESC",
         "time": f"m.created_at {direction}",
     }.get(sort, f"m.created_at {direction}")
 
     total = conn.execute(f"SELECT COUNT(*) FROM messages m {where_sql}", params).fetchone()[0]
     rows = conn.execute(
-        f"""SELECT m.id, m.created_at, m.user_id, m.name, m.text, m.like_count,
+        f"""SELECT m.id, m.created_at, m.user_id, m.name, m.text, {LIKE_COUNT} AS like_count,
                    (SELECT group_concat(COALESCE(u.name, l.user_id), char(31))
                       FROM likes l LEFT JOIN members u ON u.user_id = l.user_id
-                     WHERE l.message_id = m.id) AS liked_by,
+                     WHERE l.message_id = m.id AND {VISIBLE}) AS liked_by,
                    (SELECT group_concat(l.user_id, char(31))
                       FROM likes l WHERE l.message_id = m.id) AS liker_ids
               FROM messages m {where_sql}

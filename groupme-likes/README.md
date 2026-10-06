@@ -56,6 +56,7 @@ Open <http://127.0.0.1:5000>.
    | `GROUPME_TOKEN` | your GroupMe access token |
    | `GROUPME_GROUP_ID` | the group ID |
    | `NOT_LIKED_EXCLUDE` | user IDs to leave out of Hasn't liked (comma-separated) |
+   | `HIDE_USERS` | user IDs to hide everywhere and not count (comma-separated) |
    | `APP_PASSWORD` | the password people type to open the site |
 
 4. Deploy, open the site and enter the password. The first load downloads the whole history.
@@ -80,5 +81,6 @@ This writes `netlify-drop/index.html`: one page with the cached messages built i
 
 - GroupMe reports likes as user IDs. They're turned into names using the group's current member list. People who have left the group fall back to the name they last posted under, or to their raw ID if they never posted.
 - **Show who hasn't liked** lists current members who didn't like a message. It leaves out the sender, group admins and the owner, and any user IDs listed in `NOT_LIKED_EXCLUDE` in `.env`.
+- `HIDE_USERS` in `.env` lists user IDs to hide everywhere. Their likes aren't shown in Liked by or counted in Likes, and they never appear under Hasn't liked.
 - The table shows up to 1,000 rows at a time. Use the filters to narrow it down.
 - To start over, delete `groupme.db`.
