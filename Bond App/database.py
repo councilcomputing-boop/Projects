@@ -11,18 +11,53 @@ def fmt(dt):
     return dt.strftime('%Y-%m-%dT%H:%M:%SZ') if dt else ''
 
 
+class Company(db.Model):
+    """A customer agency. Every user, bond, reconciliation and audit entry belongs to exactly one."""
+    __tablename__ = 'companies'
+    id         = db.Column(db.Integer, primary_key=True)
+    name       = db.Column(db.String(200), nullable=False)          # e.g. "Insurance Agency of Mid America"
+    short_name = db.Column(db.String(40))                           # e.g. "IAMA" -> header reads "IAMA BondDesk"
+    producers  = db.Column(db.Text, default='')                     # newline-separated list for the Producer dropdown
+    active     = db.Column(db.Boolean, default=True, nullable=False) # inactive = nobody in this company can log in
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    @property
+    def app_title(self):
+        return f'{self.short_name} BondDesk' if self.short_name else 'BondDesk'
+
+    @property
+    def producer_list(self):
+        return [p.strip() for p in (self.producers or '').splitlines() if p.strip()]
+
+    def to_dict(self):
+        return {
+            'id':         self.id,
+            'name':       self.name,
+            'short_name': self.short_name or '',
+            'producers':  self.producer_list,
+            'active':     bool(self.active),
+            'created_at': self.created_at.strftime('%m/%d/%Y') if self.created_at else '',
+        }
+
+
 class User(UserMixin, db.Model):
     __tablename__ = 'users'
     id             = db.Column(db.Integer, primary_key=True)
+    company_id     = db.Column(db.Integer, db.ForeignKey('companies.id'), nullable=True)  # null only for superadmin
     username       = db.Column(db.String(50), unique=True, nullable=False)
     email          = db.Column(db.String(120), unique=True, nullable=False)
     password_hash  = db.Column(db.String(256), nullable=True)   # null until invite accepted
-    role           = db.Column(db.String(20), default='user')
+    role           = db.Column(db.String(20), default='user')   # user | admin (company admin) | superadmin (platform owner)
     active         = db.Column(db.Boolean, default=False)       # false until invite accepted
     created_at     = db.Column(db.DateTime, default=datetime.utcnow)
     invite_token   = db.Column(db.String(64), unique=True, nullable=True)
     invite_expires = db.Column(db.DateTime, nullable=True)
     last_seen_version = db.Column(db.String(20), nullable=True)  # last "What's New" version this user has dismissed
+    company        = db.relationship('Company')
+
+    @property
+    def is_superadmin(self):
+        return self.role == 'superadmin'
 
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
@@ -51,7 +86,8 @@ class User(UserMixin, db.Model):
 class Bond(db.Model):
     __tablename__ = 'bonds'
     id                   = db.Column(db.Integer, primary_key=True)
-    bond_number          = db.Column(db.String(50), unique=True, nullable=True)
+    company_id           = db.Column(db.Integer, db.ForeignKey('companies.id'), nullable=False, index=True)
+    bond_number          = db.Column(db.String(50), nullable=True)
     bond_type            = db.Column(db.String(50), nullable=False)
     principal            = db.Column(db.String(200), nullable=False)
     obligee              = db.Column(db.String(200), nullable=False)
@@ -105,6 +141,7 @@ class Bond(db.Model):
 class Reconciliation(db.Model):
     __tablename__ = 'reconciliations'
     id         = db.Column(db.Integer, primary_key=True)
+    company_id = db.Column(db.Integer, db.ForeignKey('companies.id'), nullable=False, index=True)
     carrier    = db.Column(db.String(200), nullable=False)
     period     = db.Column(db.String(7))   # YYYY-MM
     status     = db.Column(db.String(20), default='In Progress')
@@ -161,6 +198,7 @@ class ReconciliationItem(db.Model):
 class AuditLog(db.Model):
     __tablename__ = 'audit_log'
     id          = db.Column(db.Integer, primary_key=True)
+    company_id  = db.Column(db.Integer, db.ForeignKey('companies.id'), nullable=False, index=True)
     bond_id     = db.Column(db.Integer)
     bond_number = db.Column(db.String(50))
     action      = db.Column(db.String(20))   # created | updated | deleted

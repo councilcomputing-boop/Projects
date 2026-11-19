@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>IAMA BondDesk — Insurance Agency of Mid America</title>
+    <title>{{ company.app_title }} — {{ company.name }}</title>
     <link rel="manifest" href="/static/manifest.json">
     <meta name="theme-color" content="#0d1b2a">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -229,8 +229,8 @@
             </svg>
         </div>
         <div>
-            <div class="hdr-title">IAMA BondDesk</div>
-            <div class="hdr-sub">Insurance Agency of Mid America</div>
+            <div class="hdr-title">{{ company.app_title }}</div>
+            <div class="hdr-sub">{{ company.name }}</div>
         </div>
     </div>
     <div class="hdr-right">
@@ -554,16 +554,8 @@
                 <div class="fgrp"><label class="flbl">Producer</label>
                     <select class="fc" id="fProducer" onchange="onProducerChange()">
                         <option value="">Select...</option>
-                        <option>Larry Bixler</option>
-                        <option>Logan Buckner</option>
-                        <option>Cody McNeill</option>
-                        <option>Mike McNeill</option>
-                        <option>Kyle Reser</option>
-                        <option>John Rogers</option>
-                        <option>Mike Shannon</option>
-                        <option>Todd Triplett</option>
-                        <option>Kyle Vandruff</option>
-                        <option value="other">Other…</option>
+                        {% for p in company.producer_list %}<option>{{ p }}</option>
+                        {% endfor %}<option value="other">Other…</option>
                     </select>
                 </div>
                 <div class="fgrp"><label class="flbl">Bond Amount ($)</label><input type="number" class="fc" id="fAmt" min="0" step="0.01"></div>
@@ -787,10 +779,7 @@ const SURETIES = [
     'National American Insurance Co', 'RLI Surety', 'The Gray Casualty & Surety Company', 'Travelers',
 ];
 
-const PRODUCERS = [
-    'Larry Bixler', 'Logan Buckner', 'Cody McNeill', 'Mike McNeill',
-    'John Rogers', 'Kyle Reser', 'Mike Shannon', 'Todd Triplett', 'Kyle Vandruff',
-];
+const PRODUCERS = {{ company.producer_list|tojson }};   // set per company on the User Management page
 
 const LABELS = {
     bond_type:'Bond Type', principal:'Principal',
@@ -1319,7 +1308,7 @@ async function loadActivity() {
         }
         return `<tr>
             <td style="white-space:nowrap;font-size:12px;color:var(--gray-600);">${fmtDateTime(l.changed_at)}</td>
-            <td><span class="bond-num">${esc(l.bond_number)}</span></td>
+            <td><span class="bond-num">${esc((l.new_values&&l.new_values.principal)||(l.old_values&&l.old_values.principal)||l.bond_number)}</span></td>
             <td><span class="log-action ${cls}">${label}</span></td>
             <td style="font-weight:500;">${esc(l.changed_by)}</td>
             <td>${details}</td>

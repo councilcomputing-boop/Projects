@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BondDesk Platform — Companies</title>
+    <style>
+        :root {
+            --navy:#0d1b2a; --blue:#1565c0; --blue-lt:#1976d2;
+            --green:#2e7d32; --green-bg:#e8f5e9; --red:#c62828; --red-bg:#ffebee; --amber:#e65100; --amber-bg:#fff3e0;
+            --gray-50:#f8f9fa; --gray-100:#f1f3f4; --gray-200:#e8eaed; --gray-300:#dadce0;
+            --gray-600:#5f6368; --gray-800:#3c4043;
+            --shadow-sm:0 1px 3px rgba(0,0,0,0.12); --shadow-md:0 4px 12px rgba(0,0,0,0.15); --shadow-lg:0 8px 24px rgba(0,0,0,0.20);
+            --r:8px; --r-sm:4px;
+        }
+        * { box-sizing:border-box; margin:0; padding:0; }
+        body { font-family:'Segoe UI',system-ui,sans-serif; background:var(--gray-50); color:var(--gray-800); min-height:100vh; }
+        .hdr { background:var(--navy); color:white; padding:0 28px; height:60px; display:flex; align-items:center; justify-content:space-between; box-shadow:var(--shadow-md); position:sticky; top:0; z-index:100; }
+        .hdr-title { font-size:17px; font-weight:600; }
+        .hdr-sub   { font-size:11px; opacity:0.6; margin-top:1px; }
+        .hdr-right { display:flex; align-items:center; gap:10px; font-size:13px; }
+        .nav-btn { padding:6px 14px; border-radius:var(--r-sm); font-size:13px; font-weight:500; background:transparent; border:1px solid rgba(255,255,255,0.25); color:white; cursor:pointer; text-decoration:none; }
+        .nav-btn:hover { background:rgba(255,255,255,0.1); }
+        .main { padding:24px 28px; max-width:1100px; margin:0 auto; }
+        .page-hdr { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; flex-wrap:wrap; margin-bottom:20px; }
+        .page-title { font-size:21px; font-weight:700; color:var(--navy); }
+        .page-sub   { font-size:13px; color:var(--gray-600); margin-top:2px; }
+        .tcard { background:white; border-radius:var(--r); box-shadow:var(--shadow-sm); overflow:hidden; }
+        .twrap { overflow-x:auto; }
+        table { width:100%; border-collapse:collapse; font-size:13.5px; }
+        thead tr { background:var(--navy); color:white; }
+        thead th { padding:12px 16px; text-align:left; font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:0.7px; white-space:nowrap; }
+        tbody tr { border-bottom:1px solid var(--gray-200); }
+        tbody tr:last-child { border-bottom:none; }
+        tbody td { padding:12px 16px; vertical-align:middle; }
+        .cname { font-weight:600; }
+        .meta { font-size:12px; color:var(--gray-600); }
+        .row-acts { display:flex; gap:6px; flex-wrap:wrap; }
+        .status-active   { color:var(--green); font-weight:600; font-size:13px; }
+        .status-inactive { color:var(--red);   font-weight:600; font-size:13px; }
+        .btn { padding:8px 18px; border-radius:var(--r-sm); font-size:14px; font-weight:500; cursor:pointer; border:none; white-space:nowrap; font-family:inherit; }
+        .btn:disabled { opacity:0.6; cursor:wait; }
+        .btn-primary   { background:var(--blue); color:white; }
+        .btn-primary:hover { background:var(--blue-lt); }
+        .btn-secondary { background:white; color:var(--gray-800); border:1px solid var(--gray-300); }
+        .btn-secondary:hover { background:var(--gray-100); }
+        .btn-danger    { background:white; color:var(--red); border:1px solid #ef9a9a; }
+        .btn-sm { padding:4px 11px; font-size:12px; }
+        .overlay { position:fixed; inset:0; background:rgba(0,0,0,0.48); display:flex; align-items:center; justify-content:center; z-index:1000; padding:20px; opacity:0; pointer-events:none; transition:opacity 0.2s; }
+        .overlay.open { opacity:1; pointer-events:all; }
+        .modal { background:white; border-radius:var(--r); box-shadow:var(--shadow-lg); width:100%; max-width:480px; max-height:92vh; overflow-y:auto; }
+        .modal-hdr { padding:17px 22px; display:flex; align-items:center; justify-content:space-between; background:var(--navy); color:white; border-radius:var(--r) var(--r) 0 0; }
+        .modal-ttl { font-size:15px; font-weight:600; }
+        .modal-cls { background:none; border:none; font-size:22px; cursor:pointer; color:rgba(255,255,255,0.65); line-height:1; padding:2px 5px; }
+        .modal-body { padding:22px; }
+        .modal-ftr  { padding:14px 22px 18px; border-top:1px solid var(--gray-200); display:flex; justify-content:flex-end; gap:10px; }
+        .fgrp { display:flex; flex-direction:column; margin-bottom:14px; }
+        .flbl { font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:0.7px; color:var(--gray-600); margin-bottom:5px; }
+        .req  { color:var(--red); margin-left:2px; }
+        .fc   { padding:9px 11px; border:1px solid var(--gray-300); border-radius:var(--r-sm); font-size:16px; color:var(--gray-800); outline:none; width:100%; font-family:inherit; background:white; }
+        .fc:focus { border-color:var(--blue-lt); box-shadow:0 0 0 3px rgba(21,101,192,0.1); }
+        .hint { font-size:12px; color:var(--gray-600); margin-top:4px; }
+        .info-box { background:var(--gray-50); border:1px solid var(--gray-200); border-radius:var(--r-sm); padding:14px 16px; margin-bottom:16px; font-size:13px; color:var(--gray-600); line-height:1.6; }
+        .info-box strong { color:var(--gray-800); }
+        .err-box { display:none; background:var(--red-bg); color:var(--red); border-radius:var(--r-sm); padding:10px 13px; font-size:13px; margin-bottom:14px; }
+        .ok-box  { background:var(--green-bg); color:var(--green); border-radius:var(--r-sm); padding:12px 14px; font-size:13px; margin-bottom:12px; font-weight:600; }
+        .demo-tag { display:inline-block; margin-left:6px; padding:1px 7px; border-radius:20px; font-size:10px; font-weight:700; background:var(--amber-bg); color:var(--amber); text-transform:uppercase; letter-spacing:0.4px; }
+        .toasts { position:fixed; bottom:22px; right:22px; z-index:2000; display:flex; flex-direction:column; gap:8px; }
+        .toast { background:var(--navy); color:white; padding:11px 16px; border-radius:var(--r); font-size:14px; box-shadow:var(--shadow-md); }
+        .toast.ok  { border-left:4px solid #4caf50; }
+        .toast.err { border-left:4px solid #ef5350; }
+        @media (max-width:640px) { .hdr { padding:0 16px; } .main { padding:20px 16px; } }
+    </style>
+</head>
+<body>
+
+<header class="hdr">
+    <div><div class="hdr-title">BondDesk Platform</div><div class="hdr-sub">Signed in as {{ user.username }} (platform admin)</div></div>
+    <div class="hdr-right">
+        <a href="/logout" class="nav-btn">Sign Out</a>
+    </div>
+</header>
+
+<main class="main">
+    <div class="page-hdr">
+        <div>
+            <div class="page-title">Companies</div>
+            <div class="page-sub">Each company only ever sees its own bonds, users and reports.</div>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <button class="btn btn-secondary" id="demoBtn" onclick="seedDemo()">Load / Reset Demo Company</button>
+            <button class="btn btn-primary" onclick="openCreate()">+ New Company</button>
+        </div>
+    </div>
+
+    <div class="tcard">
+        <div class="twrap">
+            <table>
+                <thead><tr>
+                    <th>Company</th>
+                    <th>Header Name</th>
+                    <th>Users</th>
+                    <th>Bonds</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr></thead>
+                <tbody>
+                    {% for c in companies %}
+                    <tr>
+                        <td><span class="cname">{{ c.name }}</span>{% if c.name == demo_name %}<span class="demo-tag">Demo</span>{% endif %}<div class="meta">Added {{ c.created_at }}</div></td>
+                        <td>{{ c.short_name ~ ' BondDesk' if c.short_name else 'BondDesk' }}</td>
+                        <td>{{ c.users }}</td>
+                        <td>{{ c.bonds }}</td>
+                        <td>{% if c.active %}<span class="status-active">&#10003; Active</span>{% else %}<span class="status-inactive">&#10005; Off</span>{% endif %}</td>
+                        <td><div class="row-acts">
+                            <button class="btn btn-secondary btn-sm" data-id="{{ c.id }}" data-name="{{ c.name }}" data-short="{{ c.short_name }}" onclick="openEdit(this)">Edit</button>
+                            <button class="btn btn-secondary btn-sm" data-id="{{ c.id }}" data-name="{{ c.name }}" onclick="openInviteAdmin(this)">Invite Admin</button>
+                            {% if c.active %}
+                            <button class="btn btn-danger btn-sm" data-id="{{ c.id }}" data-name="{{ c.name }}" onclick="setActive(this, false)">Turn Off</button>
+                            {% else %}
+                            <button class="btn btn-secondary btn-sm" data-id="{{ c.id }}" data-name="{{ c.name }}" onclick="setActive(this, true)">Turn On</button>
+                            {% endif %}
+                        </div></td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="6" style="text-align:center;color:var(--gray-600);padding:32px;">No companies yet. Click <strong>+ New Company</strong> to add your first customer.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</main>
+
+<!-- Create company -->
+<div class="overlay" id="createModal">
+    <div class="modal">
+        <div class="modal-hdr"><div class="modal-ttl">New Company</div><button class="modal-cls" onclick="closeModal('createModal')" aria-label="Close">&times;</button></div>
+        <div class="modal-body">
+            <div class="err-box" id="createErr" role="alert"></div>
+            <form id="createForm" onsubmit="createCompany(event)">
+                <div class="fgrp"><label class="flbl" for="nName">Company Name <span class="req">*</span></label><input class="fc" id="nName" required placeholder="e.g. Acme Insurance Group"></div>
+                <div class="fgrp"><label class="flbl" for="nShort">Short Name</label><input class="fc" id="nShort" placeholder="e.g. Acme"><div class="hint">Shown in their header as "Acme BondDesk". Leave blank for just "BondDesk".</div></div>
+                <div class="fgrp"><label class="flbl" for="nAdmin">First Admin's Username <span class="req">*</span></label><input class="fc" id="nAdmin" required autocomplete="off"><div class="hint">You'll get an invite link to send them. They set their own password.</div></div>
+            </form>
+        </div>
+        <div class="modal-ftr">
+            <button class="btn btn-secondary" onclick="closeModal('createModal')">Cancel</button>
+            <button class="btn btn-primary" id="createBtn" onclick="document.getElementById('createForm').requestSubmit()">Create Company</button>
+        </div>
+    </div>
+</div>
+
+<!-- Edit company -->
+<div class="overlay" id="editModal">
+    <div class="modal">
+        <div class="modal-hdr"><div class="modal-ttl">Edit Company</div><button class="modal-cls" onclick="closeModal('editModal')" aria-label="Close">&times;</button></div>
+        <div class="modal-body">
+            <div class="err-box" id="editErr" role="alert"></div>
+            <form id="editForm" onsubmit="saveEdit(event)">
+                <input type="hidden" id="eId">
+                <div class="fgrp"><label class="flbl" for="eName">Company Name <span class="req">*</span></label><input class="fc" id="eName" required></div>
+                <div class="fgrp"><label class="flbl" for="eShort">Short Name</label><input class="fc" id="eShort"></div>
+            </form>
+        </div>
+        <div class="modal-ftr">
+            <button class="btn btn-secondary" onclick="closeModal('editModal')">Cancel</button>
+            <button class="btn btn-primary" onclick="document.getElementById('editForm').requestSubmit()">Save</button>
+        </div>
+    </div>
+</div>
+
+<!-- Invite admin -->
+<div class="overlay" id="inviteModal">
+    <div class="modal">
+        <div class="modal-hdr"><div class="modal-ttl" id="inviteTitle">Invite Admin</div><button class="modal-cls" onclick="closeModal('inviteModal')" aria-label="Close">&times;</button></div>
+        <div class="modal-body">
+            <div class="err-box" id="inviteErr" role="alert"></div>
+            <form id="inviteForm" onsubmit="sendInvite(event)">
+                <input type="hidden" id="iId">
+                <div class="fgrp"><label class="flbl" for="iUser">Username <span class="req">*</span></label><input class="fc" id="iUser" required autocomplete="off"></div>
+            </form>
+        </div>
+        <div class="modal-ftr">
+            <button class="btn btn-secondary" onclick="closeModal('inviteModal')">Cancel</button>
+            <button class="btn btn-primary" onclick="document.getElementById('inviteForm').requestSubmit()">Create Invite</button>
+        </div>
+    </div>
+</div>
+
+<!-- Result (invite link / demo login) -->
+<div class="overlay" id="resultModal">
+    <div class="modal">
+        <div class="modal-hdr"><div class="modal-ttl" id="resultTitle">Done</div><button class="modal-cls" onclick="closeResult()" aria-label="Close">&times;</button></div>
+        <div class="modal-body" id="resultBody"></div>
+        <div class="modal-ftr"><button class="btn btn-primary" onclick="closeResult()">Done</button></div>
+    </div>
+</div>
+
+<div class="toasts" id="toasts" aria-live="polite"></div>
+
+<script>
+async function api(path, method='GET', body=null) {
+    const opts = { method, headers:{'Content-Type':'application/json'} };
+    if (body) opts.body = JSON.stringify(body);
+    const r = await fetch(path, opts);
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(data.error || 'Request failed');
+    return data;
+}
+function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function showErr(id, msg){ const el=document.getElementById(id); el.textContent=msg; el.style.display='block'; }
+function hideErr(id){ document.getElementById(id).style.display='none'; }
+
+function showLink(title, intro, link) {
+    document.getElementById('resultTitle').textContent = title;
+    document.getElementById('resultBody').innerHTML = `
+        <div class="ok-box">&#10003; ${esc(intro)}</div>
+        <div class="info-box">Send this link to them. It expires in 72 hours. They click it to set their password.
+            <div style="display:flex;gap:6px;margin-top:8px;">
+                <input class="fc" id="linkVal" readonly value="${esc(link)}" onclick="this.select()" style="font-size:12px;color:var(--blue);">
+                <button class="btn btn-secondary btn-sm" onclick="copyText(document.getElementById('linkVal').value)">Copy</button>
+            </div>
+        </div>`;
+    open_('resultModal');
+}
+function copyText(t){ navigator.clipboard.writeText(t).then(()=>toast('Copied')); }
+
+function openCreate(){ document.getElementById('createForm').reset(); hideErr('createErr'); open_('createModal'); }
+async function createCompany(e){
+    e.preventDefault();
+    const btn=document.getElementById('createBtn'); btn.disabled=true;
+    try {
+        const d = await api('/api/platform/companies','POST',{
+            name: document.getElementById('nName').value.trim(),
+            short_name: document.getElementById('nShort').value.trim(),
+            admin_username: document.getElementById('nAdmin').value.trim(),
+        });
+        closeModal('createModal');
+        showLink('Company Created', `${d.company.name} is set up.`, d.invite_link);
+    } catch(ex){ showErr('createErr', ex.message); }
+    finally { btn.disabled=false; }
+}
+
+function openEdit(btn){
+    hideErr('editErr');
+    document.getElementById('eId').value=btn.dataset.id;
+    document.getElementById('eName').value=btn.dataset.name;
+    document.getElementById('eShort').value=btn.dataset.short||'';
+    open_('editModal');
+}
+async function saveEdit(e){
+    e.preventDefault();
+    try {
+        await api('/api/platform/companies/'+document.getElementById('eId').value,'PUT',{
+            name: document.getElementById('eName').value.trim(),
+            short_name: document.getElementById('eShort').value.trim(),
+        });
+        location.reload();
+    } catch(ex){ showErr('editErr', ex.message); }
+}
+
+function openInviteAdmin(btn){
+    hideErr('inviteErr'); document.getElementById('inviteForm').reset();
+    document.getElementById('iId').value=btn.dataset.id;
+    document.getElementById('inviteTitle').textContent='Invite Admin — '+btn.dataset.name;
+    open_('inviteModal');
+}
+async function sendInvite(e){
+    e.preventDefault();
+    try {
+        const d = await api(`/api/platform/companies/${document.getElementById('iId').value}/invite-admin`,'POST',{
+            username: document.getElementById('iUser').value.trim(),
+        });
+        closeModal('inviteModal');
+        showLink('Invite Created','Admin invite created.', d.invite_link);
+    } catch(ex){ showErr('inviteErr', ex.message); }
+}
+
+async function setActive(btn, on){
+    const msg = on ? `Turn ${btn.dataset.name} back on?` : `Turn off ${btn.dataset.name}? Nobody at this company will be able to log in until you turn it back on. Their data is kept.`;
+    if (!confirm(msg)) return;
+    try { await api('/api/platform/companies/'+btn.dataset.id,'PUT',{active:on}); location.reload(); }
+    catch(ex){ toast(ex.message,'err'); }
+}
+
+async function seedDemo(){
+    if (!confirm('Build the demo company with sample bonds? If it already exists, its sample data is wiped and rebuilt. Real companies are never touched.')) return;
+    const btn=document.getElementById('demoBtn'); btn.disabled=true; btn.textContent='Building demo…';
+    try {
+        const d = await api('/api/platform/demo','POST');
+        document.getElementById('resultTitle').textContent='Demo Company Ready';
+        document.getElementById('resultBody').innerHTML = `
+            <div class="ok-box">&#10003; ${esc(d.company.name)}: ${d.bonds} sample bonds loaded.</div>
+            <div class="info-box">Sign out, then sign in with:<br>
+                <strong>Username:</strong> ${esc(d.username)}<br>
+                <strong>Password:</strong> <code>${esc(d.password)}</code>
+                <button class="btn btn-secondary btn-sm" style="margin-left:6px;" onclick="copyText('${esc(d.password)}')">Copy</button><br>
+                <span style="font-size:12px;">This password is shown once. Resetting the demo makes a new one.</span>
+            </div>`;
+        open_('resultModal');
+    } catch(ex){ toast(ex.message,'err'); }
+    finally { btn.disabled=false; btn.textContent='Load / Reset Demo Company'; }
+}
+
+function closeResult(){ closeModal('resultModal'); location.reload(); }
+function open_(id){ document.getElementById(id).classList.add('open'); }
+function closeModal(id){ document.getElementById(id).classList.remove('open'); }
+function toast(msg,type='ok'){
+    const t=document.createElement('div'); t.className='toast '+type; t.textContent=msg;
+    document.getElementById('toasts').appendChild(t); setTimeout(()=>t.remove(),3200);
+}
+document.addEventListener('keydown',e=>{ if(e.key==='Escape') document.querySelectorAll('.overlay').forEach(el=>el.classList.remove('open')); });
+</script>
+</body>
+</html>

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>IAMA BondDesk — Insurance Agency of Mid America</title>
+    <title>{{ company.app_title }} — {{ company.name }}</title>
     <style>
         :root {
             --navy:#0d1b2a; --navy-lt:#1b2d42; --blue:#1565c0; --blue-lt:#1976d2; --accent:#0288d1;
@@ -119,7 +119,7 @@
               <path d="M18 1.5 L33.5 7 L33.5 23 Q33.5 33 18 38.5 Q2.5 33 2.5 23 L2.5 7 Z" fill="none" stroke="#4fc3f7" stroke-width="1.5"/>
             </svg>
         </div>
-        <div><div class="hdr-title">IAMA BondDesk</div><div class="hdr-sub">Insurance Agency of Mid America</div></div>
+        <div><div class="hdr-title">{{ company.app_title }}</div><div class="hdr-sub">{{ company.name }}</div></div>
     </div>
     <div class="hdr-right">
         <a href="/" class="nav-btn">Bond Portfolio</a>
@@ -185,6 +185,23 @@
                 </tbody>
             </table>
         </div>
+    </div>
+
+    <div class="page-hdr" style="margin-top:32px;">
+        <div>
+            <div class="page-title">Company Settings</div>
+            <div class="page-sub">{{ company.name }} — only people in your company see these settings</div>
+        </div>
+    </div>
+    <div class="tcard" style="padding:20px 22px;">
+        <form id="companyForm" onsubmit="saveCompany(event)">
+            <div class="fgrp" style="max-width:420px;">
+                <label class="flbl" for="cProducers">Producers</label>
+                <textarea class="fc" id="cProducers" rows="8" placeholder="One name per line">{% for p in company.producer_list %}{{ p }}&#10;{% endfor %}</textarea>
+                <div class="hint">One name per line. These appear in the Producer dropdown on every bond.</div>
+            </div>
+            <button type="submit" class="btn btn-primary">Save Settings</button>
+        </form>
     </div>
 </main>
 
@@ -343,6 +360,15 @@ async function resendInvite(id, username) {
     try {
         await api(`/api/users/${id}/resend-invite`,'POST');
         toast('Invite resent to ' + username);
+    } catch(ex){ toast(ex.message,'err'); }
+}
+
+// Company settings
+async function saveCompany(e) {
+    e.preventDefault();
+    try {
+        await api('/api/company','PUT',{ producers: document.getElementById('cProducers').value.split(String.fromCharCode(10)) });
+        toast('Settings saved');
     } catch(ex){ toast(ex.message,'err'); }
 }
 

@@ -1,6 +1,6 @@
 from flask import Flask, render_template, request, jsonify, redirect, url_for
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
-from database import db, User, Bond, AuditLog, Reconciliation, ReconciliationItem
+from database import db, Company, User, Bond, AuditLog, Reconciliation, ReconciliationItem
 from email_service import send_invite_email
 from changelog import CHANGELOG
 from datetime import datetime, timedelta
@@ -31,7 +31,16 @@ db.init_app(app)
 
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
-login_manager.login_message = 'Please log in to access Bond Tracker.'
+login_manager.login_message = 'Please log in to access BondDesk.'
+
+# Name given to the company that existing (pre-multi-company) data is moved into.
+DEFAULT_COMPANY_NAME       = os.environ.get('DEFAULT_COMPANY_NAME', 'Insurance Agency of Mid America')
+DEFAULT_COMPANY_SHORT_NAME = os.environ.get('DEFAULT_COMPANY_SHORT_NAME', 'IAMA')
+DEFAULT_COMPANY_PRODUCERS  = [
+    'Larry Bixler', 'Logan Buckner', 'Cody McNeill', 'Mike McNeill', 'Kyle Reser',
+    'John Rogers', 'Mike Shannon', 'Todd Triplett', 'Kyle Vandruff',
+]
+COMPANY_ROLES = ('user', 'admin')   # roles a company admin may hand out; 'superadmin' is never assignable via the API
 
 
 @login_manager.user_loader
@@ -39,8 +48,57 @@ def load_user(user_id):
     return User.query.get(int(user_id))
 
 
+# ── Company isolation ──────────────────────────────────────────────────
+# Every query for company-owned data goes through these two helpers so a
+# user can only ever read or change rows that belong to their own company.
+
+def company_query(model):
+    """Query for `model` limited to the logged-in user's company."""
+    return model.query.filter(model.company_id == current_user.company_id)
+
+
+def get_owned_or_404(model, obj_id):
+    """Fetch one row by id, 404 if it doesn't exist OR belongs to another company."""
+    return company_query(model).filter(model.id == obj_id).first_or_404()
+
+
+def can_log_in(user):
+    if not user or not user.active:
+        return False
+    if user.is_superadmin:
+        return True
+    return user.company is not None and bool(user.company.active)
+
+
+# Endpoints a superadmin may use. Superadmins have no company, so every
+# company page/API is closed to them — they manage companies from /platform.
+SUPERADMIN_ENDPOINTS = {
+    'platform', 'platform_create_company', 'platform_update_company',
+    'platform_invite_admin', 'platform_seed_demo',
+    'logout', 'login', 'landing', 'accept_invite', 'change_password', 'static',
+}
+
+
+@app.before_request
+def enforce_access():
+    if not current_user.is_authenticated:
+        return None
+    # Deactivated user, or their company was switched off -> sign them out.
+    if not can_log_in(current_user):
+        logout_user()
+        if request.path.startswith('/api/'):
+            return jsonify({'error': 'Your account is not active.'}), 401
+        return redirect(url_for('login'))
+    if current_user.is_superadmin and request.endpoint not in SUPERADMIN_ENDPOINTS:
+        if request.path.startswith('/api/') or request.path.startswith('/reports/'):
+            return jsonify({'error': 'Platform admins do not have a company workspace.'}), 403
+        return redirect(url_for('platform'))
+    return None
+
+
 def log_action(bond, action, old_data=None):
     entry = AuditLog(
+        company_id  = bond.company_id,
         bond_id     = bond.id,
         bond_number = bond.bond_number,
         action      = action,
@@ -64,7 +122,7 @@ def login():
         password = data.get('password') or ''
 
         user = User.query.filter_by(username=username).first()
-        if user and user.active and user.check_password(password):
+        if user and can_log_in(user) and user.check_password(password):
             login_user(user, remember=True)
             if request.is_json:
                 return jsonify({'ok': True})
@@ -95,7 +153,7 @@ def landing():
 @app.route('/')
 @login_required
 def index():
-    return render_template('index.html', user=current_user)
+    return render_template('index.html', user=current_user, company=current_user.company)
 
 
 @app.route('/admin')
@@ -103,9 +161,24 @@ def index():
 def admin():
     if current_user.role != 'admin':
         return redirect(url_for('index'))
-    users   = User.query.order_by(User.created_at).all()
+    users   = company_query(User).order_by(User.created_at).all()
     app_url = os.environ.get('APP_URL', request.host_url.rstrip('/'))
-    return render_template('admin.html', user=current_user, users=users, app_url=app_url)
+    return render_template('admin.html', user=current_user, users=users, app_url=app_url,
+                           company=current_user.company)
+
+
+@app.route('/api/company', methods=['PUT'])
+@login_required
+def update_company_settings():
+    if current_user.role != 'admin':
+        return jsonify({'error': 'Unauthorized'}), 403
+    data = request.get_json() or {}
+    company = current_user.company
+    if 'producers' in data:
+        names = data['producers'] if isinstance(data['producers'], list) else str(data['producers']).splitlines()
+        company.producers = '\n'.join(str(n).strip() for n in names if str(n).strip())
+    db.session.commit()
+    return jsonify(company.to_dict())
 
 
 # ── Bond API ───────────────────────────────────────────────────────────
@@ -113,7 +186,7 @@ def admin():
 @app.route('/api/bonds', methods=['GET'])
 @login_required
 def get_bonds():
-    bonds = Bond.query.order_by(Bond.created_at.desc()).all()
+    bonds = company_query(Bond).order_by(Bond.created_at.desc()).all()
     return jsonify([b.to_dict() for b in bonds])
 
 
@@ -123,6 +196,7 @@ def create_bond():
     data = request.get_json()
 
     bond = Bond(
+        company_id           = current_user.company_id,
         bond_number          = None,
         bond_type            = data['bond_type'],
         principal            = data['principal'].strip(),
@@ -155,7 +229,7 @@ def create_bond():
 @app.route('/api/bonds/<int:bond_id>', methods=['PUT'])
 @login_required
 def update_bond(bond_id):
-    bond     = Bond.query.get_or_404(bond_id)
+    bond     = get_owned_or_404(Bond, bond_id)
     data     = request.get_json()
     old_data = bond.to_dict()
     old_status = bond.status
@@ -190,7 +264,7 @@ def update_bond(bond_id):
 @app.route('/api/bonds/<int:bond_id>/low-bid', methods=['PUT'])
 @login_required
 def toggle_low_bid(bond_id):
-    bond = Bond.query.get_or_404(bond_id)
+    bond = get_owned_or_404(Bond, bond_id)
     old_data = bond.to_dict()
     data = request.get_json()
 
@@ -207,10 +281,11 @@ def toggle_low_bid(bond_id):
 @app.route('/api/bonds/<int:bond_id>', methods=['DELETE'])
 @login_required
 def delete_bond(bond_id):
-    bond     = Bond.query.get_or_404(bond_id)
+    bond     = get_owned_or_404(Bond, bond_id)
     old_data = bond.to_dict()
 
     entry = AuditLog(
+        company_id  = bond.company_id,
         bond_id     = bond.id,
         bond_number = bond.bond_number,
         action      = 'deleted',
@@ -226,8 +301,9 @@ def delete_bond(bond_id):
 @app.route('/api/bonds/<int:bond_id>/create-final', methods=['POST'])
 @login_required
 def create_final_bond(bond_id):
-    orig = Bond.query.get_or_404(bond_id)
+    orig = get_owned_or_404(Bond, bond_id)
     bond = Bond(
+        company_id          = orig.company_id,
         bond_number         = None,
         bond_type           = 'Final Bond',
         principal           = orig.principal,
@@ -259,7 +335,7 @@ def create_final_bond(bond_id):
 @app.route('/api/audit')
 @login_required
 def get_audit():
-    logs = AuditLog.query.order_by(AuditLog.changed_at.desc()).limit(500).all()
+    logs = company_query(AuditLog).order_by(AuditLog.changed_at.desc()).limit(500).all()
     return jsonify([l.to_dict() for l in logs])
 
 
@@ -268,7 +344,7 @@ def get_audit():
 @app.route('/api/reconciliations', methods=['GET'])
 @login_required
 def get_reconciliations():
-    recs = Reconciliation.query.order_by(Reconciliation.created_at.desc()).all()
+    recs = company_query(Reconciliation).order_by(Reconciliation.created_at.desc()).all()
     return jsonify([r.to_dict() for r in recs])
 
 
@@ -277,6 +353,7 @@ def get_reconciliations():
 def create_reconciliation():
     data = request.get_json()
     rec = Reconciliation(
+        company_id = current_user.company_id,
         carrier    = data.get('carrier', '').strip(),
         period     = data.get('period', ''),
         status     = data.get('status', 'In Progress'),
@@ -291,14 +368,14 @@ def create_reconciliation():
 @app.route('/api/reconciliations/<int:rec_id>', methods=['GET'])
 @login_required
 def get_reconciliation(rec_id):
-    rec = Reconciliation.query.get_or_404(rec_id)
+    rec = get_owned_or_404(Reconciliation, rec_id)
     return jsonify(rec.to_dict(include_items=True))
 
 
 @app.route('/api/reconciliations/<int:rec_id>', methods=['PUT'])
 @login_required
 def update_reconciliation(rec_id):
-    rec = Reconciliation.query.get_or_404(rec_id)
+    rec = get_owned_or_404(Reconciliation, rec_id)
     data = request.get_json()
     rec.carrier = data.get('carrier', rec.carrier).strip()
     rec.period  = data.get('period',  rec.period)
@@ -311,7 +388,7 @@ def update_reconciliation(rec_id):
 @app.route('/api/reconciliations/<int:rec_id>', methods=['DELETE'])
 @login_required
 def delete_reconciliation(rec_id):
-    rec = Reconciliation.query.get_or_404(rec_id)
+    rec = get_owned_or_404(Reconciliation, rec_id)
     db.session.delete(rec)
     db.session.commit()
     return jsonify({'ok': True})
@@ -320,7 +397,7 @@ def delete_reconciliation(rec_id):
 @app.route('/api/reconciliations/<int:rec_id>/items', methods=['POST'])
 @login_required
 def add_recon_item(rec_id):
-    Reconciliation.query.get_or_404(rec_id)
+    get_owned_or_404(Reconciliation, rec_id)
     data = request.get_json()
     ca = data.get('carrier_amount') or None
     oa = data.get('our_amount') or None
@@ -348,6 +425,7 @@ def add_recon_item(rec_id):
 @app.route('/api/reconciliations/<int:rec_id>/items/<int:item_id>', methods=['PUT'])
 @login_required
 def update_recon_item(rec_id, item_id):
+    get_owned_or_404(Reconciliation, rec_id)
     item = ReconciliationItem.query.filter_by(id=item_id, recon_id=rec_id).first_or_404()
     data = request.get_json()
     ca = data.get('carrier_amount') or None
@@ -369,6 +447,7 @@ def update_recon_item(rec_id, item_id):
 @app.route('/api/reconciliations/<int:rec_id>/items/<int:item_id>', methods=['DELETE'])
 @login_required
 def delete_recon_item(rec_id, item_id):
+    get_owned_or_404(Reconciliation, rec_id)
     item = ReconciliationItem.query.filter_by(id=item_id, recon_id=rec_id).first_or_404()
     db.session.delete(item)
     db.session.commit()
@@ -384,15 +463,18 @@ def create_user():
         return jsonify({'error': 'Unauthorized'}), 403
     data = request.get_json()
 
+    if data.get('role', 'user') not in COMPANY_ROLES:
+        return jsonify({'error': 'Invalid role.'}), 400
     if User.query.filter_by(username=data.get('username', '').strip()).first():
-        return jsonify({'error': 'Username already exists.'}), 400
+        return jsonify({'error': 'That username is taken.'}), 400
     if User.query.filter_by(email=data.get('email', '').strip()).first():
-        return jsonify({'error': 'Email already exists.'}), 400
+        return jsonify({'error': 'That email is already in use.'}), 400
 
     user = User(
-        username = data['username'].strip(),
-        email    = data['email'].strip(),
-        role     = data.get('role', 'user'),
+        company_id = current_user.company_id,
+        username   = data['username'].strip(),
+        email      = data['email'].strip(),
+        role       = data.get('role', 'user'),
     )
     user.set_password(data['password'])
     db.session.add(user)
@@ -405,8 +487,10 @@ def create_user():
 def update_user(user_id):
     if current_user.role != 'admin':
         return jsonify({'error': 'Unauthorized'}), 403
-    user = User.query.get_or_404(user_id)
+    user = get_owned_or_404(User, user_id)
     data = request.get_json()
+    if data.get('role', user.role) not in COMPANY_ROLES:
+        return jsonify({'error': 'Invalid role.'}), 400
 
     user.email  = data.get('email', user.email).strip()
     user.role   = data.get('role', user.role)
@@ -424,7 +508,7 @@ def delete_user(user_id):
         return jsonify({'error': 'Unauthorized'}), 403
     if user_id == current_user.id:
         return jsonify({'error': 'You cannot delete your own account.'}), 400
-    user = User.query.get_or_404(user_id)
+    user = get_owned_or_404(User, user_id)
     db.session.delete(user)
     db.session.commit()
     return jsonify({'ok': True})
@@ -440,11 +524,14 @@ def invite_user():
     username = data.get('username', '').strip()
     if not username:
         return jsonify({'error': 'Username is required.'}), 400
+    if data.get('role', 'user') not in COMPANY_ROLES:
+        return jsonify({'error': 'Invalid role.'}), 400
     if User.query.filter_by(username=username).first():
-        return jsonify({'error': 'Username already exists.'}), 400
+        return jsonify({'error': 'That username is taken.'}), 400
 
     token = secrets.token_urlsafe(32)
     user  = User(
+        company_id     = current_user.company_id,
         username       = username,
         email          = f'{username}@noemail.local',
         role           = data.get('role', 'user'),
@@ -463,7 +550,7 @@ def invite_user():
 def accept_invite(token):
     user = User.query.filter_by(invite_token=token).first()
 
-    if not user:
+    if not user or (not user.is_superadmin and (not user.company or not user.company.active)):
         return render_template('accept_invite.html', error='This invite link is invalid.')
     if user.invite_expires and datetime.utcnow() > user.invite_expires:
         return render_template('accept_invite.html', error='This invite link has expired. Ask your administrator to resend the invite.')
@@ -475,10 +562,10 @@ def accept_invite(token):
         confirm  = request.form.get('confirm', '')
         if len(password) < 8:
             return render_template('accept_invite.html', token=token, username=user.username,
-                                   error='Password must be at least 8 characters.')
+                                   company=user.company, error='Password must be at least 8 characters.')
         if password != confirm:
             return render_template('accept_invite.html', token=token, username=user.username,
-                                   error='Passwords do not match.')
+                                   company=user.company, error='Passwords do not match.')
 
         user.set_password(password)
         user.active         = True
@@ -488,7 +575,7 @@ def accept_invite(token):
         login_user(user)
         return redirect(url_for('index'))
 
-    return render_template('accept_invite.html', token=token, username=user.username)
+    return render_template('accept_invite.html', token=token, username=user.username, company=user.company)
 
 
 @app.route('/api/users/<int:user_id>/resend-invite', methods=['POST'])
@@ -496,7 +583,7 @@ def accept_invite(token):
 def resend_invite(user_id):
     if current_user.role != 'admin':
         return jsonify({'error': 'Unauthorized'}), 403
-    user = User.query.get_or_404(user_id)
+    user = get_owned_or_404(User, user_id)
     if user.password_hash:
         return jsonify({'error': 'User has already accepted their invite.'}), 400
 
@@ -506,9 +593,18 @@ def resend_invite(user_id):
     db.session.commit()
 
     invite_link = url_for('accept_invite', token=token, _external=True)
-    threading.Thread(target=send_invite_email, args=(user.email, user.username, invite_link), daemon=True).start()
+    threading.Thread(target=send_invite_email,
+                     args=(user.email, user.username, invite_link, user.company.app_title, user.company.name),
+                     daemon=True).start()
 
     return jsonify({'ok': True})
+
+
+def report_prefix():
+    """Safe filename prefix for downloaded reports, e.g. 'IAMA'."""
+    c = current_user.company
+    raw = (c.short_name or c.name or 'BondDesk') if c else 'BondDesk'
+    return ''.join(ch for ch in raw if ch.isalnum()) or 'BondDesk'
 
 
 @app.route('/reports/pdf')
@@ -526,7 +622,7 @@ def generate_report():
     from_date        = request.args.get('from_date', '')
     to_date          = request.args.get('to_date', '')
 
-    query = Bond.query
+    query = company_query(Bond)
     if status_filter:
         query = query.filter(Bond.status == status_filter)
     if type_filter:
@@ -552,14 +648,16 @@ def generate_report():
     pdf.add_page()
 
     # ── Header ──────────────────────────────────────────────
+    company = current_user.company
+    latin1  = lambda s: ''.join(c if ord(c) < 256 else '?' for c in (s or ''))
     pdf.set_font('Helvetica', 'B', 18)
     pdf.set_text_color(13, 27, 42)
-    pdf.cell(0, 10, 'IAMA BondDesk', align='C')
+    pdf.cell(0, 10, latin1(company.app_title), align='C')
     pdf.ln(10)
 
     pdf.set_font('Helvetica', '', 10)
     pdf.set_text_color(95, 99, 104)
-    pdf.cell(0, 6, 'Insurance Agency of Mid America', align='C')
+    pdf.cell(0, 6, latin1(company.name), align='C')
     pdf.ln(6)
 
     pdf.ln(2)
@@ -665,7 +763,7 @@ def generate_report():
         align='C')
 
     pdf_bytes = bytes(pdf.output())
-    fname = f'IAMA-BondReport-{datetime.utcnow().strftime("%Y%m%d")}.pdf'
+    fname = f'{report_prefix()}-BondReport-{datetime.utcnow().strftime("%Y%m%d")}.pdf'
     resp = make_response(pdf_bytes)
     resp.headers['Content-Type'] = 'application/pdf'
     resp.headers['Content-Disposition'] = f'attachment; filename={fname}'
@@ -689,7 +787,7 @@ def generate_excel():
     from_date        = request.args.get('from_date', '')
     to_date          = request.args.get('to_date', '')
 
-    query = Bond.query
+    query = company_query(Bond)
     if status_filter:
         query = query.filter(Bond.status == status_filter)
     if type_filter:
@@ -757,7 +855,7 @@ def generate_excel():
     buf = io.BytesIO()
     wb.save(buf)
     buf.seek(0)
-    fname = f'IAMA-BondReport-{datetime.utcnow().strftime("%Y%m%d")}.xlsx'
+    fname = f'{report_prefix()}-BondReport-{datetime.utcnow().strftime("%Y%m%d")}.xlsx'
     resp = make_response(buf.getvalue())
     resp.headers['Content-Type'] = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
     resp.headers['Content-Disposition'] = f'attachment; filename={fname}'
@@ -864,7 +962,196 @@ def mark_version_seen():
     return jsonify({'ok': True})
 
 
+# ── Platform (superadmin only) ─────────────────────────────────────────
+# The platform owner creates companies and their first admin here. Superadmins
+# never see a company's bonds — only names and counts.
+
+def _require_superadmin():
+    if not current_user.is_superadmin:
+        return jsonify({'error': 'Unauthorized'}), 403
+    return None
+
+
+def _new_invite(company_id, username, role):
+    token = secrets.token_urlsafe(32)
+    user = User(
+        company_id     = company_id,
+        username       = username,
+        email          = f'{username}@noemail.local',
+        role           = role,
+        active         = False,
+        invite_token   = token,
+        invite_expires = datetime.utcnow() + timedelta(hours=72),
+    )
+    db.session.add(user)
+    return user, url_for('accept_invite', token=token, _external=True)
+
+
+@app.route('/platform')
+@login_required
+def platform():
+    if not current_user.is_superadmin:
+        return redirect(url_for('index'))
+    from sqlalchemy import func
+    user_counts = dict(db.session.query(User.company_id, func.count(User.id)).group_by(User.company_id).all())
+    bond_counts = dict(db.session.query(Bond.company_id, func.count(Bond.id)).group_by(Bond.company_id).all())
+    companies = Company.query.order_by(Company.name).all()
+    rows = [dict(c.to_dict(), users=user_counts.get(c.id, 0), bonds=bond_counts.get(c.id, 0)) for c in companies]
+    from demo_seed import DEMO_COMPANY_NAME
+    return render_template('platform.html', user=current_user, companies=rows, demo_name=DEMO_COMPANY_NAME)
+
+
+@app.route('/api/platform/companies', methods=['POST'])
+@login_required
+def platform_create_company():
+    denied = _require_superadmin()
+    if denied:
+        return denied
+    data       = request.get_json() or {}
+    name       = (data.get('name') or '').strip()
+    short_name = (data.get('short_name') or '').strip()
+    admin_name = (data.get('admin_username') or '').strip()
+    if not name:
+        return jsonify({'error': 'Company name is required.'}), 400
+    if not admin_name:
+        return jsonify({'error': 'Admin username is required.'}), 400
+    if User.query.filter_by(username=admin_name).first():
+        return jsonify({'error': 'That username is taken.'}), 400
+
+    company = Company(name=name, short_name=short_name or None, producers='', active=True)
+    db.session.add(company)
+    db.session.flush()
+    _, link = _new_invite(company.id, admin_name, 'admin')
+    db.session.commit()
+    return jsonify({'company': company.to_dict(), 'invite_link': link}), 201
+
+
+@app.route('/api/platform/companies/<int:company_id>', methods=['PUT'])
+@login_required
+def platform_update_company(company_id):
+    denied = _require_superadmin()
+    if denied:
+        return denied
+    company = Company.query.get_or_404(company_id)
+    data = request.get_json() or {}
+    if 'name' in data:
+        if not str(data['name']).strip():
+            return jsonify({'error': 'Company name is required.'}), 400
+        company.name = str(data['name']).strip()
+    if 'short_name' in data:
+        company.short_name = str(data['short_name']).strip() or None
+    if 'active' in data:
+        company.active = bool(data['active'])
+    db.session.commit()
+    return jsonify(company.to_dict())
+
+
+@app.route('/api/platform/companies/<int:company_id>/invite-admin', methods=['POST'])
+@login_required
+def platform_invite_admin(company_id):
+    denied = _require_superadmin()
+    if denied:
+        return denied
+    company  = Company.query.get_or_404(company_id)
+    username = ((request.get_json() or {}).get('username') or '').strip()
+    if not username:
+        return jsonify({'error': 'Username is required.'}), 400
+    if User.query.filter_by(username=username).first():
+        return jsonify({'error': 'That username is taken.'}), 400
+    _, link = _new_invite(company.id, username, 'admin')
+    db.session.commit()
+    return jsonify({'ok': True, 'invite_link': link}), 201
+
+
+@app.route('/api/platform/demo', methods=['POST'])
+@login_required
+def platform_seed_demo():
+    denied = _require_superadmin()
+    if denied:
+        return denied
+    from demo_seed import seed_demo_company
+    password = secrets.token_urlsafe(9)
+    result = seed_demo_company(password=password)
+    return jsonify(result), 201
+
+
 # ── Startup ────────────────────────────────────────────────────────────
+
+def migrate_to_multi_company():
+    """Move a single-company database to multi-company. Safe to run on every boot.
+
+    1. Adds company_id to users / bonds / reconciliations / audit_log.
+    2. The FIRST time (no companies exist yet), creates the default company and
+       moves every existing row into it, so current users see no change.
+    """
+    from sqlalchemy import text
+    is_pg  = 'postgresql' in str(db.engine.url)
+    tables = ('users', 'bonds', 'reconciliations', 'audit_log')
+    with db.engine.connect() as conn:
+        if is_pg:
+            # Several gunicorn workers may boot at once — only one migrates at a time.
+            conn.execute(text('SELECT pg_advisory_lock(7310001)'))
+        try:
+            for t in tables:
+                if is_pg:
+                    conn.execute(text(f'ALTER TABLE {t} ADD COLUMN IF NOT EXISTS company_id INTEGER REFERENCES companies(id)'))
+                else:
+                    cols = {r[1] for r in conn.execute(text(f'PRAGMA table_info({t})'))}
+                    if 'company_id' not in cols:
+                        conn.execute(text(f'ALTER TABLE {t} ADD COLUMN company_id INTEGER REFERENCES companies(id)'))
+            if is_pg:
+                # bond_number was unique across the whole app; it must not collide between companies.
+                conn.execute(text('ALTER TABLE bonds DROP CONSTRAINT IF EXISTS bonds_bond_number_key'))
+            for t in ('bonds', 'reconciliations', 'audit_log'):
+                conn.execute(text(f'CREATE INDEX IF NOT EXISTS ix_{t}_company_id ON {t} (company_id)'))
+            conn.commit()
+
+            has_companies = conn.execute(text('SELECT 1 FROM companies LIMIT 1')).first() is not None
+            if not has_companies:
+                conn.execute(text(
+                    'INSERT INTO companies (name, short_name, producers, active, created_at) '
+                    'VALUES (:name, :short, :producers, :active, :created)'),
+                    {'name': DEFAULT_COMPANY_NAME, 'short': DEFAULT_COMPANY_SHORT_NAME or None,
+                     'producers': '\n'.join(DEFAULT_COMPANY_PRODUCERS), 'active': True,
+                     'created': datetime.utcnow()})
+                default_id = conn.execute(text('SELECT id FROM companies ORDER BY id LIMIT 1')).scalar()
+                conn.execute(text("UPDATE users SET company_id = :c WHERE company_id IS NULL AND role <> 'superadmin'"), {'c': default_id})
+                for t in ('bonds', 'reconciliations', 'audit_log'):
+                    conn.execute(text(f'UPDATE {t} SET company_id = :c WHERE company_id IS NULL'), {'c': default_id})
+                conn.commit()
+                print(f'[migrate] Created company #{default_id} "{DEFAULT_COMPANY_NAME}" and moved existing data into it.')
+
+            # Anything still without a company is NOT silently assigned to someone — flag it loudly.
+            for t in ('bonds', 'reconciliations', 'audit_log'):
+                orphans = conn.execute(text(f'SELECT COUNT(*) FROM {t} WHERE company_id IS NULL')).scalar()
+                if orphans:
+                    print(f'[migrate] WARNING: {orphans} row(s) in {t} have no company and are hidden from everyone.')
+                elif is_pg:
+                    conn.execute(text(f'ALTER TABLE {t} ALTER COLUMN company_id SET NOT NULL'))
+            conn.commit()
+        finally:
+            if is_pg:
+                conn.execute(text('SELECT pg_advisory_unlock(7310001)'))
+                conn.commit()
+
+
+def ensure_superadmin():
+    """Create the platform owner account from SUPERADMIN_USERNAME / SUPERADMIN_PASSWORD if it doesn't exist."""
+    username = os.environ.get('SUPERADMIN_USERNAME', '').strip()
+    password = os.environ.get('SUPERADMIN_PASSWORD', '')
+    if not username or not password:
+        return
+    existing = User.query.filter_by(username=username).first()
+    if existing:
+        if not existing.is_superadmin:
+            print(f'[startup] WARNING: SUPERADMIN_USERNAME "{username}" belongs to a company user — not changing it.')
+        return
+    sa = User(username=username, email=f'{username}@platform.local', role='superadmin', active=True, company_id=None)
+    sa.set_password(password)
+    db.session.add(sa)
+    db.session.commit()
+    print(f'[startup] Platform admin "{username}" created.')
+
 
 with app.app_context():
     db.create_all()
@@ -928,13 +1215,18 @@ with app.app_context():
                 conn.commit()
     except Exception:
         pass
+    # Not wrapped in try/except on purpose: if this fails the app must not start
+    # with company data unscoped.
+    migrate_to_multi_company()
     if not User.query.first():
-        _admin = User(username='admin', email='admin@company.com', role='admin', active=True)
+        _admin = User(username='admin', email='admin@company.com', role='admin', active=True,
+                      company_id=Company.query.order_by(Company.id).first().id)
         _admin.set_password('changeme123')
         db.session.add(_admin)
         db.session.commit()
         print('Default admin created — username: admin  password: changeme123')
         print('IMPORTANT: Change this password immediately after first login.')
+    ensure_superadmin()
 
 
 if __name__ == '__main__':

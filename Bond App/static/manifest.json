@@ -1,7 +1,7 @@
 {
-  "name": "IAMA BondDesk",
+  "name": "BondDesk",
   "short_name": "BondDesk",
-  "description": "Insurance Agency of Mid America Bond Tracker",
+  "description": "Surety bond tracking for agencies",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#0d1b2a",
