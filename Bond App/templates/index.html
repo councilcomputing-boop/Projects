@@ -201,9 +201,15 @@
             .bonds-table th:nth-child(3), .bonds-table td:nth-child(3),
             .bonds-table th:nth-child(4), .bonds-table td:nth-child(4) { display: none; }
         }
+        /* Platform admin viewing a company: read-only — hide every action that changes data */
+        .view-banner { background:#fff3e0; color:#8a3a00; border-bottom:1px solid #ffcc80; padding:10px 28px; font-size:14px; display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; }
+        .view-banner a { color:#8a3a00; font-weight:700; }
+        .read-only #uploadLabel, .read-only [onclick="openAdd()"],
+        .read-only [onclick^="openEdit"], .read-only [onclick^="openDel"], .read-only [onclick^="createFinalBond"],
+        .read-only select[onchange^="setLowBid"], .read-only #viewEditBtn, .read-only #viewFinalBtn { display:none !important; }
     </style>
 </head>
-<body>
+<body{% if read_only %} class="read-only"{% endif %}>
 
 <!-- Header -->
 <header class="hdr">
@@ -308,6 +314,12 @@
         </div>
     </div>
 </header>
+{% if read_only %}
+<div class="view-banner" role="status">
+    <span>&#128065; You're viewing <strong>{{ company.name }}</strong> as platform admin. Read-only, nothing can be changed. This visit is recorded in their Activity Log.</span>
+    <a href="/platform/exit-view">&larr; Back to Platform</a>
+</div>
+{% endif %}
 
 <!-- Main -->
 <main class="main">
@@ -1285,7 +1297,7 @@ async function loadActivity() {
 
     tbody.innerHTML = logs.map(l => {
         const cls = {created:'la-created',updated:'la-updated',deleted:'la-deleted'}[l.action]||'la-updated';
-        const label = {created:'Added',updated:'Updated',deleted:'Deleted'}[l.action]||l.action;
+        const label = {created:'Added',updated:'Updated',deleted:'Deleted',viewed:'Viewed'}[l.action]||l.action;
         let details = '';
         if (l.action==='updated' && l.old_values && l.new_values) {
             const changed = [];
@@ -1303,6 +1315,8 @@ async function loadActivity() {
             details=`<div class="diff-list">${changed.join('<br>')}</div>`;
         } else if (l.action==='created' && l.new_values) {
             details=`<div class="diff-list"><span class="diff-field">Principal:</span> ${esc(l.new_values.principal||'')} &middot; <span class="diff-field">Status:</span> ${esc(l.new_values.status||'')}</div>`;
+        } else if (l.action==='viewed') {
+            details=`<div class="diff-list">${esc((l.new_values&&l.new_values.note)||'Opened by platform admin')}</div>`;
         } else if (l.action==='deleted' && l.old_values) {
             details=`<div class="diff-list"><span class="diff-field">Principal:</span> ${esc(l.old_values.principal||'')}</div>`;
         }
@@ -1599,7 +1613,7 @@ async function dismissWhatsNew() {
 }
 
 loadBonds();
-checkWhatsNew();
+{% if not read_only %}checkWhatsNew();{% endif %}
 </script>
 </body>
 </html>

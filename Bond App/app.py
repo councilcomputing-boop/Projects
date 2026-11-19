@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, jsonify, redirect, url_for
+from flask import Flask, render_template, request, jsonify, redirect, url_for, session
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from database import db, Company, User, Bond, AuditLog, Reconciliation, ReconciliationItem
 from email_service import send_invite_email
@@ -52,9 +52,23 @@ def load_user(user_id):
 # Every query for company-owned data goes through these two helpers so a
 # user can only ever read or change rows that belong to their own company.
 
+def active_company_id():
+    """The company whose data this request may touch.
+    Normal users: their own company. Superadmin: only the company they chose
+    to view (read-only) from the Platform page, otherwise none."""
+    if current_user.is_superadmin:
+        return session.get('view_company_id')
+    return current_user.company_id
+
+
+def active_company():
+    cid = active_company_id()
+    return db.session.get(Company, cid) if cid else None
+
+
 def company_query(model):
-    """Query for `model` limited to the logged-in user's company."""
-    return model.query.filter(model.company_id == current_user.company_id)
+    """Query for `model` limited to the active company."""
+    return model.query.filter(model.company_id == active_company_id())
 
 
 def get_owned_or_404(model, obj_id):
@@ -74,9 +88,11 @@ def can_log_in(user):
 # company page/API is closed to them — they manage companies from /platform.
 SUPERADMIN_ENDPOINTS = {
     'platform', 'platform_create_company', 'platform_update_company',
-    'platform_invite_admin', 'platform_seed_demo',
+    'platform_invite_admin', 'platform_seed_demo', 'platform_view_company', 'platform_exit_view',
     'logout', 'login', 'landing', 'accept_invite', 'change_password', 'static',
 }
+# Extra endpoints a superadmin may use while viewing a company — read-only only.
+VIEW_ONLY_ENDPOINTS = {'index', 'get_bonds', 'get_audit', 'generate_report', 'generate_excel'}
 
 
 @app.before_request
@@ -89,7 +105,8 @@ def enforce_access():
         if request.path.startswith('/api/'):
             return jsonify({'error': 'Your account is not active.'}), 401
         return redirect(url_for('login'))
-    if current_user.is_superadmin and request.endpoint not in SUPERADMIN_ENDPOINTS:
+    allowed = SUPERADMIN_ENDPOINTS | (VIEW_ONLY_ENDPOINTS if session.get('view_company_id') else set())
+    if current_user.is_superadmin and request.endpoint not in allowed:
         if request.path.startswith('/api/') or request.path.startswith('/reports/'):
             return jsonify({'error': 'Platform admins do not have a company workspace.'}), 403
         return redirect(url_for('platform'))
@@ -123,7 +140,10 @@ def login():
 
         user = User.query.filter_by(username=username).first()
         if user and can_log_in(user) and user.check_password(password):
+            session.pop('view_company_id', None)
             login_user(user, remember=True)
+            user.last_login_at = datetime.utcnow()
+            db.session.commit()
             if request.is_json:
                 return jsonify({'ok': True})
             return redirect(url_for('index'))
@@ -139,6 +159,7 @@ def login():
 @app.route('/logout')
 @login_required
 def logout():
+    session.pop('view_company_id', None)
     logout_user()
     return redirect(url_for('login'))
 
@@ -153,7 +174,11 @@ def landing():
 @app.route('/')
 @login_required
 def index():
-    return render_template('index.html', user=current_user, company=current_user.company)
+    company = active_company()
+    if company is None:
+        return redirect(url_for('platform'))
+    return render_template('index.html', user=current_user, company=company,
+                           read_only=current_user.is_superadmin)
 
 
 @app.route('/admin')
@@ -571,6 +596,7 @@ def accept_invite(token):
         user.active         = True
         user.invite_token   = None
         user.invite_expires = None
+        user.last_login_at  = datetime.utcnow()
         db.session.commit()
         login_user(user)
         return redirect(url_for('index'))
@@ -602,7 +628,7 @@ def resend_invite(user_id):
 
 def report_prefix():
     """Safe filename prefix for downloaded reports, e.g. 'IAMA'."""
-    c = current_user.company
+    c = active_company()
     raw = (c.short_name or c.name or 'BondDesk') if c else 'BondDesk'
     return ''.join(ch for ch in raw if ch.isalnum()) or 'BondDesk'
 
@@ -648,7 +674,7 @@ def generate_report():
     pdf.add_page()
 
     # ── Header ──────────────────────────────────────────────
-    company = current_user.company
+    company = active_company()
     latin1  = lambda s: ''.join(c if ord(c) < 256 else '?' for c in (s or ''))
     pdf.set_font('Helvetica', 'B', 18)
     pdf.set_text_color(13, 27, 42)
@@ -992,11 +1018,31 @@ def _new_invite(company_id, username, role):
 def platform():
     if not current_user.is_superadmin:
         return redirect(url_for('index'))
+    session.pop('view_company_id', None)
     from sqlalchemy import func
-    user_counts = dict(db.session.query(User.company_id, func.count(User.id)).group_by(User.company_id).all())
-    bond_counts = dict(db.session.query(Bond.company_id, func.count(Bond.id)).group_by(Bond.company_id).all())
+    from database import fmt
+    now = datetime.utcnow()
+
+    def per_company(model, col, where=None):
+        q = db.session.query(model.company_id, col)
+        if where is not None:
+            q = q.filter(where)
+        return dict(q.group_by(model.company_id).all())
+
+    users_total  = per_company(User, func.count(User.id))
+    users_active = per_company(User, func.count(User.id), User.active.is_(True))
+    last_login   = per_company(User, func.max(User.last_login_at))
+    bonds_total  = per_company(Bond, func.count(Bond.id))
+    bonds_7d     = per_company(Bond, func.count(Bond.id), Bond.created_at >= now - timedelta(days=7))
+    bonds_30d    = per_company(Bond, func.count(Bond.id), Bond.created_at >= now - timedelta(days=30))
+    last_change  = per_company(AuditLog, func.max(AuditLog.changed_at), AuditLog.action != 'viewed')
+
     companies = Company.query.order_by(Company.name).all()
-    rows = [dict(c.to_dict(), users=user_counts.get(c.id, 0), bonds=bond_counts.get(c.id, 0)) for c in companies]
+    rows = [dict(c.to_dict(),
+                 users=users_total.get(c.id, 0), users_active=users_active.get(c.id, 0),
+                 bonds=bonds_total.get(c.id, 0), bonds_7d=bonds_7d.get(c.id, 0), bonds_30d=bonds_30d.get(c.id, 0),
+                 last_login=fmt(last_login.get(c.id)), last_activity=fmt(last_change.get(c.id)))
+            for c in companies]
     from demo_seed import DEMO_COMPANY_NAME
     return render_template('platform.html', user=current_user, companies=rows, demo_name=DEMO_COMPANY_NAME)
 
@@ -1063,6 +1109,33 @@ def platform_invite_admin(company_id):
     return jsonify({'ok': True, 'invite_link': link}), 201
 
 
+@app.route('/platform/view/<int:company_id>', methods=['POST'])
+@login_required
+def platform_view_company(company_id):
+    """Open a company's screens read-only. Recorded in that company's Activity Log."""
+    if not current_user.is_superadmin:
+        return redirect(url_for('index'))
+    company = Company.query.get_or_404(company_id)
+    db.session.add(AuditLog(
+        company_id  = company.id,
+        bond_id     = None,
+        bond_number = None,
+        action      = 'viewed',
+        changed_by  = f'{current_user.username} (platform admin)',
+        new_values  = json.dumps({'note': 'Opened this account read-only from the BondDesk platform'}),
+    ))
+    db.session.commit()
+    session['view_company_id'] = company.id
+    return redirect(url_for('index'))
+
+
+@app.route('/platform/exit-view')
+@login_required
+def platform_exit_view():
+    session.pop('view_company_id', None)
+    return redirect(url_for('platform'))
+
+
 @app.route('/api/platform/demo', methods=['POST'])
 @login_required
 def platform_seed_demo():
@@ -1099,6 +1172,10 @@ def migrate_to_multi_company():
                     cols = {r[1] for r in conn.execute(text(f'PRAGMA table_info({t})'))}
                     if 'company_id' not in cols:
                         conn.execute(text(f'ALTER TABLE {t} ADD COLUMN company_id INTEGER REFERENCES companies(id)'))
+            if is_pg:
+                conn.execute(text('ALTER TABLE users ADD COLUMN IF NOT EXISTS last_login_at TIMESTAMP'))
+            elif 'last_login_at' not in {r[1] for r in conn.execute(text('PRAGMA table_info(users)'))}:
+                conn.execute(text('ALTER TABLE users ADD COLUMN last_login_at DATETIME'))
             if is_pg:
                 # bond_number was unique across the whole app; it must not collide between companies.
                 conn.execute(text('ALTER TABLE bonds DROP CONSTRAINT IF EXISTS bonds_bond_number_key'))

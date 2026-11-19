@@ -53,6 +53,7 @@ class User(UserMixin, db.Model):
     invite_token   = db.Column(db.String(64), unique=True, nullable=True)
     invite_expires = db.Column(db.DateTime, nullable=True)
     last_seen_version = db.Column(db.String(20), nullable=True)  # last "What's New" version this user has dismissed
+    last_login_at  = db.Column(db.DateTime, nullable=True)     # shown to the platform admin as usage info
     company        = db.relationship('Company')
 
     @property

@@ -98,21 +98,24 @@
             <table>
                 <thead><tr>
                     <th>Company</th>
-                    <th>Header Name</th>
                     <th>Users</th>
                     <th>Bonds</th>
+                    <th>Last Login</th>
+                    <th>Last Activity</th>
                     <th>Status</th>
                     <th>Actions</th>
                 </tr></thead>
                 <tbody>
                     {% for c in companies %}
                     <tr>
-                        <td><span class="cname">{{ c.name }}</span>{% if c.name == demo_name %}<span class="demo-tag">Demo</span>{% endif %}<div class="meta">Added {{ c.created_at }}</div></td>
-                        <td>{{ c.short_name ~ ' BondDesk' if c.short_name else 'BondDesk' }}</td>
-                        <td>{{ c.users }}</td>
-                        <td>{{ c.bonds }}</td>
+                        <td><span class="cname">{{ c.name }}</span>{% if c.name == demo_name %}<span class="demo-tag">Demo</span>{% endif %}<div class="meta">{{ c.short_name ~ ' BondDesk' if c.short_name else 'BondDesk' }} &middot; added {{ c.created_at }}</div></td>
+                        <td>{{ c.users_active }} active<div class="meta">{{ c.users }} total</div></td>
+                        <td>{{ c.bonds }}<div class="meta">+{{ c.bonds_7d }} this week &middot; +{{ c.bonds_30d }} this month</div></td>
+                        <td><span class="ago" data-ts="{{ c.last_login }}"></span></td>
+                        <td><span class="ago" data-ts="{{ c.last_activity }}"></span></td>
                         <td>{% if c.active %}<span class="status-active">&#10003; Active</span>{% else %}<span class="status-inactive">&#10005; Off</span>{% endif %}</td>
                         <td><div class="row-acts">
+                            <form method="POST" action="/platform/view/{{ c.id }}" style="display:inline;" onsubmit="return confirm('Open {{ c.name|e }} read-only? This visit is recorded in their Activity Log.')"><button type="submit" class="btn btn-primary btn-sm">View</button></form>
                             <button class="btn btn-secondary btn-sm" data-id="{{ c.id }}" data-name="{{ c.name }}" data-short="{{ c.short_name }}" onclick="openEdit(this)">Edit</button>
                             <button class="btn btn-secondary btn-sm" data-id="{{ c.id }}" data-name="{{ c.name }}" onclick="openInviteAdmin(this)">Invite Admin</button>
                             {% if c.active %}
@@ -123,7 +126,7 @@
                         </div></td>
                     </tr>
                     {% else %}
-                    <tr><td colspan="6" style="text-align:center;color:var(--gray-600);padding:32px;">No companies yet. Click <strong>+ New Company</strong> to add your first customer.</td></tr>
+                    <tr><td colspan="7" style="text-align:center;color:var(--gray-600);padding:32px;">No companies yet. Click <strong>+ New Company</strong> to add your first customer.</td></tr>
                     {% endfor %}
                 </tbody>
             </table>
@@ -301,6 +304,15 @@ async function seedDemo(){
     } catch(ex){ toast(ex.message,'err'); }
     finally { btn.disabled=false; btn.textContent='Load / Reset Demo Company'; }
 }
+
+// "3 days ago" style times, in the viewer's own time zone
+function ago(iso){
+    if(!iso) return '<span class="meta">Never</span>';
+    const d=new Date(iso), s=(Date.now()-d)/1000;
+    const rel = s<3600 ? Math.max(1,Math.round(s/60))+' min ago' : s<86400 ? Math.round(s/3600)+' hr ago' : Math.round(s/86400)+' days ago';
+    return rel+'<div class="meta">'+d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})+'</div>';
+}
+document.querySelectorAll('.ago').forEach(el=>{ el.innerHTML = ago(el.dataset.ts); });
 
 function closeResult(){ closeModal('resultModal'); location.reload(); }
 function open_(id){ document.getElementById(id).classList.add('open'); }
