@@ -275,8 +275,113 @@ def seed_demo_company(password, today=None):
     }
 
 
+# ── Sample bid request PDF for demoing "Upload PDF" without paying for AI ──
+# When this exact file is uploaded, the app returns SAMPLE_PDF_EXTRACTION
+# instead of calling the AI. Regenerate with:  python demo_seed.py --sample-pdf
+
+import os
+SAMPLE_PDF_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                               'static', 'demo', 'sample-bid-request.pdf')
+
+SAMPLE_PDF_EXTRACTION = {
+    'bond_type':           'Bid Bond',
+    'principal':           'Bluestem Paving Co.',
+    'obligee':             'City of Fairview',
+    'surety':              'Merchants Bonding Company',
+    'bond_amount':         1875000,
+    'bid_bond_percent':    5,
+    'bid_date':            '2027-01-14',
+    'decision_date':       None,
+    'project':             'Lakeview Drive Reconstruction',
+    'project_description': 'Full-depth reconstruction of 0.6 miles of Lakeview Drive including new curb and gutter, '
+                           'storm sewer, ADA sidewalk ramps and pavement markings.',
+    'work_on_hand': ("Job                          Bonded  Amount        Complete  Remaining\n"
+                     "County Rd 9 Overlay          Y       $1,240,000    85%       $186,000\n"
+                     "Fairview Sidewalk Program    Y       $612,500      40%       $367,500\n"
+                     "Private - Retail Lot Paving          $298,000      10%       $268,200\n"
+                     "TOTAL                                $2,150,500              $821,700"),
+}
+
+
+def build_sample_pdf(path=SAMPLE_PDF_PATH):
+    from fpdf import FPDF
+    pdf = FPDF(unit='mm', format='Letter')
+    pdf.set_margins(18, 16, 18)
+    pdf.add_page()
+    pdf.set_font('Helvetica', 'B', 16)
+    pdf.cell(0, 9, 'Bluestem Paving Co.', new_x='LMARGIN', new_y='NEXT')
+    pdf.set_font('Helvetica', '', 9)
+    pdf.cell(0, 5, '4410 Quarry Road  |  Fairview  |  (555) 014-2290', new_x='LMARGIN', new_y='NEXT')
+    pdf.ln(6)
+    pdf.set_font('Helvetica', 'B', 13)
+    pdf.cell(0, 8, 'BID BOND REQUEST', new_x='LMARGIN', new_y='NEXT')
+    pdf.set_font('Helvetica', '', 9)
+    pdf.cell(0, 5, 'To: Ridgeview Insurance Partners - Surety Department', new_x='LMARGIN', new_y='NEXT')
+    pdf.ln(4)
+
+    rows = [
+        ('Principal (Contractor)', 'Bluestem Paving Co.'),
+        ('Obligee (Owner)',        'City of Fairview'),
+        ('Project',                'Lakeview Drive Reconstruction'),
+        ('Bid Date',               'January 14, 2027 at 2:00 PM'),
+        ('Estimated Contract Amount', '$1,875,000'),
+        ('Bid Bond Required',      '5% of total bid amount'),
+        ('Preferred Surety',       'Merchants Bonding Company'),
+    ]
+    for label, value in rows:
+        pdf.set_font('Helvetica', 'B', 10); pdf.cell(62, 7, label)
+        pdf.set_font('Helvetica', '', 10);  pdf.cell(0, 7, value, new_x='LMARGIN', new_y='NEXT')
+    pdf.ln(3)
+    pdf.set_font('Helvetica', 'B', 10); pdf.cell(0, 7, 'Scope of Work', new_x='LMARGIN', new_y='NEXT')
+    pdf.set_font('Helvetica', '', 10)
+    pdf.multi_cell(0, 5.5, SAMPLE_PDF_EXTRACTION['project_description'])
+    pdf.ln(5)
+
+    pdf.set_font('Helvetica', 'B', 10); pdf.cell(0, 7, 'Current Work on Hand', new_x='LMARGIN', new_y='NEXT')
+    widths = [70, 18, 30, 24, 30]
+    head = ['Job', 'Bonded', 'Amount', 'Complete', 'Remaining']
+    data = [
+        ['County Rd 9 Overlay', 'Y', '$1,240,000', '85%', '$186,000'],
+        ['Fairview Sidewalk Program', 'Y', '$612,500', '40%', '$367,500'],
+        ['Private - Retail Lot Paving', '', '$298,000', '10%', '$268,200'],
+        ['TOTAL', '', '$2,150,500', '', '$821,700'],
+    ]
+    pdf.set_fill_color(13, 27, 42); pdf.set_text_color(255, 255, 255); pdf.set_font('Helvetica', 'B', 9)
+    for h, w in zip(head, widths):
+        pdf.cell(w, 7, h, border=1, fill=True)
+    pdf.ln(7)
+    pdf.set_text_color(0, 0, 0)
+    for r in data:
+        pdf.set_font('Helvetica', 'B' if r[0] == 'TOTAL' else '', 9)
+        for v, w in zip(r, widths):
+            pdf.cell(w, 7, v, border=1)
+        pdf.ln(7)
+    pdf.ln(10)
+    pdf.set_font('Helvetica', '', 10)
+    pdf.cell(0, 6, 'Requested by: Sam Whitfield, Estimator', new_x='LMARGIN', new_y='NEXT')
+    pdf.cell(0, 6, 'Signature: ______________________________', new_x='LMARGIN', new_y='NEXT')
+    pdf.ln(6)
+    pdf.set_font('Helvetica', 'I', 8); pdf.set_text_color(120, 120, 120)
+    pdf.cell(0, 5, 'Sample document for BondDesk demonstrations. All names are fictional.')
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    pdf.output(path)
+    return path
+
+
+def sample_pdf_sha256():
+    import hashlib
+    try:
+        with open(SAMPLE_PDF_PATH, 'rb') as f:
+            return hashlib.sha256(f.read()).hexdigest()
+    except OSError:
+        return None
+
+
 if __name__ == '__main__':
     import sys
+    if '--sample-pdf' in sys.argv:
+        print('wrote', build_sample_pdf())
+        sys.exit(0)
     from app import app
     pw = sys.argv[1] if len(sys.argv) > 1 else 'DemoPass2026'
     with app.app_context():

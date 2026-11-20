@@ -115,7 +115,7 @@
                         <td><span class="ago" data-ts="{{ c.last_activity }}"></span></td>
                         <td>{% if c.active %}<span class="status-active">&#10003; Active</span>{% else %}<span class="status-inactive">&#10005; Off</span>{% endif %}</td>
                         <td><div class="row-acts">
-                            <form method="POST" action="/platform/view/{{ c.id }}" style="display:inline;" onsubmit="return confirm('Open {{ c.name|e }} read-only? This visit is recorded in their Activity Log.')"><button type="submit" class="btn btn-primary btn-sm">View</button></form>
+                            {% if c.name == demo_name %}<form method="POST" action="/platform/view/{{ c.id }}" style="display:inline;"><button type="submit" class="btn btn-primary btn-sm" title="Work in the demo like an agent">Open &amp; Edit</button></form>{% else %}<form method="POST" action="/platform/view/{{ c.id }}" style="display:inline;" onsubmit="return confirm('Open {{ c.name|e }} read-only? This visit is recorded in their Activity Log.')"><button type="submit" class="btn btn-primary btn-sm">View</button></form>{% endif %}
                             <button class="btn btn-secondary btn-sm" data-id="{{ c.id }}" data-name="{{ c.name }}" data-short="{{ c.short_name }}" onclick="openEdit(this)">Edit</button>
                             <button class="btn btn-secondary btn-sm" data-id="{{ c.id }}" data-name="{{ c.name }}" onclick="openInviteAdmin(this)">Invite Admin</button>
                             {% if c.active %}

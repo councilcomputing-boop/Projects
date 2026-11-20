@@ -93,6 +93,15 @@ SUPERADMIN_ENDPOINTS = {
 }
 # Extra endpoints a superadmin may use while viewing a company — read-only only.
 VIEW_ONLY_ENDPOINTS = {'index', 'get_bonds', 'get_audit', 'generate_report', 'generate_excel'}
+# In the DEMO company only, the superadmin may also work bonds like an agent.
+DEMO_EDIT_ENDPOINTS = {'create_bond', 'update_bond', 'toggle_low_bid', 'delete_bond',
+                       'create_final_bond', 'extract_bond_pdf'}
+
+
+def viewing_demo():
+    from demo_seed import DEMO_COMPANY_NAME
+    c = active_company() if current_user.is_authenticated and current_user.is_superadmin else None
+    return c is not None and c.name == DEMO_COMPANY_NAME
 
 
 @app.before_request
@@ -105,7 +114,9 @@ def enforce_access():
         if request.path.startswith('/api/'):
             return jsonify({'error': 'Your account is not active.'}), 401
         return redirect(url_for('login'))
-    allowed = SUPERADMIN_ENDPOINTS | (VIEW_ONLY_ENDPOINTS if session.get('view_company_id') else set())
+    allowed = SUPERADMIN_ENDPOINTS
+    if current_user.is_superadmin and session.get('view_company_id'):
+        allowed = allowed | VIEW_ONLY_ENDPOINTS | (DEMO_EDIT_ENDPOINTS if viewing_demo() else set())
     if current_user.is_superadmin and request.endpoint not in allowed:
         if request.path.startswith('/api/') or request.path.startswith('/reports/'):
             return jsonify({'error': 'Platform admins do not have a company workspace.'}), 403
@@ -177,8 +188,10 @@ def index():
     company = active_company()
     if company is None:
         return redirect(url_for('platform'))
+    demo_edit = viewing_demo()
     return render_template('index.html', user=current_user, company=company,
-                           read_only=current_user.is_superadmin)
+                           read_only=current_user.is_superadmin and not demo_edit,
+                           demo_edit=demo_edit)
 
 
 @app.route('/admin')
@@ -221,7 +234,7 @@ def create_bond():
     data = request.get_json()
 
     bond = Bond(
-        company_id           = current_user.company_id,
+        company_id           = active_company_id(),
         bond_number          = None,
         bond_type            = data['bond_type'],
         principal            = data['principal'].strip(),
@@ -378,7 +391,7 @@ def get_reconciliations():
 def create_reconciliation():
     data = request.get_json()
     rec = Reconciliation(
-        company_id = current_user.company_id,
+        company_id = active_company_id(),
         carrier    = data.get('carrier', '').strip(),
         period     = data.get('period', ''),
         status     = data.get('status', 'In Progress'),
@@ -892,13 +905,21 @@ def generate_excel():
 @login_required
 def extract_bond_pdf():
     import pdfplumber
-    import anthropic as _anthropic
 
     if 'file' not in request.files:
         return jsonify({'error': 'No file uploaded.'}), 400
     file = request.files['file']
     if not file.filename.lower().endswith('.pdf'):
         return jsonify({'error': 'File must be a PDF.'}), 400
+
+    # The demo sample PDF gets a saved answer — no AI call, no cost.
+    import hashlib, io, time
+    from demo_seed import SAMPLE_PDF_EXTRACTION, sample_pdf_sha256
+    raw_pdf = file.read()
+    if hashlib.sha256(raw_pdf).hexdigest() == sample_pdf_sha256():
+        time.sleep(1.5)   # feels like the real thing on stage
+        return jsonify(SAMPLE_PDF_EXTRACTION)
+    file = io.BytesIO(raw_pdf)
 
     try:
         with pdfplumber.open(file) as pdf:
@@ -913,6 +934,7 @@ def extract_bond_pdf():
     if not api_key:
         return jsonify({'error': 'ANTHROPIC_API_KEY not set in Railway variables.'}), 500
 
+    import anthropic as _anthropic
     client = _anthropic.Anthropic(api_key=api_key)
     message = client.messages.create(
         model='claude-haiku-4-5-20251001',
@@ -1116,15 +1138,17 @@ def platform_view_company(company_id):
     if not current_user.is_superadmin:
         return redirect(url_for('index'))
     company = Company.query.get_or_404(company_id)
-    db.session.add(AuditLog(
-        company_id  = company.id,
-        bond_id     = None,
-        bond_number = None,
-        action      = 'viewed',
-        changed_by  = f'{current_user.username} (platform admin)',
-        new_values  = json.dumps({'note': 'Opened this account read-only from the BondDesk platform'}),
-    ))
-    db.session.commit()
+    from demo_seed import DEMO_COMPANY_NAME
+    if company.name != DEMO_COMPANY_NAME:
+        db.session.add(AuditLog(
+            company_id  = company.id,
+            bond_id     = None,
+            bond_number = None,
+            action      = 'viewed',
+            changed_by  = f'{current_user.username} (platform admin)',
+            new_values  = json.dumps({'note': 'Opened this account read-only from the BondDesk platform'}),
+        ))
+        db.session.commit()
     session['view_company_id'] = company.id
     return redirect(url_for('index'))
 

@@ -320,6 +320,13 @@
     <a href="/platform/exit-view">&larr; Back to Platform</a>
 </div>
 {% endif %}
+{% if demo_edit %}
+<div class="view-banner" role="status" style="background:#e3f2fd;color:#0d47a1;border-bottom-color:#90caf9;">
+    <span>&#9998; You're working in the <strong>demo company</strong> as an agent. Changes are allowed here and can be wiped anytime with Load / Reset Demo Company.
+        Try Upload PDF with the <a href="/static/demo/sample-bid-request.pdf" download style="color:#0d47a1;">sample bid request</a>. It uses a saved answer, so no AI credits are used.</span>
+    <a href="/platform/exit-view" style="color:#0d47a1;">&larr; Back to Platform</a>
+</div>
+{% endif %}
 
 <!-- Main -->
 <main class="main">
